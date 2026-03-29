@@ -10,7 +10,7 @@ impl GalacticMapDivision {
         galaxy: &Galaxy,
     ) -> Self {
         let mut division = Self {
-            name: "GalaxyDivision".into(),
+            name: generate_division_name(index, level, galaxy),
             region: GalacticRegion::Multiple,
             level,
             x: (index.x % parent_division_level.x_subdivisions as i64) as u8,
@@ -22,6 +22,29 @@ impl GalacticMapDivision {
         division.region = get_region(&mut division, galaxy);
         division
     }
+}
+
+fn generate_division_name(index: SpaceCoordinates, level: u8, galaxy: &Galaxy) -> Rc<str> {
+    let region = generate_region(index, galaxy);
+    let region_prefix = match region {
+        GalacticRegion::Core => "Core",
+        GalacticRegion::Nucleus => "Nucleus",
+        GalacticRegion::Bulge => "Bulge",
+        GalacticRegion::Bar => "Bar",
+        GalacticRegion::Arm => "Arm",
+        GalacticRegion::Disk => "Disk",
+        GalacticRegion::Ellipse => "Sector",
+        GalacticRegion::Halo => "Halo",
+        GalacticRegion::Aura => "Aura",
+        GalacticRegion::Void => "Void",
+        GalacticRegion::GlobularCluster => "GC",
+        GalacticRegion::OpenCluster => "OC",
+        GalacticRegion::Association => "Assoc",
+        GalacticRegion::Stream => "Stream",
+        GalacticRegion::Exile => "Exile",
+        GalacticRegion::Multiple => "Sector",
+    };
+    format!("{}-L{}-{}.{}.{}", region_prefix, level, index.x, index.y, index.z).into()
 }
 
 fn get_region(division: &mut GalacticMapDivision, galaxy: &Galaxy) -> GalacticRegion {
