@@ -1,7 +1,7 @@
 use crate::internal::*;
 use crate::prelude::*;
 use crate::system::celestial_body::world::utils::get_category_from_temperature;
-use crate::system::contents::utils::calculate_distance_for_temperature;
+use crate::system::contents::utils::{calculate_distance_for_temperature, calculate_habitable_zone};
 use std::cmp::Ordering;
 
 pub fn generate_star_zones(all_objects: &mut Vec<OrbitalPoint>) {
@@ -73,8 +73,8 @@ fn calculate_inner_zone(star: &mut Star) {
 }
 
 fn calculate_bio_zone(star: &mut Star) {
-    let inner_habitable_zone = calculate_distance_for_temperature(star.luminosity, 344);
-    let outer_habitable_zone = calculate_distance_for_temperature(star.luminosity, 244);
+    let (inner_habitable_zone, outer_habitable_zone) =
+        calculate_habitable_zone(star.luminosity, star.temperature);
     let inner_limit = star
         .zones
         .iter()

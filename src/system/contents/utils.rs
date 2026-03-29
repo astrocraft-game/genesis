@@ -18,6 +18,23 @@ pub(crate) fn calculate_distance_for_temperature(luminosity: f32, temperature: i
     (luminosity as f64 / t_ratio.powi(4)).sqrt()
 }
 
+/// Habitable zone boundaries using Kopparapu et al. (2013) formulas.
+/// Takes stellar luminosity (solar units) and effective temperature (K).
+/// Returns (inner_au, outer_au) using Recent Venus / Early Mars limits.
+pub(crate) fn calculate_habitable_zone(luminosity: f32, star_temperature: u32) -> (f64, f64) {
+    let t = star_temperature as f64 - 5780.0;
+    let s_inner = 1.7763 + 1.4335e-4 * t + 3.3954e-9 * t.powi(2);
+    let s_outer = 0.3179 + 5.4513e-5 * t + 1.5313e-9 * t.powi(2);
+    let inner_au = (luminosity as f64 / s_inner).sqrt();
+    let outer_au = (luminosity as f64 / s_outer).sqrt();
+    (inner_au, outer_au)
+}
+
+/// Snow line distance in AU (where water ice can condense).
+pub(crate) fn calculate_snow_line(luminosity: f32) -> f64 {
+    2.7 * (luminosity as f64).sqrt()
+}
+
 /// Returns a value in Earth Radii
 pub(crate) fn calculate_radius(mass_earth_masses: f64, density_g_cm3: f64) -> f64 {
     let earth_mass_kg: f64 = 5.972e24;
@@ -130,6 +147,42 @@ mod tests {
 
     fn within_error_margin(calculated: f64, expected: f64) -> bool {
         (calculated / expected - 1.0).abs() <= ERROR_MARGIN
+    }
+
+    #[test]
+    fn test_habitable_zone_sun() {
+        let (inner, outer) = calculate_habitable_zone(1.0, 5772);
+        // Sun's HZ should be roughly 0.75-1.77 AU (Recent Venus / Early Mars)
+        assert!(
+            inner > 0.7 && inner < 0.85,
+            "Sun inner HZ = {} AU",
+            inner
+        );
+        assert!(
+            outer > 1.7 && outer < 1.9,
+            "Sun outer HZ = {} AU",
+            outer
+        );
+    }
+
+    #[test]
+    fn test_habitable_zone_m_dwarf() {
+        // Proxima Centauri-like: L=0.0017, T=3042K
+        let (inner, outer) = calculate_habitable_zone(0.0017, 3042);
+        assert!(inner < 0.1, "M dwarf inner HZ = {} AU", inner);
+        assert!(outer < 0.3, "M dwarf outer HZ = {} AU", outer);
+        assert!(inner < outer);
+    }
+
+    #[test]
+    fn test_snow_line_sun() {
+        let snow = calculate_snow_line(1.0);
+        // Sun's snow line ~2.7 AU
+        assert!(
+            (snow - 2.7).abs() < 0.1,
+            "Sun snow line = {} AU",
+            snow
+        );
     }
 
     #[test]
