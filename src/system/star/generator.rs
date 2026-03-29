@@ -302,6 +302,9 @@ impl Star {
             }
         });
 
+        let absolute_magnitude =
+            crate::system::star::absolute_magnitude_from_luminosity(luminosity);
+
         Self {
             name,
             mass,
@@ -316,6 +319,7 @@ impl Star {
             orbital_point_id: star_index as u32,
             orbit: None,
             zones: vec![],
+            absolute_magnitude,
         }
     }
 }
@@ -1585,6 +1589,30 @@ mod tests {
             spectral_type,
             luminosity_class,
             age
+        );
+    }
+
+    #[test]
+    fn magnitude_from_luminosity_sun() {
+        let mag = crate::system::star::absolute_magnitude_from_luminosity(1.0);
+        assert!(
+            (mag - 4.83).abs() < 0.01,
+            "Sun abs mag should be ~4.83, got {}",
+            mag
+        );
+    }
+
+    #[test]
+    fn magnitude_luminosity_roundtrip() {
+        let lum_original = 100.0_f32;
+        let mag = crate::system::star::absolute_magnitude_from_luminosity(lum_original);
+        let lum_back = crate::system::star::luminosity_from_absolute_magnitude(mag);
+        assert!(
+            (lum_back - lum_original).abs() / lum_original < 0.01,
+            "roundtrip: {} -> mag {} -> {}",
+            lum_original,
+            mag,
+            lum_back
         );
     }
 

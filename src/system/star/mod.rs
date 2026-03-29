@@ -32,6 +32,8 @@ pub struct Star {
     pub zones: Vec<StarZone>,
     /// What are the pecularities of this star.
     pub special_traits: Vec<StarPeculiarity>,
+    /// Absolute visual magnitude (derived from luminosity).
+    pub absolute_magnitude: f32,
 }
 
 impl Star {
@@ -50,6 +52,7 @@ impl Star {
         orbit: Option<Orbit>,
         zones: Vec<StarZone>,
     ) -> Self {
+        let absolute_magnitude = absolute_magnitude_from_luminosity(luminosity);
         Self {
             name,
             mass,
@@ -64,6 +67,7 @@ impl Star {
             orbital_point_id,
             orbit,
             zones,
+            absolute_magnitude,
         }
     }
 
@@ -124,6 +128,19 @@ impl Star {
                 .eccentricity) as f64
             * self.radius) as f64
     }
+}
+
+/// M_V = M_V_sun - 2.5 * log10(L/L_sun), where M_V_sun = 4.83
+pub fn absolute_magnitude_from_luminosity(luminosity_solar: f32) -> f32 {
+    if luminosity_solar <= 0.0 {
+        return 99.0;
+    }
+    4.83 - 2.5 * (luminosity_solar as f64).log10() as f32
+}
+
+/// L/L_sun = 10^((M_V_sun - M_V) / 2.5)
+pub fn luminosity_from_absolute_magnitude(abs_mag: f32) -> f32 {
+    10.0_f64.powf(((4.83 - abs_mag) / 2.5) as f64) as f32
 }
 
 pub(crate) fn get_star_color_code(star: &Star) -> &'static str {
