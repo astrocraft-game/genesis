@@ -157,9 +157,19 @@ impl Star {
 
         let name = get_star_name(star_index, system_name.clone(), settings);
 
-        // TODO: Did you add the special traits or is it just an empty array?
-        let mut special_traits = Vec::new();
-        if population == StellarEvolution::Paleodwarf {
+        let mut special_traits = generate_star_peculiarities(
+            system_gen_try,
+            star_index,
+            system_index,
+            coord,
+            population,
+            spectral_type,
+            age / 1000.0,
+            galaxy,
+        );
+        if population == StellarEvolution::Paleodwarf
+            && !special_traits.contains(&StarPeculiarity::NoMetals)
+        {
             special_traits.push(StarPeculiarity::NoMetals);
         }
 
@@ -542,6 +552,106 @@ fn simulate_mass_loss_over_the_years(mass: f64, age: f32) -> f64 {
     } else {
         mass
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn generate_star_peculiarities(
+    system_gen_try: u32,
+    star_index: u16,
+    system_index: u16,
+    coord: SpaceCoordinates,
+    population: StellarEvolution,
+    spectral_type: StarSpectralType,
+    age_gyr: f32,
+    galaxy: &Galaxy,
+) -> Vec<StarPeculiarity> {
+    let mut rng = SeededDiceRoller::new(
+        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("star_{}_{}_{}_pec", coord, system_index, star_index),
+    );
+    let mut traits = Vec::new();
+
+    let is_hot = matches!(
+        spectral_type,
+        StarSpectralType::O(_) | StarSpectralType::B(_) | StarSpectralType::WR(_)
+    );
+
+    // ChaoticOrbits: ~3%
+    if rng.roll(1, 100, 0) <= 3 {
+        traits.push(StarPeculiarity::ChaoticOrbits);
+    }
+
+    // ExcessiveRadiation: 5% for hot stars, 1% otherwise
+    let rad_chance = if is_hot { 5 } else { 1 };
+    if rng.roll(1, 100, 0) <= rad_chance {
+        traits.push(StarPeculiarity::ExcessiveRadiation);
+    }
+
+    // RotationAnomaly: ~5%
+    if rng.roll(1, 100, 0) <= 5 {
+        let speed = match rng.roll(1, 4, 0) {
+            1 => RotationAnomalySpeed::MuchSlower,
+            2 => RotationAnomalySpeed::Slower,
+            3 => RotationAnomalySpeed::Faster,
+            _ => RotationAnomalySpeed::MuchFaster,
+        };
+        traits.push(StarPeculiarity::RotationAnomaly(speed));
+    }
+
+    // UnusualMetallicity: ~8%
+    if rng.roll(1, 100, 0) <= 8 {
+        let met = match population {
+            StellarEvolution::Paleodwarf | StellarEvolution::Subdwarf => {
+                match rng.roll(1, 4, 0) {
+                    1 => StarMetallicityDifference::MuchLower,
+                    2 => StarMetallicityDifference::Lower,
+                    3 => StarMetallicityDifference::Higher,
+                    _ => StarMetallicityDifference::MuchHigher,
+                }
+            }
+            _ => match rng.roll(1, 4, 0) {
+                1 => StarMetallicityDifference::Lower,
+                2 => StarMetallicityDifference::MuchLower,
+                3 => StarMetallicityDifference::Higher,
+                _ => StarMetallicityDifference::MuchHigher,
+            },
+        };
+        traits.push(StarPeculiarity::UnusualMetallicity(met));
+    }
+
+    // PowerfulStellarWinds: 5% for hot, 1% otherwise
+    let wind_chance = if is_hot { 5 } else { 1 };
+    if rng.roll(1, 100, 0) <= wind_chance {
+        traits.push(StarPeculiarity::PowerfulStellarWinds);
+    }
+
+    // StrongMagneticField: ~4%
+    if rng.roll(1, 100, 0) <= 4 {
+        traits.push(StarPeculiarity::StrongMagneticField);
+    }
+
+    // VariableStar: ~6%
+    if rng.roll(1, 100, 0) <= 6 {
+        let interval = match rng.roll(1, 7, 0) {
+            1 => VariableStarInterval::Minutes,
+            2 => VariableStarInterval::Hours,
+            3 => VariableStarInterval::Days,
+            4 => VariableStarInterval::Months,
+            5 => VariableStarInterval::Years,
+            6 => VariableStarInterval::Decades,
+            _ => VariableStarInterval::Centuries,
+        };
+        traits.push(StarPeculiarity::VariableStar(interval));
+    }
+
+    // CircumstellarDisk: ~10% for young systems (< 1 Gyr)
+    if age_gyr < 1.0 && rng.roll(1, 100, 0) <= 10 {
+        traits.push(StarPeculiarity::CircumstellarDisk);
+    }
+
+    // Limit to max 3 peculiarities
+    traits.truncate(3);
+    traits
 }
 
 fn calculate_radius(
