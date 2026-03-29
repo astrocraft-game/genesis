@@ -46,7 +46,7 @@ impl Galaxy {
             };
         } else {
             // Generated galaxy
-            name = "Galaxy".into();
+            name = generate_galaxy_name(index, seed);
             is_dominant = is_galaxy_dominant(neighborhood, index);
             is_major = is_galaxy_major(neighborhood, index);
             age = generate_age(neighborhood, index, seed, settings);
@@ -1341,9 +1341,74 @@ fn is_galaxy_major(neighborhood: GalacticNeighborhood, index: u16) -> bool {
     is_major
 }
 
+const GALAXY_NAME_PREFIXES: &[&str] = &[
+    "An", "Al", "Ar", "Ax", "Be", "Br", "Ca", "Ce", "Cy", "Da", "De", "Do", "El", "Er", "Fa",
+    "Fe", "Ga", "Ge", "Ha", "He", "Hy", "In", "Ir", "Ka", "Ki", "La", "Le", "Lu", "Ma", "Me",
+    "Mi", "Ne", "No", "Nu", "Or", "Pa", "Pe", "Qu", "Ra", "Re", "Ri", "Sa", "Se", "Si", "So",
+    "Ta", "Te", "Th", "Ul", "Va", "Ve", "Vi", "Xe", "Za", "Ze",
+];
+
+const GALAXY_NAME_MIDDLES: &[&str] = &[
+    "dro", "lor", "ren", "nar", "vel", "ris", "tan", "lix", "mur", "gor", "pha", "ros", "ver",
+    "zel", "mon", "tar", "bol", "cin", "dur", "fen", "gar", "hel", "jor", "kin", "len", "mir",
+    "nor", "por", "qar", "sar", "tor", "vor", "xen",
+];
+
+const GALAXY_NAME_SUFFIXES: &[&str] = &[
+    "ia", "us", "on", "ar", "is", "ea", "um", "ax", "os", "al", "ix", "an", "or", "el", "yx",
+    "as", "en", "ur",
+];
+
+fn generate_galaxy_name(index: u16, seed: &Rc<str>) -> Rc<str> {
+    let mut rng = SeededDiceRoller::new(seed.as_ref(), &format!("gal_{}_name", index));
+
+    let prefix = GALAXY_NAME_PREFIXES[rng.gen_usize() % GALAXY_NAME_PREFIXES.len()];
+    let middle = GALAXY_NAME_MIDDLES[rng.gen_usize() % GALAXY_NAME_MIDDLES.len()];
+    let suffix = GALAXY_NAME_SUFFIXES[rng.gen_usize() % GALAXY_NAME_SUFFIXES.len()];
+
+    // ~30% chance to add a catalog-style designator
+    let catalog = if rng.roll(1, 100, 0) <= 30 {
+        let num = rng.roll(1, 9999, 0);
+        match rng.roll(1, 3, 0) {
+            1 => format!("NGC {} ", num),
+            2 => format!("IC {} ", num),
+            _ => format!("UGC {} ", num),
+        }
+    } else {
+        String::new()
+    };
+
+    format!("{}{}{}{}", catalog, prefix, middle, suffix).into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn generate_galaxy_name_is_deterministic() {
+        let seed: Rc<str> = "test_seed".into();
+        let name1 = generate_galaxy_name(0, &seed);
+        let name2 = generate_galaxy_name(0, &seed);
+        assert_eq!(name1, name2);
+    }
+
+    #[test]
+    fn generate_galaxy_name_varies_by_index() {
+        let seed: Rc<str> = "test_seed".into();
+        let name1 = generate_galaxy_name(0, &seed);
+        let name2 = generate_galaxy_name(1, &seed);
+        assert_ne!(name1, name2);
+    }
+
+    #[test]
+    fn generate_galaxy_name_not_empty() {
+        let seed: Rc<str> = "test_seed".into();
+        for i in 0..20 {
+            let name = generate_galaxy_name(i, &seed);
+            assert!(name.len() >= 4, "Name too short: {}", name);
+        }
+    }
 
     #[test]
     fn generate_a_galaxy_with_sensible_age() {
