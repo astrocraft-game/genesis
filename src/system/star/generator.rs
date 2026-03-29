@@ -329,43 +329,25 @@ fn get_star_name(star_index: u16, name: Rc<str>, settings: &GenerationSettings) 
     }
 }
 
+/// T = T_sun * (L/L_sun)^(1/4) / (R/R_sun)^(1/2)
+/// All inputs in solar units, output in Kelvin.
 fn calculate_temperature_using_luminosity(luminosity: f32, radius: f64) -> f32 {
-    let pi = std::f64::consts::PI;
-    let area = 4.0 * pi * (radius).powf(2.0);
-    // If I understood properly, the real approximation of the constant is 5.670367x10^-8, I have no idea why but I need to put 10^-17
-    // in order to get working results.
-    let sigma = 5.670367 * f64::powf(10.0, -17.0);
-    // Same there, I've added the "x0.94304315" because it gives me results that are, on average (and exactly in the case of Sun), closer
-    // to the ones I found on existing stars.
-    let mut result = (luminosity as f64 / (area * sigma)).powf(1.0 / 4.0) as f32;
-    result = result * 0.94304315;
-    result
+    const T_SUN: f64 = 5772.0;
+    (T_SUN * (luminosity as f64).powf(0.25) / radius.sqrt()) as f32
 }
 
+/// L/L_sun = (R/R_sun)^2 * (T/T_sun)^4
+/// Radius in solar radii, temperature in Kelvin, output in solar luminosities.
 fn calculate_luminosity_using_temperature(temperature: u32, radius: f64) -> f32 {
-    let pi = std::f64::consts::PI;
-    let area = 4.0 * pi * (radius).powf(2.0);
-    // If I understood properly, the real approximation of the constant is 5.670367x10^-8, I have no idea why but I need to put 10^-17
-    // in order to get working results.
-    let sigma = 5.670367 * f64::powf(10.0, -17.0);
-    // Same there, I've added the "x1.2643679" because it gives me results that are, on average (and exactly in the case of Sun), closer
-    // to the ones I found on existing stars.
-    let mut result = (sigma * area * (temperature as f64).powf(4.0)) as f32;
-    result = result * 1.2643679;
-    result
+    const T_SUN: f64 = 5772.0;
+    (radius.powi(2) * (temperature as f64 / T_SUN).powi(4)) as f32
 }
 
+/// R/R_sun = (L/L_sun)^(1/2) / (T/T_sun)^2
+/// Luminosity in solar luminosities, temperature in Kelvin, output in solar radii.
 fn calculate_radius_using_luminosity_and_temperature(luminosity: f32, temperature: u32) -> f64 {
-    let pi = std::f64::consts::PI;
-    // If I understood properly, the real approximation of the constant is 5.670367x10^-8, I have no idea why but I need to put 10^-17
-    // in order to get working results.
-    let sigma = 5.670367 * f64::powf(10.0, -17.0);
-    // Same there, I've added the "x0.88937" because it gives me results that are, on average (and exactly in the case of Sun), closer
-    // to the ones I found on existing stars.
-    let mut result: f64 =
-        f64::sqrt(luminosity as f64 / (4.0 * pi * sigma * (temperature as f64).powf(4.0)));
-    result = result * 0.88937;
-    result
+    const T_SUN: f64 = 5772.0;
+    (luminosity as f64).sqrt() / (temperature as f64 / T_SUN).powi(2)
 }
 
 fn generate_mass(
@@ -1601,6 +1583,31 @@ mod tests {
             spectral_type,
             luminosity_class,
             age
+        );
+    }
+
+    #[test]
+    fn stefan_boltzmann_solar_units_exact_for_sun() {
+        // Sun: L=1, R=1 -> T should be 5772K
+        let temp = calculate_temperature_using_luminosity(1.0, 1.0);
+        assert!(
+            (temp - 5772.0).abs() < 1.0,
+            "Sun temperature should be ~5772K, got {}",
+            temp
+        );
+        // Roundtrip: T=5772, R=1 -> L should be 1.0
+        let lum = calculate_luminosity_using_temperature(5772, 1.0);
+        assert!(
+            (lum - 1.0).abs() < 0.01,
+            "Sun luminosity should be ~1.0, got {}",
+            lum
+        );
+        // Roundtrip: L=1, T=5772 -> R should be 1.0
+        let rad = calculate_radius_using_luminosity_and_temperature(1.0, 5772);
+        assert!(
+            (rad - 1.0).abs() < 0.01,
+            "Sun radius should be ~1.0, got {}",
+            rad
         );
     }
 
