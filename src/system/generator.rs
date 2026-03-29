@@ -21,7 +21,6 @@ impl StarSystem {
         let mut center_id: u32 = 0;
         let mut main_star_id: u32 = 0;
         let mut all_objects: Vec<OrbitalPoint> = Vec::new();
-        // TODO: Did you add the special traits or is it just an empty array?
         let mut special_traits: Vec<SystemPeculiarity> = Vec::new();
 
         let name = get_system_name(system_index, coord, galaxy);
@@ -30,7 +29,7 @@ impl StarSystem {
         let mut i = 0;
         while !accept_system {
             all_objects = Vec::new();
-            special_traits = Vec::new();
+            special_traits = generate_system_peculiarities(i, system_index, coord, galaxy);
 
             let number_of_stars =
                 generate_number_of_stars_in_system(i, system_index, coord, galaxy);
@@ -752,4 +751,57 @@ fn generate_distance_between_stars(
 /// Finds where the barycentre between two stars or centers of mass is.
 fn calculate_barycentre(distance_between: f64, heaviest_mass: f64, lowest_mass: f64) -> f64 {
     distance_between * (lowest_mass as f64 / (heaviest_mass as f64 + lowest_mass as f64))
+}
+
+fn generate_system_peculiarities(
+    system_gen_try: u32,
+    system_index: u16,
+    coord: SpaceCoordinates,
+    galaxy: &Galaxy,
+) -> Vec<SystemPeculiarity> {
+    let mut rng = SeededDiceRoller::new(
+        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("sys_{}_{}_pec", coord, system_index),
+    );
+    let mut traits = Vec::new();
+
+    // CarbonRich: ~3% chance
+    if rng.roll(1, 100, 0) <= 3 {
+        traits.push(SystemPeculiarity::CarbonRich);
+    }
+
+    // Cataclysm: ~7% chance
+    if rng.roll(1, 100, 0) <= 7 {
+        let severity = match rng.roll(1, 10, 0) {
+            1..=5 => CataclysmSeverity::Minor,
+            6..=8 => CataclysmSeverity::Major,
+            9 => CataclysmSeverity::Extreme,
+            _ => CataclysmSeverity::Ultimate,
+        };
+        traits.push(SystemPeculiarity::Cataclysm(severity));
+    }
+
+    // UnusualDebrisDensity: ~10% chance
+    if rng.roll(1, 100, 0) <= 10 {
+        let density = match rng.roll(1, 4, 0) {
+            1 => DebrisDensity::MuchLower,
+            2 => DebrisDensity::Lower,
+            3 => DebrisDensity::Higher,
+            _ => DebrisDensity::MuchHigher,
+        };
+        traits.push(SystemPeculiarity::UnusualDebrisDensity(density));
+    }
+
+    // Nebulae: ~5% chance
+    if rng.roll(1, 100, 0) <= 5 {
+        let size = match rng.roll(1, 10, 0) {
+            1..=4 => NebulaeApparentSize::Tiny,
+            5..=7 => NebulaeApparentSize::Small,
+            8..=9 => NebulaeApparentSize::Large,
+            _ => NebulaeApparentSize::Dominant,
+        };
+        traits.push(SystemPeculiarity::Nebulae(size));
+    }
+
+    traits
 }
