@@ -34,6 +34,8 @@ pub struct Star {
     pub special_traits: Vec<StarPeculiarity>,
     /// Absolute visual magnitude (derived from luminosity).
     pub absolute_magnitude: f32,
+    /// B-V color index (derived from temperature).
+    pub color_bv: f32,
 }
 
 impl Star {
@@ -53,6 +55,7 @@ impl Star {
         zones: Vec<StarZone>,
     ) -> Self {
         let absolute_magnitude = absolute_magnitude_from_luminosity(luminosity);
+        let color_bv = temperature_to_bv(temperature);
         Self {
             name,
             mass,
@@ -68,6 +71,7 @@ impl Star {
             orbit,
             zones,
             absolute_magnitude,
+            color_bv,
         }
     }
 
@@ -141,6 +145,46 @@ pub fn absolute_magnitude_from_luminosity(luminosity_solar: f32) -> f32 {
 /// L/L_sun = 10^((M_V_sun - M_V) / 2.5)
 pub fn luminosity_from_absolute_magnitude(abs_mag: f32) -> f32 {
     10.0_f64.powf(((4.83 - abs_mag) / 2.5) as f64) as f32
+}
+
+/// Approximate B-V color index from temperature (Ballesteros 2012 inverse).
+pub fn temperature_to_bv(temperature: u32) -> f32 {
+    let t = temperature as f64;
+    if t < 3000.0 {
+        2.0
+    } else if t > 30000.0 {
+        -0.33
+    } else {
+        (0.865 * (5601.0 / t).powf(1.7) - 0.396) as f32
+    }
+}
+
+/// Convert B-V color index to approximate RGB (sRGB, 0-255).
+pub fn bv_to_rgb(bv: f32) -> (u8, u8, u8) {
+    let bv = (bv as f64).clamp(-0.4, 2.0);
+    let temp = 4600.0 * (1.0 / (0.92 * bv + 1.7) + 1.0 / (0.92 * bv + 0.62));
+
+    let r = if temp <= 6600.0 {
+        255.0
+    } else {
+        (329.698_727_446 * (temp / 100.0 - 60.0).powf(-0.133_204_759_2)).clamp(0.0, 255.0)
+    };
+
+    let g = if temp <= 6600.0 {
+        (99.470_802_586_1 * (temp / 100.0 - 2.0).ln() - 161.119_568_166_1).clamp(0.0, 255.0)
+    } else {
+        (288.122_169_528_3 * (temp / 100.0 - 60.0).powf(-0.075_514_849_2)).clamp(0.0, 255.0)
+    };
+
+    let b = if temp >= 6600.0 {
+        255.0
+    } else if temp <= 1900.0 {
+        0.0
+    } else {
+        (138.517_731_223_1 * (temp / 100.0 - 10.0).ln() - 305.044_792_730_7).clamp(0.0, 255.0)
+    };
+
+    (r as u8, g as u8, b as u8)
 }
 
 pub(crate) fn get_star_color_code(star: &Star) -> &'static str {

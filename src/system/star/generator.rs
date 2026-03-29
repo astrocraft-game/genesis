@@ -314,6 +314,7 @@ impl Star {
 
         let absolute_magnitude =
             crate::system::star::absolute_magnitude_from_luminosity(luminosity);
+        let color_bv = crate::system::star::temperature_to_bv(temperature);
 
         Self {
             name,
@@ -330,6 +331,7 @@ impl Star {
             orbit: None,
             zones: vec![],
             absolute_magnitude,
+            color_bv,
         }
     }
 }
@@ -1710,6 +1712,27 @@ mod tests {
             "Sun abs mag should be ~4.83, got {}",
             mag
         );
+    }
+
+    #[test]
+    fn bv_color_ordering() {
+        // Hot stars should have lower B-V than cool stars
+        let bv_hot = crate::system::star::temperature_to_bv(10000);
+        let bv_sun = crate::system::star::temperature_to_bv(5772);
+        let bv_cool = crate::system::star::temperature_to_bv(3500);
+        assert!(
+            bv_hot < bv_sun && bv_sun < bv_cool,
+            "B-V should increase with decreasing temperature: hot={}, sun={}, cool={}",
+            bv_hot, bv_sun, bv_cool
+        );
+    }
+
+    #[test]
+    fn bv_to_rgb_produces_valid_colors() {
+        let (r, g, b) = crate::system::star::bv_to_rgb(0.63);
+        assert!(r > 200, "Sun should be warm-colored, r={}", r);
+        assert!(g > 150, "Sun should have green component, g={}", g);
+        assert!(b > 100, "Sun should have blue component, b={}", b);
     }
 
     #[test]
