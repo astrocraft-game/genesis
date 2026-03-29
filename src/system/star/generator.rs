@@ -523,8 +523,10 @@ fn adjust_luminosity_to_population(luminosity: f32, population: StellarEvolution
     match population {
         StellarEvolution::Hyperdwarf => luminosity * 0.5,
         StellarEvolution::Superdwarf => luminosity * 0.75,
-        StellarEvolution::Subdwarf => luminosity * 1.25,
-        StellarEvolution::Paleodwarf => luminosity * 1.5,
+        // Subdwarfs (Population II) are metal-poor, less opaque, and thus less
+        // luminous than main sequence stars of the same mass (~0.4-0.6x).
+        StellarEvolution::Subdwarf => luminosity * 0.5,
+        StellarEvolution::Paleodwarf => luminosity * 0.3,
         _ => luminosity,
     }
 }
