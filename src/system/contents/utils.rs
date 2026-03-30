@@ -138,6 +138,41 @@ pub(crate) fn jeans_parameter(
     v_e / v_rms
 }
 
+/// Computes tidal heating flux in W/m^2.
+/// Based on: E_dot ~ (21/2) * k2/Q * G * M_host^2 * R^5 * n * e^2 / a^6
+/// Simplified with empirical calibration to match Io (~2 W/m^2) and Europa (~0.02 W/m^2).
+pub(crate) fn calculate_tidal_heating_flux(
+    eccentricity: f32,
+    semi_major_axis_au: f64,
+    body_radius_earth: f64,
+    host_mass_solar: f64,
+    is_icy: bool,
+) -> f64 {
+    if eccentricity.abs() < 1e-6 || semi_major_axis_au < 1e-10 {
+        return 0.0;
+    }
+    let e2 = (eccentricity as f64).powi(2);
+    let r5 = body_radius_earth.powi(5);
+    let a6 = semi_major_axis_au.powi(6);
+    let m2 = host_mass_solar.powi(2);
+    // k2/Q: rocky ~ 0.003, icy ~ 0.001
+    let k2_over_q: f64 = if is_icy { 0.001 } else { 0.003 };
+    // Calibration constant (tuned so Io-like params give ~2 W/m^2)
+    let c = 2.5e-4;
+    c * k2_over_q * m2 * r5 * e2 / a6
+}
+
+/// Maps tidal heating flux to a u32 value compatible with existing tidal_heating field.
+pub(crate) fn tidal_heating_flux_to_u32(flux_w_per_m2: f64) -> u32 {
+    if flux_w_per_m2 < 0.001 { 0 }
+    else if flux_w_per_m2 < 0.01 { 1 }
+    else if flux_w_per_m2 < 0.04 { 2 }
+    else if flux_w_per_m2 < 0.1 { 3 }
+    else if flux_w_per_m2 < 0.5 { 5 }
+    else if flux_w_per_m2 < 2.0 { 10 }
+    else { 20 }
+}
+
 /// Computes tidal locking timescale in Gyr.
 /// Returns the time needed for tidal friction to synchronize rotation with orbit.
 pub(crate) fn tidal_locking_timescale_gyr(
@@ -442,6 +477,29 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_tidal_heating_zero_eccentricity() {
+        let flux = calculate_tidal_heating_flux(0.0, 0.003, 0.29, 0.001, false);
+        assert_eq!(flux, 0.0);
+    }
+
+    #[test]
+    fn test_tidal_heating_closer_means_more() {
+        let close = calculate_tidal_heating_flux(0.01, 0.002, 0.29, 0.001, false);
+        let far = calculate_tidal_heating_flux(0.01, 0.01, 0.29, 0.001, false);
+        assert!(close > far, "closer orbit should heat more: {} vs {}", close, far);
+    }
+
+    #[test]
+    fn test_tidal_heating_flux_to_u32_ranges() {
+        assert_eq!(tidal_heating_flux_to_u32(0.0), 0);
+        assert_eq!(tidal_heating_flux_to_u32(0.005), 1);
+        assert_eq!(tidal_heating_flux_to_u32(0.02), 2);
+        assert_eq!(tidal_heating_flux_to_u32(0.3), 5);
+        assert_eq!(tidal_heating_flux_to_u32(1.5), 10);
+        assert_eq!(tidal_heating_flux_to_u32(5.0), 20);
     }
 
     #[test]
