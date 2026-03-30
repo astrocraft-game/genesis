@@ -50,8 +50,16 @@ pub fn generate_stars_systems(
             ));
         });
 
-    // TODO: Check if planets/moons rotate too fast to exist. If they do, check if they are interesting ones.
-    //       If so, change the rotations to more sensible values. Otherwise smash them into an asteroid belt.
+    // Clamp excessively fast rotations to prevent unrealistic spin
+    for obj in &mut new_objects {
+        if let Some(ref mut orbit) = obj.own_orbit {
+            if orbit.rotation.abs() > 0.0 && orbit.rotation.abs() < 0.04 {
+                // < ~1 hour rotation is unrealistic for rocky bodies
+                orbit.rotation = if orbit.rotation > 0.0 { 0.04 } else { -0.04 };
+                orbit.day_length = orbit.day_length.abs().max(0.04);
+            }
+        }
+    }
 
     all_objects.extend(new_objects);
 }
