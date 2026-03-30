@@ -109,7 +109,7 @@ pub(crate) fn escape_velocity(mass_earth: f64, radius_earth: f64) -> f64 {
 ///
 /// # Returns
 /// The rms speed in meters per second (m/s).
-fn rms_speed(temperature: i32, molecular_mass: f64) -> f64 {
+pub(crate) fn rms_speed(temperature: i32, molecular_mass: f64) -> f64 {
     const K_B: f64 = 1.380649e-23; // Boltzmann constant in J/K
     ((3.0 * K_B * temperature as f64) / molecular_mass).sqrt()
 }
@@ -127,7 +127,7 @@ fn rms_speed(temperature: i32, molecular_mass: f64) -> f64 {
 ///
 /// # Returns
 /// The Jeans parameter (dimensionless).
-fn jeans_parameter(
+pub(crate) fn jeans_parameter(
     mass_earth: f64,
     radius_earth: f64,
     temperature: i32,
@@ -136,6 +136,59 @@ fn jeans_parameter(
     let v_e = escape_velocity(mass_earth, radius_earth);
     let v_rms = rms_speed(temperature, element.molecular_weight_kg());
     v_e / v_rms
+}
+
+/// Validates atmospheric retention: removes gases that cannot be retained by the body.
+/// Returns the filtered composition and adjusted pressure.
+pub(crate) fn validate_atmosphere_retention(
+    mass_earth: f64,
+    radius_earth: f64,
+    temperature: i32,
+    magnetic_field_strength: u8,
+    composition: &[(f32, ChemicalComponent)],
+    pressure: f32,
+) -> (Vec<(f32, ChemicalComponent)>, f32) {
+    if composition.is_empty() || pressure < 0.001 {
+        return (composition.to_vec(), pressure);
+    }
+    let mut retained = Vec::new();
+    let mut total_removed_fraction: f32 = 0.0;
+
+    for &(fraction, component) in composition {
+        let jp = jeans_parameter(mass_earth, radius_earth, temperature, component);
+        // Jeans parameter < 3: hydrodynamic escape (rapid loss)
+        // Jeans parameter < 6: slow thermal escape over Gyr
+        // No magnetic field: stellar wind sputtering removes ~2x faster
+        let effective_jp = if magnetic_field_strength == 0 {
+            jp * 0.5
+        } else {
+            jp
+        };
+        if effective_jp >= 6.0 {
+            retained.push((fraction, component));
+        } else if effective_jp >= 3.0 {
+            // Partial retention - reduce fraction
+            let retention = (effective_jp - 3.0) / 3.0;
+            let new_fraction = fraction * retention as f32;
+            if new_fraction > 0.001 {
+                retained.push((new_fraction, component));
+                total_removed_fraction += fraction - new_fraction;
+            } else {
+                total_removed_fraction += fraction;
+            }
+        } else {
+            total_removed_fraction += fraction;
+        }
+    }
+
+    // Renormalize remaining fractions
+    let retained_sum: f32 = retained.iter().map(|(f, _)| f).sum();
+    if retained_sum > 0.0 {
+        retained.iter_mut().for_each(|(f, _)| *f /= retained_sum);
+    }
+
+    let adjusted_pressure = pressure * (1.0 - total_removed_fraction).max(0.0);
+    (retained, adjusted_pressure)
 }
 
 #[cfg(test)]
@@ -343,5 +396,29 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_atmosphere_retention_earth() {
+        let comp = vec![
+            (0.78, ChemicalComponent::Nitrogen),
+            (0.21, ChemicalComponent::Oxygen),
+            (0.01, ChemicalComponent::Argon),
+        ];
+        let (retained, pressure) = validate_atmosphere_retention(1.0, 1.0, 288, 3, &comp, 1.0);
+        // Earth retains N2, O2, Ar easily
+        assert_eq!(retained.len(), 3);
+        assert!((pressure - 1.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_atmosphere_retention_small_hot_body() {
+        let comp = vec![
+            (0.5, ChemicalComponent::Hydrogen),
+            (0.5, ChemicalComponent::Helium),
+        ];
+        // Small hot body with no magnetic field - should lose H and He
+        let (retained, pressure) = validate_atmosphere_retention(0.01, 0.2, 500, 0, &comp, 0.1);
+        assert!(retained.len() < 2 || pressure < 0.05);
     }
 }
