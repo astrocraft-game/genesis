@@ -138,6 +138,52 @@ pub(crate) fn jeans_parameter(
     v_e / v_rms
 }
 
+/// Computes tidal locking timescale in Gyr.
+/// Returns the time needed for tidal friction to synchronize rotation with orbit.
+pub(crate) fn tidal_locking_timescale_gyr(
+    semi_major_axis_au: f64,
+    body_radius_earth: f64,
+    host_mass_solar: f64,
+    is_icy: bool,
+) -> f64 {
+    // t_lock ~ C * a^6 / (M_host^2 * R^5) in appropriate units
+    // Q/k2 ~ 333 for rocky (Q=100, k2=0.3), ~1000 for icy (Q=50, k2=0.05)
+    let q_over_k2: f64 = if is_icy { 1000.0 } else { 333.0 };
+    // Empirical scaling calibrated so Earth at 1 AU from 1 Msun gives ~50 Gyr (not locked)
+    // and Moon-mass body at 0.05 AU from 0.3 Msun gives ~0.1 Gyr (locked quickly)
+    let a6 = semi_major_axis_au.powi(6);
+    let r5 = body_radius_earth.powi(5);
+    let m2 = host_mass_solar.powi(2);
+    if r5 < 1e-30 || m2 < 1e-30 {
+        return f64::INFINITY;
+    }
+    // Scaling constant derived from dimensional analysis + calibration
+    0.15 * q_over_k2 * a6 / (m2 * r5)
+}
+
+/// Returns true if a body should be tidally locked based on physics.
+/// Also checks if thick atmosphere resists locking via thermal tides.
+pub(crate) fn should_be_tidally_locked(
+    semi_major_axis_au: f64,
+    body_radius_earth: f64,
+    host_mass_solar: f64,
+    system_age_gyr: f32,
+    atmospheric_pressure: f32,
+    is_icy: bool,
+) -> bool {
+    let t_lock = tidal_locking_timescale_gyr(
+        semi_major_axis_au,
+        body_radius_earth,
+        host_mass_solar,
+        is_icy,
+    );
+    // Thick atmospheres (>10 atm) resist tidal locking via thermal tides (Venus effect)
+    if atmospheric_pressure > 10.0 && semi_major_axis_au < 0.5 {
+        return false;
+    }
+    t_lock < system_age_gyr as f64
+}
+
 /// Validates atmospheric retention: removes gases that cannot be retained by the body.
 /// Returns the filtered composition and adjusted pressure.
 pub(crate) fn validate_atmosphere_retention(
@@ -396,6 +442,24 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_tidal_locking_close_m_dwarf() {
+        // Planet at 0.05 AU from 0.3 Msun - should lock quickly
+        assert!(should_be_tidally_locked(0.05, 1.0, 0.3, 5.0, 1.0, false));
+    }
+
+    #[test]
+    fn test_tidal_locking_earth_not_locked() {
+        // Earth at 1 AU from 1 Msun - should NOT be locked at 4.5 Gyr
+        assert!(!should_be_tidally_locked(1.0, 1.0, 1.0, 4.5, 1.0, false));
+    }
+
+    #[test]
+    fn test_tidal_locking_venus_thick_atmo() {
+        // Venus-like: close but thick atmosphere resists locking
+        assert!(!should_be_tidally_locked(0.1, 0.95, 0.3, 5.0, 92.0, false));
     }
 
     #[test]
