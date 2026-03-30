@@ -1,6 +1,7 @@
 #![warn(clippy::all, clippy::pedantic)]
 #![allow(dead_code, unused_imports, unused)]
 mod galaxy;
+pub mod food;
 mod generator;
 mod life;
 pub mod recipes;

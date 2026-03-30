@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use super::types::*;
-use super::substance::Substance as S;
+use crate::recipes::types::*;
+use crate::recipes::substance::Substance as S;
 
 const CRG_BREAD: u32 = 300;
 const CRG_LEATHER: u32 = 301;

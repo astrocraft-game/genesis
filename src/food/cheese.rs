@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use super::types::*;
-use super::substance::Substance as S;
+use crate::recipes::types::*;
+use crate::recipes::substance::Substance as S;
 
 const CRG_HARD_CHEESE: u32 = 510;
 const CRG_SOFT_CHEESE: u32 = 511;

@@ -1093,7 +1093,7 @@ impl MoonGenerator {
 
 pub(crate) fn get_major_moons(
     moons: &Vec<OrbitalPoint>,
-) -> Filter<Iter<OrbitalPoint>, fn(&&OrbitalPoint) -> bool> {
+) -> Filter<Iter<'_, OrbitalPoint>, fn(&&OrbitalPoint) -> bool> {
     moons.iter().filter(|moon_point| {
         if let AstronomicalObject::TelluricBody(moon) = moon_point.object.clone() {
             moon.size != CelestialBodySize::Puny
