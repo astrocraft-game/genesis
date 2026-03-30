@@ -102,4 +102,67 @@ pub enum Substance {
     Ozone, NitrogenDioxide, SulfurDioxide, CarbonDioxide,
     Glucose, LacticAcid, Cellulose, Chitin,
     Nitrate, Ammonium, Methane,
+
+    // === FERMENTED BEVERAGES (20) ===
+    Mead, Sake, Cider, Perry, Pulque, Chicha, Kumiss, Ayran, Kvass,
+    GingerBeer, Tepache, WaterKefir, MilkKefir, Kombucha, Jun,
+
+    // === FERMENTED FOODS (20) ===
+    Tempeh, Miso, Natto, Kimchi, Sauerkraut, Curtido, Tsukemono,
+    DosaBatter, Idli, Injera, FermentedHotSauce, FermentedGarlic,
+    Surstromming, Hakarl, ShrimpPaste,
+
+    // === FERMENTED DAIRY (10) ===
+    Kefir, Skyr, Labneh, CremeFraiche, CulturedButter, Buttermilk,
+
+    // === CHEESE VARIETIES (20) ===
+    CheddarCheese, GoudaCheese, BrieCheese, CamembertCheese,
+    ParmesanCheese, MozzarellaCheese, RicottaCheese, FetaCheese,
+    SwissCheese, BlueCheese, GruyereCheese, ManchegoCheese,
+    RoquefortCheese, StiltonCheese, HalloumiCheese, Paneer,
+    CottageCheese, CreamCheese, MascarponeCheese, ProvoloneCheese,
+
+    // === OILS AND FATS (16) ===
+    CoconutOil, PalmOil, SunflowerOil, RapeseedOil, SoybeanOil,
+    PeanutOil, SesameOil, FlaxseedOil, WalnutOil, AvocadoOil,
+    CornOil, CottonseedOil, CastorOil, JojobaOil, ArganOil,
+
+    // === SPICE AND FLAVOR PRODUCTS (15) ===
+    VanillaBean, Cinnamon, BlackPepper, WhitePepper, GreenPepper,
+    CacaoBean, RoastedCacao, MapleSyrup, RefinedSugar,
+    GreenTea, BlackTea, OolongTea, RoastedCoffee,
+
+    // === TEXTILE RAW FIBERS (15) ===
+    HempFiber, JuteFiber, SisalFiber, CoirFiber, RamieFiber,
+    BambooFiber, KapokFiber,
+    RayonFiber, ModalFiber, LyocellFiber, SpandexFiber,
+    PolypropyleneFiber, AcrylicFiber,
+
+    // === LEATHER AND HIDE (5) ===
+    BrainTannedLeather, AlumTannedLeather, ChamoisLeather,
+    SyntheticLeather, RawHide,
+
+    // === PAPER AND PULP (10) ===
+    SulfitePulp, MechanicalPulp, ThermoMechanicalPulp, RecycledPaper,
+    RicePaper, HandmadePaper, Papyrus, BarkCloth,
+
+    // === BIOLOGICAL MATERIALS (25) ===
+    BoneMeal, BloodMeal, FishMeal, FeatherMeal,
+    Gelatin, Isinglass, Carrageenan, AgarAgar, Pectin,
+    Shellac, Beeswax, Lanolin,
+    HideGlue, CaseinGlue, StarchPaste, BirchBarkTar,
+
+    // === BIOLOGICAL INPUTS ===
+    Milk, Cream, Whey, KojiMold, SCOBYCulture,
+    KefirGrains, SoybeanRaw, RiceGrain, TeffGrain, CacaoFruit,
+    CoffeeCherries, TeaLeaves, GreenCoffeeBeans,
+    VanillaGreenPod, PineappleFruit, GingerRoot, MaresMilk,
+    SugarcaneJuice, SugarBeet, MapleSap, FlaxStalk, HempStalk,
+    JuteStalk, SilkCocoon, RawWool, RawCottonBoll,
+    PepperDrupe, CinnamonBark, Seaweed, FruitPeel,
+    AnimalBones, AnimalBlood, PoultryFeathers, FishOffal,
+    AnimalHide, SwimBladder, LacInsectResin,
+    BirchBark, CaseinProtein, Starch, WoodPulpRaw,
+    ChromiumSulfate, BrainTissue,
+    OilSeed, AgavePlant,
 }

@@ -14,6 +14,14 @@ pub enum RecipeCategory {
     Manufacturing,
     PhaseChange,
     Recycling,
+    Fermentation,
+    DairyProcessing,
+    TextileProcessing,
+    LeatherTanning,
+    PaperPulping,
+    OilExtraction,
+    SpiceProcessing,
+    BiologicalMaterial,
 }
 
 #[derive(Clone, Debug)]

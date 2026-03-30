@@ -14,6 +14,12 @@ pub mod organic;
 pub mod inorganic;
 pub mod electrochemistry;
 pub mod natural;
+pub mod fermentation;
+pub mod cheese;
+pub mod oils;
+pub mod spice;
+pub mod textile;
+pub mod biomaterial;
 
 use types::Recipe;
 
@@ -31,6 +37,12 @@ pub fn all_recipes() -> Vec<&'static Recipe> {
     all.extend(inorganic::INORGANIC_RECIPES.iter());
     all.extend(electrochemistry::ELECTROCHEMISTRY_RECIPES.iter());
     all.extend(natural::NATURAL_RECIPES.iter());
+    all.extend(fermentation::FERMENTATION_RECIPES.iter());
+    all.extend(cheese::CHEESE_RECIPES.iter());
+    all.extend(oils::OIL_RECIPES.iter());
+    all.extend(spice::SPICE_RECIPES.iter());
+    all.extend(textile::TEXTILE_RECIPES.iter());
+    all.extend(biomaterial::BIOMATERIAL_RECIPES.iter());
     all
 }
 
