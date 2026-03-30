@@ -334,9 +334,18 @@ Every recipe lists byproducts:
 - [x] 6. construction.rs (21 recipes: quicklime, slaked lime, 2 cement, 2 concrete, 3 brick, 2 mortar, 2 plaster, 2 glass, porcelain, asphalt, plywood, MDF, 2 insulation) - DONE
 - [x] 7. fuel.rs (9 recipes: charcoal, coke, petroleum distillation, biodiesel, ethanol, biogas, activated carbon, LOX, LH2) - DONE
 - [x] 8. biological.rs (30 recipes: 2 bread, beer, wine, spirits, 3 dairy, sugar, 2 salt, vinegar, 2 preservation, fish/soy sauce, olive oil, 5 textile, 2 leather, 2 paper, indigo, lye, alum, composting) - DONE
-- [ ] 9. phase_change.rs (~30 recipes) - TODO
+- [x] 9. phase_change.rs (20 recipes: water states, metal heat treatment, glass tempering, casting, crystallization, distillation) - DONE
 - [x] 10. Cross-recipe index and lookup functions - DONE (13 cross-recipe groups)
 - [x] 11. Tests (10 tests: total count, cross-recipes, byproducts, unique IDs, per-category counts) - DONE
 - [x] 12. Wired into lib.rs - DONE
 
-**Current: 159 recipes. Target: expand each file to hit 750+.**
+**Current: 265 recipes across 7 files. Phase change module added.**
+
+Breakdown:
+- extraction.rs: 70 recipes (iron 6 paths, copper 6, gold 5, silver 3, tin, lead 2, zinc 3, aluminum 2, titanium 2, chromium 2, nickel 3, manganese, tungsten 2, silicon 2, mercury, uranium 2, lithium 2, magnesium 2, cobalt, molybdenum, vanadium, antimony 2, beryllium, zirconium, niobium, tantalum, cadmium, indium, gallium, germanium, selenium, tellurium, rhenium, platinum, sodium, calcium, rare earths, phosphorus, sulfur)
+- alloys.rs: 48 recipes (14 steels, 10 copper alloys, 3 aluminum, 4 nickel, 1 titanium, 5 precious, 11 other)
+- chemistry.rs: 48 recipes (major industrial + polymers + explosives + pharma + semiconductor + water treatment + fuels)
+- construction.rs: 32 recipes (lime, cement, concrete, brick, mortar, plaster, glass, ceramics, asphalt, engineered wood, insulation)
+- fuel.rs: 17 recipes (charcoal, coke, petroleum, biodiesel, ethanol, biogas, activated carbon, cryogenics, cracking, gasification, propellants)
+- biological.rs: 30 recipes (bread, beer, wine, spirits, dairy, sugar, salt, vinegar, preservation, textiles, leather, paper, dyes, composting)
+- phase_change.rs: 20 recipes (water states, heat treatment, glass processing, crystallization, casting, distillation)
