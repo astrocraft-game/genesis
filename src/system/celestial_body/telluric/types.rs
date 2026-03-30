@@ -487,6 +487,119 @@ pub enum MineralEvolutionStage {
 pub struct MineralDiversity {
     pub mineral_count: u32,
     pub evolution_stage: MineralEvolutionStage,
+    pub deposits: Vec<MineralDeposit>,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct MineralDeposit {
+    pub mineral: Mineral,
+    pub abundance: ResourceAbundance,
+}
+
+/// 90 real mineral species from IMA, Hazen et al. 2008, USGS, and planetary missions.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, SmartDefault, Serialize, Deserialize)]
+pub enum Mineral {
+    // === Native Elements (8) ===
+    NativeIron,
+    NativeCopper,
+    Gold,
+    Silver,
+    Platinum,
+    #[default]
+    NativeSulfur,
+    Diamond,
+    Graphite,
+    // === Carbides & Nitrides (3) - presolar ===
+    Moissanite,   // SiC
+    Cohenite,     // Fe3C
+    Osbornite,    // TiN
+    // === Sulfides (12) ===
+    Troilite,     // FeS
+    Pyrite,       // FeS2
+    Chalcopyrite, // CuFeS2
+    Galena,       // PbS
+    Sphalerite,   // ZnS
+    Cinnabar,     // HgS
+    Molybdenite,  // MoS2
+    Pentlandite,  // (Ni,Fe)9S8
+    Pyrrhotite,   // Fe(1-x)S
+    Chalcocite,   // Cu2S
+    Stibnite,     // Sb2S3
+    Cobaltite,    // CoAsS
+    // === Oxides & Hydroxides (12) ===
+    Hematite,     // Fe2O3
+    Magnetite,    // Fe3O4
+    Corundum,     // Al2O3 (ruby/sapphire)
+    Rutile,       // TiO2
+    Cassiterite,  // SnO2
+    Chromite,     // FeCr2O4
+    Ilmenite,     // FeTiO3
+    Uraninite,    // UO2
+    Spinel,       // MgAl2O4
+    Goethite,     // FeOOH
+    Pyrolusite,   // MnO2
+    Cuprite,      // Cu2O
+    // === Silicates - Framework (6) ===
+    Quartz,       // SiO2
+    Plagioclase,  // (Na,Ca)(Al,Si)4O8
+    Orthoclase,   // KAlSi3O8
+    Nepheline,    // (Na,K)AlSiO4
+    Sodalite,     // Na8(Al6Si6O24)Cl2
+    Analcime,     // NaAlSi2O6·H2O
+    // === Silicates - Chain/Sheet/Island (16) ===
+    Olivine,      // (Mg,Fe)2SiO4
+    Augite,       // (Ca,Mg,Fe)2Si2O6
+    Enstatite,    // MgSiO3
+    Hornblende,   // Ca2(Mg,Fe)4Al(Si7Al)O22(OH)2
+    Muscovite,    // KAl2(AlSi3O10)(OH)2
+    Biotite,      // K(Mg,Fe)3(AlSi3O10)(OH)2
+    Garnet,       // (Ca,Mg,Fe,Mn)3(Al,Fe,Cr)2(SiO4)3
+    Tourmaline,   // complex borosilicate
+    Zircon,       // ZrSiO4
+    Beryl,        // Be3Al2Si6O18 (emerald)
+    Topaz,        // Al2SiO4(F,OH)2
+    Kyanite,      // Al2SiO5
+    Talc,         // Mg3Si4O10(OH)2
+    Serpentine,   // Mg3Si2O5(OH)4
+    Kaolinite,    // Al2Si2O5(OH)4
+    Montmorillonite, // (Na,Ca)0.33(Al,Mg)2Si4O10(OH)2·nH2O
+    // === Carbonates (6) ===
+    Calcite,      // CaCO3
+    Aragonite,    // CaCO3 (polymorph)
+    Dolomite,     // CaMg(CO3)2
+    Magnesite,    // MgCO3
+    Siderite,     // FeCO3
+    Malachite,    // Cu2CO3(OH)2
+    // === Sulfates (5) ===
+    Gypsum,       // CaSO4·2H2O
+    Barite,       // BaSO4
+    Anhydrite,    // CaSO4
+    Jarosite,     // KFe3(SO4)2(OH)6
+    Epsomite,     // MgSO4·7H2O
+    // === Phosphates (3) ===
+    Apatite,      // Ca5(PO4)3(F,Cl,OH)
+    Monazite,     // (Ce,La)PO4
+    Turquoise,    // CuAl6(PO4)4(OH)8·4H2O
+    // === Halides (3) ===
+    Halite,       // NaCl
+    Fluorite,     // CaF2
+    Sylvite,      // KCl
+    // === Volatile Ices (5) ===
+    WaterIce,
+    CarbonDioxideIce,
+    MethaneIce,
+    AmmoniaIce,
+    NitrogenIce,
+    // === Hydrated Salts (4) ===
+    Mirabilite,   // Na2SO4·10H2O (Europa)
+    Hydrohalite,  // NaCl·2H2O (Europa)
+    Kieserite,    // MgSO4·H2O (Mars)
+    Hexahydrite,  // MgSO4·6H2O (Mars)
+    // === Organic/Biogenic (4) ===
+    BiogenicCalcite, // shells, coral
+    HydrocarbonDeposit, // oil, gas, coal
+    Tholin,       // organic polymer (Titan)
+    Opal,         // SiO2·nH2O (biogenic silica)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]

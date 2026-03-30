@@ -255,22 +255,177 @@ pub fn generate_planetary_detail(
         Some(VolcanicProfile { active_count: count, dominant_type: dom_type, flood_basalt_history: flood, tallest_volcano_km: tallest.min(25.0), supervolcano_present: super_v })
     } else { None };
 
-    // 12. Mineral diversity
+    // 12. Mineral diversity - Hazen et al. 2008 staged evolution with real deposits
     let mineral_diversity = {
-        let (stage, count) = if life_level.as_u8() >= LifeLevel::PlantLike.as_u8() && has_oxygen {
-            (MineralEvolutionStage::Biogenic, 4000 + rng.roll(1, 2000, 0) as u32)
+        let is_carbon_world = matches!(world_type, CelestialBodyWorldType::CarbonWorld);
+        let is_icy = body_type == TelluricBodyComposition::Icy;
+        let is_metallic = body_type == TelluricBodyComposition::Metallic;
+
+        // Determine evolution stage
+        let stage = if life_level.as_u8() >= LifeLevel::PlantLike.as_u8() && has_oxygen {
+            MineralEvolutionStage::Biogenic
         } else if has_oxygen {
-            (MineralEvolutionStage::Oxidized, 3000 + rng.roll(1, 1500, 0) as u32)
+            MineralEvolutionStage::Oxidized
         } else if tectonic_activity > 10.0 {
-            (MineralEvolutionStage::TectonicallyActive, 1200 + rng.roll(1, 500, 0) as u32)
+            MineralEvolutionStage::TectonicallyActive
         } else if hydrosphere > 5.0 {
-            (MineralEvolutionStage::Hydrated, 800 + rng.roll(1, 400, 0) as u32)
+            MineralEvolutionStage::Hydrated
         } else if volcanism > 5.0 {
-            (MineralEvolutionStage::Differentiated, 300 + rng.roll(1, 200, 0) as u32)
+            MineralEvolutionStage::Differentiated
         } else {
-            (MineralEvolutionStage::Primordial, 40 + rng.roll(1, 30, 0) as u32)
+            MineralEvolutionStage::Primordial
         };
-        Some(MineralDiversity { mineral_count: count, evolution_stage: stage })
+
+        // Stage 0: Presolar minerals (~12) - always present on any rocky body
+        let mut deposits = vec![
+            Mineral::Diamond, Mineral::Graphite, Mineral::NativeIron,
+            Mineral::Moissanite, Mineral::Cohenite, Mineral::Osbornite,
+            Mineral::Troilite, Mineral::Corundum, Mineral::Rutile,
+            Mineral::Spinel, Mineral::Olivine, Mineral::Enstatite,
+        ];
+
+        // Stage 1: Solar nebula (~60)
+        if stage >= MineralEvolutionStage::Primordial {
+            deposits.extend_from_slice(&[
+                Mineral::Augite, Mineral::Plagioclase, Mineral::Magnetite,
+                Mineral::Pyrrhotite, Mineral::Pentlandite, Mineral::NativeSulfur,
+                Mineral::Chromite,
+            ]);
+        }
+
+        // Stage 2: Aqueous alteration (~250)
+        if stage >= MineralEvolutionStage::Hydrated {
+            deposits.extend_from_slice(&[
+                Mineral::Serpentine, Mineral::Kaolinite, Mineral::Montmorillonite,
+                Mineral::Talc, Mineral::Calcite, Mineral::Dolomite,
+                Mineral::Magnesite, Mineral::Siderite, Mineral::Gypsum,
+                Mineral::Quartz, Mineral::Epsomite, Mineral::Anhydrite,
+                Mineral::Halite,
+            ]);
+        }
+
+        // Stage 3: Igneous differentiation (~420)
+        if stage >= MineralEvolutionStage::Differentiated {
+            deposits.extend_from_slice(&[
+                Mineral::Orthoclase, Mineral::Muscovite, Mineral::Biotite,
+                Mineral::Hornblende, Mineral::Garnet, Mineral::Ilmenite,
+                Mineral::NativeCopper, Mineral::Pyrite, Mineral::Chalcopyrite,
+            ]);
+        }
+
+        // Stage 4-5: Granites + Plate tectonics (~1500)
+        if stage >= MineralEvolutionStage::TectonicallyActive {
+            deposits.extend_from_slice(&[
+                Mineral::Beryl, Mineral::Tourmaline, Mineral::Topaz,
+                Mineral::Zircon, Mineral::Cassiterite, Mineral::Uraninite,
+                Mineral::Fluorite, Mineral::Monazite, Mineral::Apatite,
+                Mineral::Kyanite, Mineral::Galena, Mineral::Sphalerite,
+                Mineral::Cinnabar, Mineral::Molybdenite, Mineral::Cobaltite,
+                Mineral::Stibnite, Mineral::Barite, Mineral::Sylvite,
+                Mineral::Nepheline, Mineral::Sodalite, Mineral::Analcime,
+            ]);
+        }
+
+        // Stage 7: Great Oxidation Event (~4000+)
+        if stage >= MineralEvolutionStage::Oxidized {
+            deposits.extend_from_slice(&[
+                Mineral::Hematite, Mineral::Goethite, Mineral::Malachite,
+                Mineral::Cuprite, Mineral::Pyrolusite, Mineral::Jarosite,
+                Mineral::Turquoise, Mineral::Gold, Mineral::Silver,
+                Mineral::Platinum, Mineral::Chalcocite,
+            ]);
+        }
+
+        // Stage 10: Biomineralization (~5700+)
+        if stage >= MineralEvolutionStage::Biogenic {
+            deposits.extend_from_slice(&[
+                Mineral::BiogenicCalcite, Mineral::Aragonite,
+                Mineral::HydrocarbonDeposit, Mineral::Opal,
+            ]);
+        }
+
+        // Icy worlds: volatile ices + hydrated salts
+        if is_icy {
+            deposits.extend_from_slice(&[Mineral::WaterIce]);
+            if blackbody_temperature < 195 {
+                deposits.push(Mineral::CarbonDioxideIce);
+            }
+            if blackbody_temperature < 91 {
+                deposits.push(Mineral::MethaneIce);
+            }
+            if blackbody_temperature < 195 {
+                deposits.push(Mineral::AmmoniaIce);
+            }
+            if blackbody_temperature < 63 {
+                deposits.push(Mineral::NitrogenIce);
+            }
+            // Europa/Enceladus-type hydrated salts
+            if tidal_heating > 0 {
+                deposits.extend_from_slice(&[
+                    Mineral::Mirabilite, Mineral::Hydrohalite,
+                    Mineral::Kieserite, Mineral::Hexahydrite,
+                ]);
+            }
+            // Titan-type tholins
+            if blackbody_temperature < 150 {
+                deposits.push(Mineral::Tholin);
+            }
+        }
+
+        // Carbon worlds: replace silicates with carbides
+        if is_carbon_world {
+            deposits.retain(|m| !matches!(m,
+                Mineral::Quartz | Mineral::Plagioclase | Mineral::Orthoclase |
+                Mineral::Olivine | Mineral::Enstatite | Mineral::Augite
+            ));
+            // Extra carbon minerals
+            if !deposits.contains(&Mineral::Diamond) { deposits.push(Mineral::Diamond); }
+            if !deposits.contains(&Mineral::Graphite) { deposits.push(Mineral::Graphite); }
+            if !deposits.contains(&Mineral::Moissanite) { deposits.push(Mineral::Moissanite); }
+        }
+
+        // Metallic worlds: concentrate metals and sulfides
+        if is_metallic {
+            if !deposits.contains(&Mineral::NativeIron) { deposits.push(Mineral::NativeIron); }
+            if !deposits.contains(&Mineral::NativeCopper) { deposits.push(Mineral::NativeCopper); }
+            if !deposits.contains(&Mineral::Gold) { deposits.push(Mineral::Gold); }
+            if !deposits.contains(&Mineral::Platinum) { deposits.push(Mineral::Platinum); }
+            if !deposits.contains(&Mineral::Pentlandite) { deposits.push(Mineral::Pentlandite); }
+        }
+
+        // Deduplicate
+        deposits.sort();
+        deposits.dedup();
+
+        // Assign abundances
+        let mineral_deposits: Vec<MineralDeposit> = deposits.iter().map(|m| {
+            let abundance = match m {
+                // Common rock-formers
+                Mineral::Olivine | Mineral::Augite | Mineral::Plagioclase |
+                Mineral::Quartz | Mineral::Orthoclase | Mineral::Enstatite =>
+                    ResourceAbundance::Rich,
+                // Common but not dominant
+                Mineral::Magnetite | Mineral::Pyrite | Mineral::Calcite |
+                Mineral::Muscovite | Mineral::Biotite | Mineral::Hornblende |
+                Mineral::Garnet | Mineral::Hematite | Mineral::Gypsum =>
+                    ResourceAbundance::Average,
+                // Ices are abundant on icy worlds
+                Mineral::WaterIce | Mineral::CarbonDioxideIce | Mineral::MethaneIce |
+                Mineral::AmmoniaIce | Mineral::NitrogenIce if is_icy =>
+                    ResourceAbundance::Motherlode,
+                // Precious/rare
+                Mineral::Gold | Mineral::Silver | Mineral::Platinum |
+                Mineral::Diamond | Mineral::Beryl | Mineral::Uraninite |
+                Mineral::Monazite | Mineral::Cobaltite =>
+                    if rng.roll(1, 4, 0) == 1 { ResourceAbundance::Trace } else { ResourceAbundance::Poor },
+                // Default
+                _ => ResourceAbundance::Average,
+            };
+            MineralDeposit { mineral: *m, abundance }
+        }).collect();
+
+        let count = mineral_deposits.len() as u32;
+        Some(MineralDiversity { mineral_count: count, evolution_stage: stage, deposits: mineral_deposits })
     };
 
     // 13. Surface material
@@ -441,8 +596,19 @@ mod tests {
     fn earth_like_mineral_diversity() {
         let d = earth_like_detail();
         let m = d.mineral_diversity.unwrap();
-        assert!(m.mineral_count > 4000, "Earth-like should have >4000 minerals, got {}", m.mineral_count);
         assert_eq!(m.evolution_stage, MineralEvolutionStage::Biogenic);
+        // Biogenic stage should have most mineral deposits (all stages unlocked)
+        assert!(m.deposits.len() > 60, "Earth-like should have >60 mineral species, got {}", m.deposits.len());
+        // Check specific minerals that must exist on Earth-like
+        let has = |mineral: Mineral| m.deposits.iter().any(|d| d.mineral == mineral);
+        assert!(has(Mineral::Quartz), "missing Quartz");
+        assert!(has(Mineral::Calcite), "missing Calcite");
+        assert!(has(Mineral::Hematite), "missing Hematite");
+        assert!(has(Mineral::Gold), "missing Gold");
+        assert!(has(Mineral::HydrocarbonDeposit), "missing HydrocarbonDeposit");
+        assert!(has(Mineral::BiogenicCalcite), "missing BiogenicCalcite");
+        assert!(has(Mineral::Pyrite), "missing Pyrite");
+        assert!(has(Mineral::NativeCopper), "missing NativeCopper");
     }
 
     #[test]
@@ -450,6 +616,59 @@ mod tests {
         let d = earth_like_detail();
         let r = d.radiation.unwrap();
         assert!(matches!(r.radiation_hazard, RadiationHazard::Negligible | RadiationHazard::Low));
+    }
+
+    #[test]
+    fn primordial_body_has_few_minerals() {
+        let comp = vec![];
+        let d = generate_planetary_detail(
+            0.0, &comp, 150, 0.05, 0.1, 0.0, 0.0, 0.0,
+            0.0, 0.0, MagneticFieldStrength::None,
+            TelluricBodyComposition::Rocky, CelestialBodyWorldType::Rock,
+            LifeLevel::None, 0.0, 0.0, 10.0, false, 0,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 10,
+        );
+        let m = d.mineral_diversity.unwrap();
+        assert_eq!(m.evolution_stage, MineralEvolutionStage::Primordial);
+        assert!(m.deposits.len() < 25, "Primordial should have <25 minerals, got {}", m.deposits.len());
+        let has = |mineral: Mineral| m.deposits.iter().any(|d| d.mineral == mineral);
+        assert!(has(Mineral::Olivine), "Primordial must have Olivine");
+        assert!(has(Mineral::NativeIron), "Primordial must have Iron");
+        assert!(!has(Mineral::Quartz), "Primordial should NOT have Quartz");
+        assert!(!has(Mineral::Gold), "Primordial should NOT have Gold");
+    }
+
+    #[test]
+    fn icy_moon_has_ices_and_salts() {
+        let d = generate_planetary_detail(
+            0.0, &[], 100, 0.01, 0.04, 0.0, 0.0, 0.0,
+            0.0, 0.0, MagneticFieldStrength::None,
+            TelluricBodyComposition::Icy, CelestialBodyWorldType::Ice,
+            LifeLevel::None, 0.0, 0.01, 3.5, false, 5,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 11,
+        );
+        let m = d.mineral_diversity.unwrap();
+        let has = |mineral: Mineral| m.deposits.iter().any(|d| d.mineral == mineral);
+        assert!(has(Mineral::WaterIce), "Icy moon must have WaterIce");
+        assert!(has(Mineral::CarbonDioxideIce), "Should have CO2 ice at 100K");
+        assert!(has(Mineral::Mirabilite), "Tidally heated icy moon should have hydrated salts");
+    }
+
+    #[test]
+    fn metallic_body_rich_in_metals() {
+        let d = generate_planetary_detail(
+            0.0, &[], 400, 0.8, 0.5, 0.0, 0.0, 0.0,
+            20.0, 5.0, MagneticFieldStrength::Strong,
+            TelluricBodyComposition::Metallic, CelestialBodyWorldType::IronWorld,
+            LifeLevel::None, 5.0, 0.1, 0.5, false, 0,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 12,
+        );
+        let m = d.mineral_diversity.unwrap();
+        let has = |mineral: Mineral| m.deposits.iter().any(|d| d.mineral == mineral);
+        assert!(has(Mineral::NativeIron), "Metallic body must have Iron");
+        assert!(has(Mineral::NativeCopper), "Metallic body must have Copper");
+        assert!(has(Mineral::Platinum), "Metallic body must have Platinum");
+        assert!(has(Mineral::Pentlandite), "Metallic body must have Pentlandite");
     }
 
     #[test]
