@@ -90,4 +90,145 @@ pub static FUEL_RECIPES: &[Recipe] = &[
         outputs: &[(S::Charcoal, 1.0)], // peat placeholder
         byproducts: &[(S::Water, 2.0)],
         min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 2160.0, cross_recipe_group: None },
+
+    // ===== BIOMASS FUELS =====
+    Recipe { id: 2300, name: "Wood Pellets", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::WoodChips, 1.2)],
+        outputs: &[(S::Charcoal, 1.0)], // wood pellets placeholder
+        byproducts: &[(S::Water, 0.2)],
+        min_temp_c: 90, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
+    Recipe { id: 2301, name: "Torrefied Biomass", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::WoodChips, 1.4)],
+        outputs: &[(S::Charcoal, 1.0)], // torrefied biomass placeholder
+        byproducts: &[(S::Water, 0.3)],
+        min_temp_c: 270, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
+    Recipe { id: 2302, name: "Dried Dung Fuel", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::StrawFiber, 2.0)],
+        outputs: &[(S::Charcoal, 1.0)], // dried dung placeholder
+        byproducts: &[(S::Water, 0.8)],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 168.0, cross_recipe_group: None },
+    Recipe { id: 2303, name: "Pine Tar", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::WoodLogs, 3.0)],
+        outputs: &[(S::Bitumen, 0.5), (S::Charcoal, 1.0)], // pine tar as bitumen placeholder
+        byproducts: &[(S::Water, 0.5)],
+        min_temp_c: 350, pressure_atm: 1.0, catalyst: None, duration_hours: 48.0, cross_recipe_group: None },
+
+    // ===== COAL-DERIVED GASES =====
+    Recipe { id: 2304, name: "Coal Gas (Town Gas)", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::Carbon, 2.0)],
+        outputs: &[(S::SynGas, 1.0)], // coal gas placeholder
+        byproducts: &[(S::Coke, 0.5), (S::Ammonia, 0.02)],
+        min_temp_c: 1000, pressure_atm: 1.0, catalyst: None, duration_hours: 8.0, cross_recipe_group: None },
+    Recipe { id: 2305, name: "Water Gas", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::Coke, 1.5), (S::Steam, 1.0)],
+        outputs: &[(S::SynGas, 1.0)],
+        byproducts: &[],
+        min_temp_c: 1100, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
+    Recipe { id: 2306, name: "Producer Gas", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::Carbon, 2.0), (S::Air, 3.0)],
+        outputs: &[(S::SynGas, 1.0)],
+        byproducts: &[(S::Nitrogen, 2.0)],
+        min_temp_c: 1000, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
+
+    // ===== METHANOL-DERIVED =====
+    Recipe { id: 2307, name: "DME from Methanol", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::Methanol, 2.0)],
+        outputs: &[(S::Diesel, 1.0)], // DME placeholder
+        byproducts: &[(S::Water, 0.5)],
+        min_temp_c: 350, pressure_atm: 1.0, catalyst: Some(S::Alumina), duration_hours: 1.0, cross_recipe_group: None },
+    Recipe { id: 2308, name: "Methanol to Gasoline (MTG)", category: RecipeCategory::Refining,
+        inputs: &[(S::Methanol, 2.5)],
+        outputs: &[(S::Gasoline, 1.0)],
+        byproducts: &[(S::Water, 1.0)],
+        min_temp_c: 400, pressure_atm: 1.0, catalyst: Some(S::Silicon), duration_hours: 1.0, cross_recipe_group: None },
+
+    // ===== BIO-FUELS =====
+    Recipe { id: 2309, name: "Cellulosic Ethanol", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::WoodChips, 3.0), (S::SulfuricAcid, 0.1), (S::Yeast, 0.01)],
+        outputs: &[(S::Ethanol, 1.0)],
+        byproducts: &[(S::Water, 1.0)],
+        min_temp_c: 50, pressure_atm: 1.0, catalyst: None, duration_hours: 96.0, cross_recipe_group: None },
+    Recipe { id: 2310, name: "Algae Biodiesel", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::Water, 10.0), (S::CarbonDioxide, 2.0)],
+        outputs: &[(S::Biodiesel, 1.0)],
+        byproducts: &[(S::Oxygen, 1.5)],
+        min_temp_c: 25, pressure_atm: 1.0, catalyst: None, duration_hours: 720.0, cross_recipe_group: None },
+    Recipe { id: 2311, name: "Biohydrogen", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::Glucose, 2.0), (S::Water, 3.0)],
+        outputs: &[(S::HydrogenGas, 1.0)],
+        byproducts: &[(S::CarbonDioxide, 1.5)],
+        min_temp_c: 35, pressure_atm: 1.0, catalyst: None, duration_hours: 48.0, cross_recipe_group: None },
+
+    // ===== PETROLEUM FRACTIONS =====
+    Recipe { id: 2312, name: "Jet Fuel (Jet A-1)", category: RecipeCategory::Refining,
+        inputs: &[(S::CrudeOil, 1.0)],
+        outputs: &[(S::Kerosene, 0.55)], // jet fuel as kerosene
+        byproducts: &[(S::FuelOil, 0.25), (S::NaturalGas, 0.05)],
+        min_temp_c: 250, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+    Recipe { id: 2313, name: "Naphtha Fraction", category: RecipeCategory::Refining,
+        inputs: &[(S::CrudeOil, 1.0)],
+        outputs: &[(S::Gasoline, 0.30)], // naphtha as gasoline placeholder
+        byproducts: &[(S::FuelOil, 0.40), (S::NaturalGas, 0.05)],
+        min_temp_c: 130, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+    Recipe { id: 2314, name: "LPG Separation", category: RecipeCategory::Refining,
+        inputs: &[(S::CrudeOil, 1.0)],
+        outputs: &[(S::NaturalGas, 0.15)], // LPG as natural gas placeholder
+        byproducts: &[(S::Gasoline, 0.20), (S::FuelOil, 0.40)],
+        min_temp_c: 40, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
+    Recipe { id: 2315, name: "Bunker Fuel", category: RecipeCategory::Refining,
+        inputs: &[(S::CrudeOil, 1.0)],
+        outputs: &[(S::FuelOil, 0.60)],
+        byproducts: &[(S::Gasoline, 0.10), (S::NaturalGas, 0.05)],
+        min_temp_c: 450, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+    Recipe { id: 2316, name: "Petroleum Coke", category: RecipeCategory::Refining,
+        inputs: &[(S::FuelOil, 1.0)],
+        outputs: &[(S::Coke, 0.70)], // petcoke as coke placeholder
+        byproducts: &[(S::NaturalGas, 0.10)],
+        min_temp_c: 500, pressure_atm: 1.0, catalyst: None, duration_hours: 24.0, cross_recipe_group: None },
+
+    // ===== GAS PROCESSING =====
+    Recipe { id: 2317, name: "Sulfur Recovery (Claus Process)", category: RecipeCategory::Refining,
+        inputs: &[(S::SulfurDioxide, 1.0), (S::HydrogenGas, 0.5)],
+        outputs: &[(S::Sulfur, 1.0)],
+        byproducts: &[(S::Water, 0.5)],
+        min_temp_c: 250, pressure_atm: 1.0, catalyst: Some(S::Alumina), duration_hours: 1.0, cross_recipe_group: None },
+    Recipe { id: 2318, name: "LNG Liquefaction", category: RecipeCategory::Refining,
+        inputs: &[(S::NaturalGas, 1.0)],
+        outputs: &[(S::NaturalGas, 1.0)], // LNG placeholder
+        byproducts: &[],
+        min_temp_c: -162, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
+    Recipe { id: 2319, name: "CNG Compression", category: RecipeCategory::Refining,
+        inputs: &[(S::NaturalGas, 1.0)],
+        outputs: &[(S::NaturalGas, 1.0)], // CNG placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 250.0, catalyst: None, duration_hours: 0.5, cross_recipe_group: None },
+    Recipe { id: 2320, name: "Hydrotreating (Desulfurization)", category: RecipeCategory::Refining,
+        inputs: &[(S::Diesel, 1.0), (S::HydrogenGas, 0.02)],
+        outputs: &[(S::Diesel, 1.0)],
+        byproducts: &[(S::SulfurDioxide, 0.01)],
+        min_temp_c: 350, pressure_atm: 50.0, catalyst: Some(S::Molybdenum), duration_hours: 1.0, cross_recipe_group: None },
+
+    // ===== NUCLEAR FUELS =====
+    Recipe { id: 2321, name: "MOX Nuclear Fuel", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::Uranium, 0.93), (S::Uranium, 0.07)], // Pu placeholder as second U
+        outputs: &[(S::NuclearFuelRod, 1.0)],
+        byproducts: &[],
+        min_temp_c: 1700, pressure_atm: 1.0, catalyst: None, duration_hours: 48.0, cross_recipe_group: None },
+    Recipe { id: 2322, name: "TRISO Nuclear Fuel", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::Uranium, 0.50), (S::Silicon, 0.25), (S::Carbon, 0.25)],
+        outputs: &[(S::NuclearFuelRod, 1.0)], // TRISO placeholder
+        byproducts: &[],
+        min_temp_c: 1800, pressure_atm: 1.0, catalyst: None, duration_hours: 72.0, cross_recipe_group: None },
+
+    // ===== ROCKET PROPELLANTS =====
+    Recipe { id: 2323, name: "N2O4/UDMH Propellant", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::NitricAcid, 0.60), (S::Ammonia, 0.40)],
+        outputs: &[(S::RocketFuelRP1, 1.0)], // hypergolic placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+    Recipe { id: 2324, name: "LOX/Methane Propellant", category: RecipeCategory::FuelProcessing,
+        inputs: &[(S::LiquidOxygen, 0.78), (S::Methane, 0.22)],
+        outputs: &[(S::RocketFuelRP1, 1.0)], // LOX/methane placeholder
+        byproducts: &[],
+        min_temp_c: -161, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
 ];

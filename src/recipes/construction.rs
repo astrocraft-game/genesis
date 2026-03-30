@@ -191,4 +191,172 @@ pub static CONSTRUCTION_RECIPES: &[Recipe] = &[
         outputs: &[(S::MDF, 1.0)],
         byproducts: &[],
         min_temp_c: 180, pressure_atm: 2.5, catalyst: None, duration_hours: 0.3, cross_recipe_group: None },
+
+    // ===== EARTHEN CONSTRUCTION =====
+    Recipe { id: 2200, name: "Rammed Earth", category: RecipeCategory::Construction,
+        inputs: &[(S::Clay, 0.30), (S::Sand, 0.35), (S::Gravel, 0.25), (S::Water, 0.10)],
+        outputs: &[(S::Concrete, 1.0)], // rammed earth placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 672.0, cross_recipe_group: None },
+    Recipe { id: 2201, name: "Cob", category: RecipeCategory::Construction,
+        inputs: &[(S::Clay, 0.35), (S::Sand, 0.30), (S::StrawFiber, 0.15), (S::Water, 0.20)],
+        outputs: &[(S::AdobeBrick, 1.0)], // cob placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 720.0, cross_recipe_group: None },
+    Recipe { id: 2202, name: "Wattle and Daub", category: RecipeCategory::Construction,
+        inputs: &[(S::WoodLogs, 0.40), (S::Clay, 0.40), (S::StrawFiber, 0.20)],
+        outputs: &[(S::AdobeBrick, 1.0)], // wattle-daub placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 168.0, cross_recipe_group: None },
+    Recipe { id: 2203, name: "Compressed Earth Block (CEB)", category: RecipeCategory::Construction,
+        inputs: &[(S::Clay, 0.40), (S::Sand, 0.50), (S::PortlandCite, 0.10)],
+        outputs: &[(S::Brick, 1.0)], // CEB placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 672.0, cross_recipe_group: None },
+
+    // ===== LIME FINISHES =====
+    Recipe { id: 2204, name: "Lime Wash (Whitewash)", category: RecipeCategory::Construction,
+        inputs: &[(S::SlakedLite, 0.60), (S::Water, 0.40)],
+        outputs: &[(S::Stucco, 1.0)], // limewash placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 24.0, cross_recipe_group: None },
+    Recipe { id: 2205, name: "Venetian Plaster", category: RecipeCategory::Construction,
+        inputs: &[(S::SlakedLite, 0.40), (S::Marble, 0.45), (S::Water, 0.15)],
+        outputs: &[(S::Stucco, 1.0)], // venetian plaster placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 72.0, cross_recipe_group: None },
+    Recipe { id: 2206, name: "Terrazzo", category: RecipeCategory::Construction,
+        inputs: &[(S::Marble, 0.70), (S::PortlandCite, 0.30)],
+        outputs: &[(S::Concrete, 1.0)], // terrazzo placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 168.0, cross_recipe_group: None },
+
+    // ===== CERAMICS & TILE =====
+    Recipe { id: 2207, name: "Ceramic Tile", category: RecipeCategory::Construction,
+        inputs: &[(S::Clay, 0.70), (S::FeldsparOre, 0.30)],
+        outputs: &[(S::Porcelain, 1.0)], // ceramic tile placeholder
+        byproducts: &[],
+        min_temp_c: 1100, pressure_atm: 1.0, catalyst: None, duration_hours: 10.0, cross_recipe_group: None },
+    Recipe { id: 2208, name: "Bone China", category: RecipeCategory::Construction,
+        inputs: &[(S::Clay, 0.25), (S::Calcium, 0.50), (S::FeldsparOre, 0.25)],
+        outputs: &[(S::Porcelain, 1.0)], // bone china placeholder
+        byproducts: &[],
+        min_temp_c: 1260, pressure_atm: 1.0, catalyst: None, duration_hours: 12.0, cross_recipe_group: None },
+
+    // ===== GLASS VARIANTS =====
+    Recipe { id: 2209, name: "Tempered Glass (Safety)", category: RecipeCategory::Construction,
+        inputs: &[(S::Glass, 1.0)],
+        outputs: &[(S::Glass, 1.0)],
+        byproducts: &[],
+        min_temp_c: 650, pressure_atm: 1.0, catalyst: None, duration_hours: 0.5, cross_recipe_group: None },
+    Recipe { id: 2210, name: "Laminated Glass", category: RecipeCategory::Construction,
+        inputs: &[(S::Glass, 0.90), (S::Polyethylene, 0.10)],
+        outputs: &[(S::Glass, 1.0)], // laminated glass placeholder
+        byproducts: &[],
+        min_temp_c: 140, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
+    Recipe { id: 2211, name: "Float Glass", category: RecipeCategory::Construction,
+        inputs: &[(S::SilicaSand, 0.72), (S::SodaAsh, 0.15), (S::Limestone, 0.10)],
+        outputs: &[(S::Glass, 1.0)],
+        byproducts: &[],
+        min_temp_c: 1550, pressure_atm: 1.0, catalyst: None, duration_hours: 24.0, cross_recipe_group: Some(CRG_GLASS) },
+    Recipe { id: 2212, name: "Blown Glass", category: RecipeCategory::Construction,
+        inputs: &[(S::Glass, 1.05)],
+        outputs: &[(S::Glass, 1.0)],
+        byproducts: &[],
+        min_temp_c: 1100, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
+    Recipe { id: 2213, name: "Stained Glass", category: RecipeCategory::Construction,
+        inputs: &[(S::Glass, 0.90), (S::Cobalt, 0.05), (S::Copper, 0.05)],
+        outputs: &[(S::Glass, 1.0)], // stained glass placeholder
+        byproducts: &[],
+        min_temp_c: 1200, pressure_atm: 1.0, catalyst: None, duration_hours: 8.0, cross_recipe_group: None },
+
+    // ===== SPECIALTY BRICKS =====
+    Recipe { id: 2214, name: "Sand-Lime Brick", category: RecipeCategory::Construction,
+        inputs: &[(S::Sand, 0.60), (S::SlakedLite, 0.30), (S::Water, 0.10)],
+        outputs: &[(S::Brick, 1.0)],
+        byproducts: &[],
+        min_temp_c: 180, pressure_atm: 1.2, catalyst: None, duration_hours: 8.0, cross_recipe_group: Some(CRG_BRICK) },
+    Recipe { id: 2215, name: "Fly Ash Brick", category: RecipeCategory::Construction,
+        inputs: &[(S::FlyAsh, 0.50), (S::PortlandCite, 0.20), (S::Sand, 0.30)],
+        outputs: &[(S::Brick, 1.0)],
+        byproducts: &[],
+        min_temp_c: 60, pressure_atm: 1.0, catalyst: None, duration_hours: 672.0, cross_recipe_group: Some(CRG_BRICK) },
+
+    // ===== BIO-CONSTRUCTION =====
+    Recipe { id: 2216, name: "Hempcrete", category: RecipeCategory::Construction,
+        inputs: &[(S::SlakedLite, 0.35), (S::StrawFiber, 0.50), (S::Water, 0.15)],
+        outputs: &[(S::Concrete, 1.0)], // hempcrete placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 2160.0, cross_recipe_group: None },
+
+    // ===== ENGINEERED TIMBER =====
+    Recipe { id: 2217, name: "CLT (Cross-Laminated Timber)", category: RecipeCategory::Construction,
+        inputs: &[(S::WoodLogs, 0.95), (S::Formaldehyde, 0.05)],
+        outputs: &[(S::Plywood, 1.0)], // CLT placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+    Recipe { id: 2218, name: "Glulam (Glued Laminated Timber)", category: RecipeCategory::Construction,
+        inputs: &[(S::WoodLogs, 0.95), (S::Formaldehyde, 0.05)],
+        outputs: &[(S::Plywood, 1.0)], // glulam placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+    Recipe { id: 2219, name: "LVL (Laminated Veneer Lumber)", category: RecipeCategory::Construction,
+        inputs: &[(S::WoodLogs, 0.93), (S::Formaldehyde, 0.07)],
+        outputs: &[(S::Plywood, 1.0)], // LVL placeholder
+        byproducts: &[],
+        min_temp_c: 150, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
+
+    // ===== INSULATION MATERIALS =====
+    Recipe { id: 2220, name: "Cork Insulation", category: RecipeCategory::Construction,
+        inputs: &[(S::WoodLogs, 1.5)],
+        outputs: &[(S::RockWool, 1.0)], // cork insulation placeholder
+        byproducts: &[],
+        min_temp_c: 350, pressure_atm: 1.0, catalyst: None, duration_hours: 0.5, cross_recipe_group: None },
+    Recipe { id: 2221, name: "Vermiculite Expansion", category: RecipeCategory::Construction,
+        inputs: &[(S::Sand, 1.0)],
+        outputs: &[(S::RockWool, 1.0)], // vermiculite placeholder
+        byproducts: &[],
+        min_temp_c: 900, pressure_atm: 1.0, catalyst: None, duration_hours: 0.1, cross_recipe_group: None },
+    Recipe { id: 2222, name: "Perlite Expansion", category: RecipeCategory::Construction,
+        inputs: &[(S::Sand, 1.0)],
+        outputs: &[(S::RockWool, 1.0)], // perlite placeholder
+        byproducts: &[],
+        min_temp_c: 1000, pressure_atm: 1.0, catalyst: None, duration_hours: 0.1, cross_recipe_group: None },
+    Recipe { id: 2223, name: "EPS Foam (Expanded Polystyrene)", category: RecipeCategory::Construction,
+        inputs: &[(S::Polyethylene, 0.90), (S::Steam, 0.10)],
+        outputs: &[(S::Polyethylene, 1.0)], // EPS placeholder
+        byproducts: &[],
+        min_temp_c: 100, pressure_atm: 1.0, catalyst: None, duration_hours: 0.5, cross_recipe_group: None },
+    Recipe { id: 2224, name: "XPS Foam (Extruded Polystyrene)", category: RecipeCategory::Construction,
+        inputs: &[(S::Polyethylene, 1.0)],
+        outputs: &[(S::Polyethylene, 1.0)], // XPS placeholder
+        byproducts: &[],
+        min_temp_c: 220, pressure_atm: 1.0, catalyst: None, duration_hours: 0.3, cross_recipe_group: None },
+    Recipe { id: 2225, name: "PUR Foam Insulation", category: RecipeCategory::Construction,
+        inputs: &[(S::CrudeOil, 0.70), (S::Ammonia, 0.30)],
+        outputs: &[(S::RockWool, 1.0)], // PUR foam placeholder
+        byproducts: &[],
+        min_temp_c: 60, pressure_atm: 1.0, catalyst: None, duration_hours: 0.5, cross_recipe_group: None },
+    Recipe { id: 2226, name: "Foam Glass Insulation", category: RecipeCategory::Construction,
+        inputs: &[(S::Glass, 0.90), (S::CarbonBlack, 0.10)],
+        outputs: &[(S::Fiberglass, 1.0)], // foam glass placeholder
+        byproducts: &[],
+        min_temp_c: 850, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+
+    // ===== ROOFING MATERIALS =====
+    Recipe { id: 2227, name: "Thatch Roofing", category: RecipeCategory::Construction,
+        inputs: &[(S::StrawFiber, 1.0)],
+        outputs: &[(S::StrawFiber, 1.0)], // thatch placeholder
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 8.0, cross_recipe_group: None },
+    Recipe { id: 2228, name: "Slate Roofing", category: RecipeCategory::Construction,
+        inputs: &[(S::Slate, 1.1)],
+        outputs: &[(S::Slate, 1.0)], // cut slate placeholder
+        byproducts: &[(S::Gravel, 0.1)],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
+    Recipe { id: 2229, name: "Clay Roof Tiles", category: RecipeCategory::Construction,
+        inputs: &[(S::Clay, 1.0)],
+        outputs: &[(S::Brick, 1.0)], // roof tile placeholder
+        byproducts: &[],
+        min_temp_c: 1050, pressure_atm: 1.0, catalyst: None, duration_hours: 16.0, cross_recipe_group: None },
 ];
