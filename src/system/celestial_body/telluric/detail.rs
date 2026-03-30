@@ -71,14 +71,35 @@ pub fn generate_planetary_detail(
     let has_h2s = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::HydrogenSulfide);
     let has_so2 = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::SulfurDioxide);
     let has_hcl = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Chlorine);
+    let has_methane = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Methane);
+    let has_nitrogen = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Nitrogen);
+    let has_ammonia = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Ammonia);
+
+    // Partial pressures for toxicity thresholds
+    let pp = |comp: ChemicalComponent| -> f32 {
+        atmospheric_composition.iter()
+            .filter(|(_, c)| *c == comp).map(|(f, _)| f * atmospheric_pressure).sum::<f32>()
+    };
+    let pp_co2 = pp(ChemicalComponent::CarbonDioxide);
+    let pp_co = pp(ChemicalComponent::CarbonMonoxide);
 
     let toxicity = if !has_atmosphere { AtmosphereToxicity::Benign }
-    else if has_hcl { AtmosphereToxicity::Insidious }
-    else if has_so2 && atmospheric_pressure > 1.0 { AtmosphereToxicity::Corrosive }
-    else if has_h2s { AtmosphereToxicity::HighlyToxic }
-    else if has_co2_high { AtmosphereToxicity::MildlyToxic }
-    else if !has_oxygen && atmospheric_pressure > 0.1 { AtmosphereToxicity::Suffocating }
-    else if has_oxygen && atmospheric_pressure > 0.4 && atmospheric_pressure < 2.0 { AtmosphereToxicity::Benign }
+    else if has_hcl { AtmosphereToxicity::Insidious } // Cl2 penetrates seals
+    else if has_so2 && atmospheric_pressure > 1.0 { AtmosphereToxicity::Corrosive } // H2SO4 attacks materials
+    else if has_h2s && pp(ChemicalComponent::HydrogenSulfide) > 0.01 { AtmosphereToxicity::LethallyToxic } // H2S >100ppm kills fast
+    else if pp_co > 0.01 { AtmosphereToxicity::HighlyToxic } // CO >100ppm lethal in hours
+    else if has_h2s { AtmosphereToxicity::HighlyToxic } // any H2S is dangerous
+    else if pp_co2 > 0.1 { AtmosphereToxicity::MildlyToxic } // CO2 >10% narcotic
+    else if pp_co2 > 0.05 { AtmosphereToxicity::Filterable } // CO2 5-10% manageable with filter
+    else if !has_oxygen && atmospheric_pressure > 0.1 { AtmosphereToxicity::Suffocating } // no O2
+    else if has_oxygen && atmospheric_pressure > 0.4 && atmospheric_pressure < 2.0 {
+        // Check O2 fraction
+        let o2_frac: f32 = atmospheric_composition.iter()
+            .filter(|(_, c)| *c == ChemicalComponent::Oxygen).map(|(f, _)| *f).sum();
+        if o2_frac > 0.16 && o2_frac < 0.50 { AtmosphereToxicity::Benign }
+        else if o2_frac > 0.50 { AtmosphereToxicity::MildlyToxic } // O2 toxicity
+        else { AtmosphereToxicity::Suffocating } // too little O2
+    }
     else { AtmosphereToxicity::Marginal };
 
     // 3. Cloud decks
@@ -105,8 +126,8 @@ pub fn generate_planetary_detail(
                 coverage_fraction: 1.0,
             });
         }
-        // Ammonia clouds
-        if atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Ammonia) && blackbody_temperature < 200 {
+        // Ammonia clouds (Jupiter upper deck)
+        if has_ammonia && blackbody_temperature < 200 {
             cloud_decks.push(CloudDeck {
                 composition: CloudComposition::Ammonia,
                 base_altitude_km: scale_h * 1.0,
@@ -115,14 +136,44 @@ pub fn generate_planetary_detail(
                 coverage_fraction: 0.6,
             });
         }
-        // Methane clouds
-        if atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Methane) && blackbody_temperature < 150 {
+        // Ammonium hydrosulfide (Jupiter middle deck) - NH3 + H2S
+        if has_ammonia && has_h2s && blackbody_temperature < 250 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::AmmoniumHydrosulfide,
+                base_altitude_km: scale_h * 0.5,
+                top_altitude_km: scale_h * 1.0,
+                optical_depth: 8.0,
+                coverage_fraction: 0.7,
+            });
+        }
+        // Methane clouds (Titan, Uranus, Neptune)
+        if has_methane && blackbody_temperature < 150 {
             cloud_decks.push(CloudDeck {
                 composition: CloudComposition::Methane,
                 base_altitude_km: scale_h * 0.3,
                 top_altitude_km: scale_h * 1.0,
                 optical_depth: 3.0,
                 coverage_fraction: 0.4,
+            });
+        }
+        // Organic tholin haze (Titan - CH4 + N2 + UV)
+        if has_methane && has_nitrogen && blackbody_temperature < 200 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::OrganicHaze,
+                base_altitude_km: scale_h * 5.0,
+                top_altitude_km: scale_h * 20.0,
+                optical_depth: 4.0,
+                coverage_fraction: 1.0,
+            });
+        }
+        // Silicon dust clouds (lava worlds T>1500K)
+        if blackbody_temperature > 1500 && atmospheric_pressure > 0.01 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::SiliconDust,
+                base_altitude_km: scale_h * 0.2,
+                top_altitude_km: scale_h * 1.0,
+                optical_depth: 10.0,
+                coverage_fraction: 0.8,
             });
         }
     }
@@ -133,8 +184,22 @@ pub fn generate_planetary_detail(
         let co2_fraction: f32 = atmospheric_composition.iter()
             .filter(|(_, c)| *c == ChemicalComponent::CarbonDioxide).map(|(f, _)| f).sum();
         let co2_pp = co2_fraction * atmospheric_pressure;
-        let delta = if co2_pp > 0.0004 { (10.0 * (co2_pp / 0.0004).ln()).max(0.0) } else { 0.0 };
-        let is_runaway = blackbody_temperature as f32 + delta > 500.0 && hydrosphere < 5.0;
+        let ch4_fraction: f32 = atmospheric_composition.iter()
+            .filter(|(_, c)| *c == ChemicalComponent::Methane).map(|(f, _)| f).sum();
+        // CO2 greenhouse: deltaT ~ 10 * ln(pCO2 / 0.0004)
+        let delta_co2 = if co2_pp > 0.0004 { (10.0 * (co2_pp / 0.0004).ln()).max(0.0) } else { 0.0 };
+        // CH4 greenhouse: ~0.5K per ppm above 2ppm background (30x CO2 per molecule)
+        let ch4_ppm = ch4_fraction * 1_000_000.0;
+        let delta_ch4 = if ch4_ppm > 2.0 { (0.5 * (ch4_ppm - 2.0).ln().max(0.0)).min(20.0) } else { 0.0 };
+        // H2O feedback: above 300K, each +1K surface temp increases H2O vapor -> +0.5K
+        let base_delta = delta_co2 + delta_ch4;
+        let surface_temp_base = blackbody_temperature as f32 + base_delta;
+        let h2o_feedback = if surface_temp_base > 300.0 && hydrosphere > 10.0 {
+            ((surface_temp_base - 300.0) * 0.5).min(200.0)
+        } else { 0.0 };
+        let delta = base_delta + h2o_feedback;
+        let is_runaway = (blackbody_temperature as f32 + delta > 500.0 && hydrosphere > 0.0)
+            || h2o_feedback > 150.0;
         let albedo = if cloud_decks.iter().any(|c| c.coverage_fraction > 0.8) { 0.7 }
             else if hydrosphere > 50.0 { 0.3 }
             else if ice_over_land > 50.0 { 0.6 }
@@ -153,15 +218,26 @@ pub fn generate_planetary_detail(
         let has_dust = body_type == TelluricBodyComposition::Rocky && atmospheric_pressure < 0.05;
         let has_tholin = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Methane)
             && atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Nitrogen);
+        let has_ch4_thick = has_methane && atmospheric_pressure > 5.0; // Uranus/Neptune CH4 absorption
+        let has_cl2 = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Chlorine);
+        let very_thin_dust = has_dust && atmospheric_pressure < 0.003;
         let daytime_color = if atmospheric_pressure < 0.001 { SkyColor::Black }
-            else if has_tholin { SkyColor::Orange }
-            else if has_dust { SkyColor::Butterscotch }
-            else if has_co2_high && atmospheric_pressure > 10.0 { SkyColor::Amber }
-            else if has_oxygen { SkyColor::Blue }
-            else if atmospheric_pressure < 0.2 { SkyColor::PaleBlue }
-            else { SkyColor::White };
-        let sunset_color = if has_dust { SkyColor::Blue } // Mars has blue sunsets
+            else if has_ch4_thick { SkyColor::DeepBlue } // CH4 absorbs red (Uranus/Neptune)
+            else if has_tholin { SkyColor::Orange } // tholin haze (Titan)
+            else if has_dust && volcanism > 50.0 { SkyColor::Red } // heavy iron oxide loading
+            else if has_dust { SkyColor::Butterscotch } // Mars-like
+            else if very_thin_dust { SkyColor::Pink } // fine silicate + very thin
+            else if has_cl2 { SkyColor::Green } // chlorine atmosphere (exotic)
+            else if has_co2_high && atmospheric_pressure > 10.0 { SkyColor::Amber } // Venus surface
+            else if has_so2 { SkyColor::Yellow } // sulfur aerosol
+            else if has_oxygen && atmospheric_pressure > 0.3 { SkyColor::Blue } // Earth-like Rayleigh
+            else if atmospheric_pressure < 0.2 { SkyColor::PaleBlue } // thin atmosphere
+            else if atmospheric_pressure > 5.0 { SkyColor::White } // very thick, Mie dominant
+            else { SkyColor::PaleBlue };
+        let sunset_color = if has_dust { SkyColor::Blue } // Mars blue sunsets
             else if daytime_color == SkyColor::Blue { SkyColor::Red }
+            else if daytime_color == SkyColor::DeepBlue { SkyColor::Blue }
+            else if daytime_color == SkyColor::Orange { SkyColor::Yellow }
             else { SkyColor::Yellow };
         Some(SkyAppearance { daytime_color, sunset_color, daytime_stars_visible: atmospheric_pressure < 0.05 })
     } else { Some(SkyAppearance { daytime_color: SkyColor::Black, sunset_color: SkyColor::Black, daytime_stars_visible: true }) };
@@ -187,7 +263,8 @@ pub fn generate_planetary_detail(
         let basin_area = 600_000.0_f64;
         let river_count = (land_area_km2 / basin_area).max(1.0) as u32;
         let longest = (1.4 * (land_area_km2 / river_count as f64).powf(0.57)) as f32;
-        let delta = if precip > 1000.0 { DeltaType::BirdFoot }
+        let delta = if precip > 1000.0 && tectonic_activity > 20.0 { DeltaType::Estuarine } // tidal + high sediment
+            else if precip > 1000.0 { DeltaType::BirdFoot }
             else if precip > 500.0 { DeltaType::Arcuate }
             else { DeltaType::Cuspate };
         Some(Hydrography { major_river_count: river_count, longest_river_km: longest.min(20000.0), mean_precipitation_mm: precip, dominant_delta_type: delta })
@@ -200,13 +277,18 @@ pub fn generate_planetary_detail(
         let land_area_km2 = 4.0 * std::f64::consts::PI * (radius * 6371.0).powi(2) * land_fraction as f64;
         let count = (land_area_km2 * lake_density as f64 / 10000.0).max(1.0) as u32;
         let largest = (land_area_km2 * 0.005).min(500000.0) as f32;
+        let precip_mm = hydrography.as_ref().map_or(500.0, |h| h.mean_precipitation_mm);
         let dom_type = if is_glaciated { LakeFormationType::Glacial }
             else if tectonic_activity > 30.0 { LakeFormationType::Tectonic }
             else if volcanism > 30.0 { LakeFormationType::Volcanic }
+            else if !is_glaciated && hydrosphere < 10.0 && blackbody_temperature > 280 { LakeFormationType::Endorheic } // arid + warm = salt lakes
+            else if volcanism < 5.0 && tectonic_activity < 5.0 && hydrosphere > 20.0 { LakeFormationType::Impact } // dead surface + water = crater lakes
             else { LakeFormationType::Fluvial };
         let liquid = match world_type {
             CelestialBodyWorldType::Ammonia => LiquidType::Ammonia,
+            CelestialBodyWorldType::LavaWorld => LiquidType::Magma,
             _ if blackbody_temperature < 150 => LiquidType::MethaneEthane,
+            _ if dom_type == LakeFormationType::Endorheic => LiquidType::Brine,
             _ => LiquidType::Water,
         };
         Some(LakeDistribution { lake_count: count, dominant_type: dom_type, largest_lake_km2: largest, liquid_type: liquid })
@@ -230,13 +312,25 @@ pub fn generate_planetary_detail(
     let ocean_chemistry = if hydrosphere > 5.0 {
         let liquid = match world_type {
             CelestialBodyWorldType::Ammonia => LiquidType::Ammonia,
+            CelestialBodyWorldType::LavaWorld => LiquidType::Magma,
             _ if blackbody_temperature < 150 => LiquidType::MethaneEthane,
+            _ if hydrosphere < 15.0 && blackbody_temperature > 310 => LiquidType::Brine, // evaporating = hypersaline
             _ => LiquidType::Water,
         };
-        let salinity = rng.roll(1, 60, 10) as f32;
-        let ph = if liquid == LiquidType::Water { 6.5 + rng.roll(1, 30, 0) as f32 / 10.0 } else { 0.0 };
+        let salinity = if liquid == LiquidType::Brine { 100.0 + rng.roll(1, 200, 0) as f32 }
+            else { rng.roll(1, 60, 10) as f32 };
+        // pH from CO2 partial pressure: pH ~ 8.1 - 0.8 * log10(pCO2/0.0004)
+        let ph = if liquid == LiquidType::Water {
+            let co2_pp = atmospheric_composition.iter()
+                .filter(|(_, c)| *c == ChemicalComponent::CarbonDioxide)
+                .map(|(f, _)| f * atmospheric_pressure).sum::<f32>().max(0.0001);
+            (8.1 - 0.8 * (co2_pp / 0.0004).log10()).clamp(4.0, 10.0)
+        } else { 0.0 };
         let anoxic = !has_oxygen || life_level.as_u8() < LifeLevel::PlantLike.as_u8();
-        let iron = if anoxic && liquid == LiquidType::Water { OceanIronContent::High } else { OceanIronContent::Negligible };
+        let iron = if !anoxic { OceanIronContent::Negligible } // oxygenated: iron precipitates out
+            else if life_level.as_u8() >= LifeLevel::UniCellular.as_u8() { OceanIronContent::Moderate } // early life, some reduction
+            else if volcanism > 20.0 { OceanIronContent::High } // Archean-style iron ocean
+            else { OceanIronContent::Low }; // reducing but low volcanic input
         let vents = volcanism > 10.0 && hydrosphere > 20.0;
         Some(OceanChemistry { liquid_type: liquid, salinity_g_per_kg: salinity, ph, anoxic, iron_content: iron, hydrothermal_vents: vents })
     } else { None };
@@ -246,6 +340,8 @@ pub fn generate_planetary_detail(
         let has_tectonics = tectonic_activity > 10.0;
         let dom_type = if tidal_heating > 10 { VolcanoType::Fissure }
             else if body_type == TelluricBodyComposition::Icy { VolcanoType::Cryovolcano }
+            else if volcanism > 70.0 && tectonic_activity < 10.0 { VolcanoType::FloodBasalt } // mantle plume, no tectonics
+            else if volcanism > 60.0 && has_tectonics { VolcanoType::Caldera } // high viscosity + tectonics
             else if has_tectonics { VolcanoType::Stratovolcano }
             else { VolcanoType::Shield };
         let count = (volcanism * 15.0 + if has_tectonics { 500.0 } else { 50.0 }) as u32;
@@ -430,10 +526,13 @@ pub fn generate_planetary_detail(
 
     // 13. Surface material
     let surface_material = {
-        let primary = if volcanism > 60.0 { SurfaceMaterialType::SandDunes }
+        let primary = if has_so2 && volcanism > 40.0 { SurfaceMaterialType::SulfurDeposits } // Io-like
             else if body_type == TelluricBodyComposition::Icy { SurfaceMaterialType::IceCrust }
+            else if life_level.as_u8() >= LifeLevel::PluriCellular.as_u8() && hydrosphere > 20.0 { SurfaceMaterialType::OrganicSediment } // dead organic matter
+            else if hydrosphere < 5.0 && blackbody_temperature > 300 && land_fraction > 0.8 { SurfaceMaterialType::EvaporiteDeposits } // evaporated seas
             else if !has_atmosphere { SurfaceMaterialType::Regolith }
             else if has_oxygen && life_level.as_u8() >= LifeLevel::PlantLike.as_u8() { SurfaceMaterialType::Soil }
+            else if hydrosphere < 20.0 && atmospheric_pressure > 0.001 && land_fraction > 0.5 { SurfaceMaterialType::SandDunes } // arid + wind
             else if blackbody_temperature > 200 && atmospheric_pressure < 0.05 { SurfaceMaterialType::IronOxideFines }
             else if hydrosphere < 5.0 && atmospheric_pressure < 0.1 { SurfaceMaterialType::BarrenRock }
             else { SurfaceMaterialType::BarrenRock };
@@ -497,19 +596,22 @@ pub fn generate_planetary_detail(
         Some(DustStormProfile { global_storms_possible: global, global_storm_interval_years: interval, peak_wind_ms: peak, dust_devils_active: true })
     } else { None };
 
-    // 17. Lightning
+    // 17. Lightning - all 5 mechanisms
     let lightning = {
         let has_water_clouds = cloud_decks.iter().any(|c| c.composition == CloudComposition::Water);
+        let has_acid_clouds = cloud_decks.iter().any(|c| c.composition == CloudComposition::SulfuricAcid);
         let has_volc = volcanism > 20.0;
         let has_dust = dust_storms.is_some();
-        if has_water_clouds || has_volc || has_dust {
+        if has_water_clouds || has_acid_clouds || has_volc || has_dust {
             let mechanism = if has_water_clouds { LightningMechanism::WaterCloud }
+                else if has_acid_clouds { LightningMechanism::AcidCloud } // Venus-type
                 else if has_volc { LightningMechanism::VolcanicPlume }
                 else { LightningMechanism::DustTriboelectric };
             let rate = match mechanism {
                 LightningMechanism::WaterCloud => (hydrosphere / 70.0).clamp(0.1, 5.0),
+                LightningMechanism::AcidCloud => 0.3, // Venus debated but probable
                 LightningMechanism::VolcanicPlume => 0.1,
-                LightningMechanism::DustTriboelectric => 0.01,
+                LightningMechanism::DustTriboelectric => 0.1, // Mars: confirmed by Perseverance
                 _ => 0.0,
             };
             Some(LightningProfile { present: true, flash_rate_relative: rate, mechanism })
