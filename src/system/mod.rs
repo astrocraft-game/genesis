@@ -23,6 +23,12 @@ pub struct StarSystem {
     pub all_objects: Vec<OrbitalPoint>,
     /// What are the pecularities of this system.
     pub special_traits: Vec<SystemPeculiarity>,
+    /// Estimated Oort cloud mass in Earth masses (0 if no gas giants to scatter material).
+    pub oort_cloud_mass: f32,
+    /// Estimated Kuiper belt analog mass in Earth masses.
+    pub kuiper_belt_mass: f32,
+    /// Estimated long-period comet injection rate (new comets per century).
+    pub comet_injection_rate: f32,
 }
 
 impl StarSystem {
@@ -34,12 +40,30 @@ impl StarSystem {
         all_objects: Vec<OrbitalPoint>,
         special_traits: Vec<SystemPeculiarity>,
     ) -> Self {
+        // Estimate outer system from gas giant presence
+        let gas_giant_mass_sum: f64 = all_objects.iter().map(|o| {
+            if let AstronomicalObject::TelluricBody(body) = &o.object {
+                if body.mass > 10.0 { body.mass } else { 0.0 }
+            } else { 0.0 }
+        }).sum();
+        let has_gas_giants = gas_giant_mass_sum > 10.0;
+        let oort_cloud_mass = if has_gas_giants {
+            (gas_giant_mass_sum as f32 / 300.0 * 10.0).clamp(1.0, 100.0)
+        } else { 0.0 };
+        let kuiper_belt_mass = if has_gas_giants {
+            (gas_giant_mass_sum as f32 / 300.0 * 0.1).clamp(0.001, 0.5)
+        } else { 0.0 };
+        let comet_injection_rate = oort_cloud_mass * 0.5;
+
         Self {
             name,
             center_id,
             main_star_id,
             all_objects,
             special_traits,
+            oort_cloud_mass,
+            kuiper_belt_mass,
+            comet_injection_rate,
         }
     }
 
