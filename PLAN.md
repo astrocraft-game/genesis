@@ -326,15 +326,17 @@ Every recipe lists byproducts:
 
 ## Implementation Order
 
-- [ ] 1. Create `src/recipes/mod.rs` with Substance enum (~200 variants)
-- [ ] 2. Create Recipe struct and RecipeCategory enum
-- [ ] 3. Create `src/recipes/extraction.rs` (~150 recipes)
-- [ ] 4. Create `src/recipes/alloys.rs` (~80 recipes)
-- [ ] 5. Create `src/recipes/chemistry.rs` (~100 recipes)
-- [ ] 6. Create `src/recipes/construction.rs` (~60 recipes)
-- [ ] 7. Create `src/recipes/fuel.rs` (~40 recipes)
-- [ ] 8. Create `src/recipes/biological.rs` (~80 recipes)
-- [ ] 9. Create `src/recipes/phase_change.rs` (~30 recipes)
-- [ ] 10. Add cross-recipe index and lookup functions
-- [ ] 11. Add tests validating recipe counts and cross-references
-- [ ] 12. Wire into lib.rs prelude
+- [x] 1. Substance enum (200 variants) - DONE
+- [x] 2. Recipe struct + RecipeCategory enum - DONE
+- [x] 3. extraction.rs (45 recipes: iron 6 paths, copper 5, gold 4, silver 3, tin, lead, zinc, aluminum, titanium, chromium, nickel, manganese, tungsten, silicon, mercury, uranium, lithium, magnesium, cobalt, molybdenum, rare earths, phosphorus, sulfur) - DONE
+- [x] 4. alloys.rs (24 recipes: 7 steels, 5 copper alloys, duralumin, 3 Ni-alloys, Ti-6Al-4V, sterling silver, electrum, solder, pewter, ferrochrome, ferromanganese, tungsten carbide) - DONE
+- [x] 5. chemistry.rs (30 recipes: Haber, Contact, Ostwald, Solvay, chloralkali, Fischer-Tropsch, steam reforming, electrolysis, polyethylene, nylon, PVC, synthetic rubber, gunpowder, nitroglycerin, dynamite, TNT, ammonium nitrate, urea, calcium carbide, acetylene, bleach, phosphoric/hydrochloric acid, H2O2, formaldehyde, soap 2 paths, vulcanization) - DONE
+- [x] 6. construction.rs (21 recipes: quicklime, slaked lime, 2 cement, 2 concrete, 3 brick, 2 mortar, 2 plaster, 2 glass, porcelain, asphalt, plywood, MDF, 2 insulation) - DONE
+- [x] 7. fuel.rs (9 recipes: charcoal, coke, petroleum distillation, biodiesel, ethanol, biogas, activated carbon, LOX, LH2) - DONE
+- [x] 8. biological.rs (30 recipes: 2 bread, beer, wine, spirits, 3 dairy, sugar, 2 salt, vinegar, 2 preservation, fish/soy sauce, olive oil, 5 textile, 2 leather, 2 paper, indigo, lye, alum, composting) - DONE
+- [ ] 9. phase_change.rs (~30 recipes) - TODO
+- [x] 10. Cross-recipe index and lookup functions - DONE (13 cross-recipe groups)
+- [x] 11. Tests (10 tests: total count, cross-recipes, byproducts, unique IDs, per-category counts) - DONE
+- [x] 12. Wired into lib.rs - DONE
+
+**Current: 159 recipes. Target: expand each file to hit 750+.**
