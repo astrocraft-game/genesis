@@ -138,6 +138,35 @@ pub(crate) fn jeans_parameter(
     v_e / v_rms
 }
 
+/// Estimate photochemical haze optical depth for atmospheres with CH4/N2 under UV.
+/// Returns haze optical depth (0 = clear, >1 = opaque like Titan).
+pub(crate) fn estimate_photochemical_haze(
+    atmospheric_pressure: f32,
+    has_methane: bool,
+    has_nitrogen: bool,
+    blackbody_temperature: u32,
+    star_uv_relative: f32,
+) -> f32 {
+    // Need CH4 or N2 in atmosphere with UV radiation
+    if atmospheric_pressure < 0.01 || !has_methane {
+        return 0.0;
+    }
+    // Titan conditions: N2+CH4 atmosphere, cold, moderate UV -> opaque haze
+    // Haze production scales with UV flux and CH4 abundance
+    let uv_factor = star_uv_relative.clamp(0.0, 10.0);
+    let n2_boost = if has_nitrogen { 2.0 } else { 1.0 };
+    // Cold temperatures favor haze persistence (less thermal dissociation)
+    let temp_factor = if blackbody_temperature < 150 {
+        2.0
+    } else if blackbody_temperature < 300 {
+        1.0
+    } else {
+        0.3
+    };
+    let pressure_factor = (atmospheric_pressure / 1.5).min(2.0);
+    (0.1 * uv_factor * n2_boost * temp_factor * pressure_factor).min(5.0)
+}
+
 /// Estimate cryovolcanic activity for an icy body.
 /// Returns (activity_level 0-100, plume_height_km) or None if no activity.
 pub(crate) fn estimate_cryovolcanism(
@@ -608,6 +637,25 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_haze_titan_like() {
+        // Titan: N2+CH4, cold, moderate UV
+        let haze = estimate_photochemical_haze(1.5, true, true, 94, 1.0);
+        assert!(haze > 0.3, "Titan-like should have significant haze, got {}", haze);
+    }
+
+    #[test]
+    fn test_haze_no_methane() {
+        let haze = estimate_photochemical_haze(1.0, false, true, 200, 1.0);
+        assert_eq!(haze, 0.0);
+    }
+
+    #[test]
+    fn test_haze_no_atmosphere() {
+        let haze = estimate_photochemical_haze(0.001, true, true, 100, 1.0);
+        assert_eq!(haze, 0.0);
     }
 
     #[test]
