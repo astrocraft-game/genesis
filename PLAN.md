@@ -1,387 +1,229 @@
-# Implementation Plan V2 - Natural Science & Physics
+# Implementation Plan V3 - Planetary Detail
 
-Focused on physical plausibility, real data distributions, and natural phenomena.
-
----
-
-## 1. Atmospheric Escape Validation
-
-**Status:** `escape_velocity()` and `jeans_parameter()` exist in `src/system/contents/utils.rs` but are never called during world generation. Bodies can be generated with physically impossible atmospheres.
-
-**What to do:**
-- After atmosphere generation in `world/generator.rs`, validate retention:
-  - Compute Jeans parameter for each major atmospheric component
-  - If `jeans_parameter < 6` for a gas, it escapes over Gyr timescales
-  - If `jeans_parameter < 3`, hydrodynamic escape strips it rapidly
-  - Remove components that can't be retained; reduce pressure accordingly
-- Factor in magnetic field: unshielded bodies lose atmosphere to stellar wind sputtering
-- Factor in age: cumulative loss over system lifetime
-
-**Files to modify:**
-- `src/system/celestial_body/world/generator.rs` - add validation pass after atmosphere generation
+Deep planetary science: atmosphere, surface, geology, hazards. All derivable from existing data.
 
 ---
 
-## 2. Tidal Locking from Physics
+## 1. Atmospheric Layers
 
-**Status:** `CelestialBodySpecialTrait::TideLocked` exists but locking is not computed from orbital mechanics.
+**What:** Scale height, tropopause, stratosphere presence, exobase altitude.
+**Formula:** `H = R*T / (M*g)` where R=8.314, T=temp K, M=molar mass kg/mol, g=gravity m/s^2.
+**Key:** Stratosphere only exists if UV absorber present (O3, tholin haze).
 
-**What to do:**
-- Compute tidal locking timescale: `t_lock ~ (a^6 * Q) / (G * M_host^2 * k2 * R^5)`
-  - a = semi-major axis, R = body radius, M_host = primary mass
-  - Q ~ 100 for rocky, ~10-50 for icy bodies
-  - k2 ~ 0.3 for rocky, ~0.05 for icy
-- Compare `t_lock` to system age: if `t_lock < star_age`, body is tidally locked
-- Apply `TideLocked` trait automatically when physics demands it
-- For thick-atmosphere bodies (P > 10 atm) near M dwarfs, thermal atmospheric tides resist locking
+**Struct:** `AtmosphericLayers { scale_height_km, tropopause_km, has_stratosphere, exobase_km }`
 
-**Files to modify:**
-- `src/system/celestial_body/world/generator.rs` or `orbital_point/generator.rs` - add locking check
-- `src/system/celestial_body/traits/` - ensure TideLocked trait is applied
+**Files:** `telluric/types.rs` (struct), `world/generator.rs` (compute)
 
 ---
 
-## 3. Quantitative Tidal Heating
+## 2. Atmosphere Breathability & Toxicity
 
-**Status:** `tidal_heating: u32` on `CelestialBody` exists but is not derived from orbital parameters.
+**What:** Classify atmosphere for habitability: Vacuum through Superdense pressure, plus Benign through Insidious toxicity.
+**Key thresholds:** CO2>5% narcotic, CO>100ppm lethal, H2S>100ppm lethal, O2<16% hypoxia, >50% toxic.
 
-**What to do:**
-- Compute: `E_dot ~ (e^2 * R^5 * n) / (a^6 * Q)` where n = mean motion
-- Use eccentricity, distance, body radius, primary mass from existing data
-- Map to heat flux (W/m^2):
-  - `< 0.01` -> negligible
-  - `0.01 - 0.04` -> can maintain subsurface ocean
-  - `0.04 - 0.5` -> active geology, possible cryovolcanism
-  - `0.5 - 2.0` -> intense volcanism
-  - `> 2.0` -> Io-like extreme volcanism
-- Wire results into core heat, volcanism, and subsurface ocean generation
+**Enums:** `AtmosphereBreathability`, `AtmosphereToxicity`
 
-**Files to modify:**
-- `src/system/contents/utils.rs` - add `calculate_tidal_heating_flux()` function
-- `src/system/celestial_body/moon/generator.rs` - use formula for moons
+**Files:** `telluric/types.rs` (enums), `world/generator.rs` (derive from pressure + composition)
 
 ---
 
-## 4. Orbital Resonance Detection
+## 3. Cloud Decks
 
-**Status:** Orbital periods are calculated but resonances are not detected or applied.
+**What:** Multiple cloud layers with composition, altitude, optical depth, coverage.
+**Key:** Clouds form where T_atmosphere = T_condensation for each compound. Jupiter has 3 decks.
 
-**What to do:**
-- After orbit generation, scan adjacent body pairs for near-integer period ratios
-- Check ratios: 2:1, 3:2, 4:3, 5:3, 5:2 (within 5% tolerance)
-- When detected:
-  - Add `OrbitalResonance { ratio: (u8, u8), partner_id: u32 }` to orbit data
-  - Force non-zero eccentricity on resonant bodies (resonances pump eccentricity)
-  - Increase tidal heating for resonant moons
-- Detect resonance chains (3+ bodies in linked resonances like Io-Europa-Ganymede)
+**Struct:** `CloudDeck { composition, base_altitude_km, top_altitude_km, optical_depth, coverage_fraction }`
+**Enum:** `CloudComposition` (Water, WaterIce, SulfuricAcid, Ammonia, Methane, OrganicHaze, etc.)
 
-**Files to modify:**
-- `src/system/orbital_point/types.rs` - add resonance field to Orbit
-- `src/system/contents/generator.rs` - add resonance detection pass
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 5. Ring and Belt Generation
+## 4. Greenhouse Effect Quantification
 
-**Status:** 3 empty generator files exist: `celestial_disk/generator.rs`, `ring/generator.rs`, `belt/generator.rs`. Types are fully defined.
+**What:** Equilibrium temp, actual surface temp, greenhouse delta, CO2 partial pressure, runaway flag, bond albedo.
+**Formula:** `deltaT ~ 10 * ln(P_CO2 / 0.0004)` for CO2; runaway at >1.4x Earth flux.
 
-**What to do:**
-- **Rings:** Generate within Roche limit of gas giants/large planets
-  - Ring optical depth (0.001 to 5.0), width, inner/outer radius
-  - Composition from `CelestialRingComposition` (Ice, Rock, Metal, Dust)
-  - Gap structure at orbital resonances with shepherd moons
-  - Ring age category (young < 500 Myr, intermediate, primordial)
-  - Ring mass derived from optical depth and extent
-- **Belts:** Generate between orbital zones (asteroid belt analog)
-  - Size-frequency distribution: power law `N(>D) ~ D^(-2.34)`
-  - Total mass, largest body diameter
-  - Composition (C-type, S-type, M-type proportions)
-  - Kirkwood gaps at resonances with nearby massive planet
-- Use Roche limit formula already in `utils.rs`
+**Struct:** `GreenhouseEffect { equilibrium_temp_k, surface_temp_k, greenhouse_delta_k, co2_partial_pressure_bar, bond_albedo, is_runaway }`
 
-**Files to modify:**
-- `src/system/celestial_disk/generator.rs` - implement
-- `src/system/celestial_disk/ring/generator.rs` - implement
-- `src/system/celestial_disk/belt/generator.rs` - implement
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 6. Magnetopause and Radiation Belts
+## 5. Sky Appearance
 
-**Status:** `MagneticFieldStrength` enum exists but magnetopause distance and radiation belts are not computed.
+**What:** Daytime color, sunset color, haze depth, daytime star visibility.
+**Key:** Rayleigh=blue, iron dust=butterscotch, tholins=orange, H2SO4=amber, CH4 absorption=deep blue.
 
-**What to do:**
-- Compute magnetopause standoff distance: `R_mp = R_planet * (B^2 / (2 * mu_0 * rho_sw * v_sw^2))^(1/6)`
-- Stellar wind pressure from star type + distance (M dwarfs have denser winds at HZ)
-- Add to `TelluricBodyDetails`:
-  - `magnetopause_radii: f32` (in body radii, 0 if no field)
-  - `has_radiation_belts: bool` (true if field moderate+ and stellar wind present)
-  - `aurora_latitude: f32` (degrees from pole, ~arccos(sqrt(R/R_mp)))
-- Radiation belt intensity affects habitability and satellite electronics
+**Enum:** `SkyColor` (Black, Blue, PaleBlue, White, Yellow, Amber, Orange, Butterscotch, Red, Green, Pink)
+**Struct:** `SkyAppearance { daytime_color, sunset_color, daytime_stars_visible, haze_optical_depth }`
 
-**Files to modify:**
-- `src/system/celestial_body/telluric/mod.rs` - add fields
-- `src/system/celestial_body/world/generator.rs` - compute values
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 7. Hadley Circulation Cells
+## 6. Wind Profile
 
-**Status:** Climate is assigned as a single enum. No atmospheric circulation model.
+**What:** Mean/max surface winds, superrotation, equator-pole delta.
+**Key:** Neptune 580 m/s from internal heat. Venus superrotation 60x surface speed.
 
-**What to do:**
-- Compute thermal Rossby number: `Ro = (g * H * Delta_T) / (Omega^2 * a^2)`
-  - g = gravity, H = scale height, Delta_T = equator-pole temp diff
-  - Omega = rotation rate (2*pi/rotation_period), a = planet radius
-- Map to circulation regime:
-  - Ro >> 1 (slow rotators like Venus): 1 cell per hemisphere
-  - Ro ~ 1 (Earth-like): 3 cells per hemisphere
-  - Ro << 1 (fast rotators like Jupiter): many narrow cells
-- Derive: `circulation_cells: u8`, `jet_stream_count: u8`
-- Use cell count to refine biome distribution in surface map
+**Struct:** `WindProfile { mean_surface_wind_ms, max_wind_ms, superrotation, superrotation_factor }`
 
-**Files to modify:**
-- `src/system/celestial_body/telluric/types.rs` - add `AtmosphericCirculation` struct
-- `src/system/celestial_body/world/generator.rs` - compute from rotation + gravity
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 8. Stellar Flare Activity
+## 7. Hydrography (Rivers)
 
-**Status:** `StarPeculiarity::VariableStar` and `StrongMagneticField` exist but no quantitative flare model.
+**What:** Drainage density, major river count, longest river, mean precipitation, delta type.
+**Formula:** Hack's law `L = 1.4 * A^0.57`. Peak drainage at 250-360mm precipitation.
 
-**What to do:**
-- Assign flare activity class based on spectral type + age:
-  - M dwarfs (young): Hyperactive
-  - M dwarfs (old): Active
-  - K dwarfs: Moderate
-  - G dwarfs: Quiet
-  - F/A dwarfs: Very Quiet
-- Add `flare_activity: FlareActivity` enum to `Star` (Quiet, Moderate, Active, Hyperactive)
-- Superflare probability: `P(E > 10^33 erg) ~ 0.01-1%/year` for M dwarfs
-- Wire into life level calculation (flares reduce habitability for M dwarf planets)
+**Struct:** `Hydrography { drainage_density, major_river_count, longest_river_km, mean_precipitation_mm, dominant_delta_type }`
 
-**Files to modify:**
-- `src/system/star/mod.rs` - add field
-- `src/system/star/generator.rs` - compute from type + age
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 9. Subsurface Ocean Estimation
+## 8. Lake Distribution
 
-**Status:** `CelestialBodySpecialTrait::SubSurfaceOceans` exists but depth and ice thickness are not computed.
+**What:** Count, density, formation type, largest lake, liquid type.
+**Key:** Glaciated regions: 0.56 lakes/km^2. Titan: methane/ethane lakes at poles.
 
-**What to do:**
-- For icy bodies with tidal heating > 0.01 W/m^2 or radiogenic heating:
-  - Ice shell thickness from thermal equilibrium: `d_ice ~ k_ice * (T_melt - T_surface) / q_tidal`
-  - Ocean depth from remaining water mass budget
-  - Antifreeze agents: ammonia depresses melting point by ~100K
-- Add to relevant trait or new struct:
-  - `ice_shell_thickness_km: f32`
-  - `ocean_depth_km: f32`
-  - `ocean_composition: Vec<ChemicalComponent>` (water, ammonia, salts)
+**Struct:** `LakeDistribution { lake_count, lake_density, dominant_type, largest_lake_km2, liquid_type }`
 
-**Files to modify:**
-- `src/system/celestial_body/world/generator.rs` - compute after tidal heating
-- `src/system/celestial_body/traits/types.rs` - extend SubSurfaceOceans data
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 10. Crater Population
+## 9. Glaciation State
 
-**Status:** `POIType::ImpactCrater` exists as a single POI. No crater density model.
+**What:** Ice coverage, glacial period flag, snowball state, Milankovitch cycles, ice cap location.
+**Key:** Tilt>40deg = equatorial ice. Snowball below ~260K mean. Obliquity cycle ~41kyr.
 
-**What to do:**
-- Compute crater density from surface age and impactor flux:
-  - `crater_density_class`: Pristine (young, resurfaced), Light, Moderate, Heavy, Saturated (ancient)
-  - `largest_crater_diameter_km`: scales with body size and surface age
-  - `impact_basin_count`: very large impacts (D > 0.3 * body diameter)
-- Surface age proxy: volcanism and tectonics reduce crater density
-- Add to `PlanetSurfaceMap`:
-  - `crater_density: CraterDensity` enum
-  - `largest_crater_km: f32`
+**Struct:** `GlaciationState { ice_coverage_fraction, in_glacial_period, snowball_state, ice_cap_location }`
+**Enum:** `IceCapLocation` (None, Polar, Equatorial, DarkSide, Global)
 
-**Files to modify:**
-- `src/system/celestial_body/telluric/types.rs` - add crater types
-- `src/system/celestial_body/world/generator.rs` - compute in surface map
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 11. Spin-Orbit Resonance
+## 10. Ocean Chemistry
 
-**Status:** `TelluricRotationDifference::Resonant` exists for 3:2 but is not systematically computed.
+**What:** Liquid type, salinity, pH, anoxic flag, iron content, hydrothermal vents, subsurface flag.
+**Key:** Archean Earth: green iron oceans. Europa: salty subsurface. Titan: methane seas.
 
-**What to do:**
-- For non-tidally-locked bodies with eccentricity > 0.1:
-  - 3:2 resonance probability increases with eccentricity
-  - Mercury capture probability: ~55% at e=0.206
-- For thick-atmosphere bodies (Venus analog):
-  - Thermal tides can produce retrograde or very slow rotation
-- Add `spin_orbit_resonance: Option<(u8, u8)>` to Orbit
-- Wire into rotation period calculation
+**Struct:** `OceanChemistry { liquid_type, salinity_g_per_kg, ph, anoxic, iron_content, hydrothermal_vents }`
 
-**Files to modify:**
-- `src/system/orbital_point/types.rs` - add field
-- `src/system/orbital_point/generator.rs` - compute in rotation generation
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 12. Eccentricity from Beta Distribution
+## 11. Volcanic Profile
 
-**Status:** Current eccentricity uses 3d6 + modifier table in `orbital_point/generator.rs`.
+**What:** Active count, dominant type, flood basalt history, tallest volcano, supervolcano flag.
+**Key:** No tectonics = only shield volcanoes (grow huge). Subduction = stratovolcanoes.
 
-**What to do:**
-- Replace with physics-informed distributions:
-  - Hot planets (a < 0.1 AU): circularized, e ~ 0.01
-  - Warm giants: Beta(1.0, 2.79) distribution
-  - Multi-planet systems: Rayleigh(sigma=0.05)
-  - Single giants: Rayleigh(sigma=0.3)
-- Keep the modifier system for gas giant arrangement effects
-- Sample: `e = rng.gen_f64().powf(1.0/alpha) * (1.0 - rng.gen_f64().powf(1.0/beta))`
+**Struct:** `VolcanicProfile { active_count, dominant_type, flood_basalt_history, tallest_volcano_km, supervolcano_present }`
+**Enum:** `VolcanoType` (Shield, Stratovolcano, Caldera, Cinder, Fissure, FloodBasalt, Cryovolcano)
 
-**Files to modify:**
-- `src/system/orbital_point/generator.rs` - replace eccentricity table
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 13. Cryovolcanism
+## 12. Mineral Diversity
 
-**Status:** `POIType::IceGeysers` exists. Tidal heating exists. Not connected.
+**What:** Mineral count, evolution stage, free oxygen flag.
+**Key:** No water=500, with water=1500, with O2=4000+, with life=5800.
 
-**What to do:**
-- For icy bodies with tidal heating flux > 0.01 W/m^2:
-  - Generate cryovolcanic features: geyser fields, plumes, cryolava flows
-  - Plume height from eruption velocity: `h ~ v^2 / (2*g)`
-  - Eruption rate from tidal heating flux and ice shell permeability
-- Add `CryovolcanicActivity` struct:
-  - `activity_level: f32` (0-100, like volcanism)
-  - `plume_height_km: f32`
-  - `geyser_count: u16`
+**Struct:** `MineralDiversity { mineral_count, evolution_stage }`
+**Enum:** `MineralEvolutionStage` (Primordial, Differentiated, Hydrated, TectonicallyActive, Oxidized, Biogenic)
 
-**Files to modify:**
-- `src/system/celestial_body/world/generator.rs` - derive from tidal heating for icy bodies
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 14. Frost Cycles
+## 13. Surface Material
 
-**Status:** `ice_over_land` and `ice_over_water` exist as static percentages. No seasonal variation.
+**What:** Primary type, depth, perchlorates, oxidation state, space weathering.
+**Key:** Mars: iron oxide fines + perchlorates (toxic). Moon: regolith 4-15m from impacts.
 
-**What to do:**
-- From axial tilt and orbital eccentricity, compute seasonal temperature range:
-  - `T_range ~ T_avg * sin(axial_tilt) * (1 + eccentricity)`
-- For bodies with atmospheric species near condensation point:
-  - CO2 frost: condenses at ~195K (Mars)
-  - N2 frost: condenses at ~63K (Triton, Pluto)
-  - CH4 frost: condenses at ~91K (Pluto)
-- Add to `PlanetSurfaceMap`:
-  - `seasonal_frost_type: Option<ChemicalComponent>`
-  - `frost_cap_latitude: f32` (equatorward extent at maximum)
-  - `temperature_range_k: f32` (seasonal swing)
+**Struct:** `SurfaceMaterial { primary_type, depth_m, perchlorates, oxidized, space_weathering }`
+**Enum:** `SurfaceMaterialType` (Regolith, IronOxideFines, Soil, SulfurDeposits, IceCrust, OrganicSediment, etc.)
 
-**Files to modify:**
-- `src/system/celestial_body/telluric/types.rs` - add frost/seasonal fields
-- `src/system/celestial_body/world/generator.rs` - compute from axial tilt + orbit
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 15. Wire Life System into Generation
+## 14. Radiation Environment
 
-**Status:** Species generator, history, expansion all built but never called. `populate: bool` setting defined but unchecked. This is the biggest dead code issue.
+**What:** Surface dose mSv/yr, UV index, cosmic ray flux, shielding flags, hazard class.
+**Key:** Earth: 2.4 mSv/yr. Mars: 240. Europa: 5,400,000 (Jupiter belts).
 
-**What to do:**
-- In world generation, after life level is computed:
-  - If `life_level >= AnimalLike` and `settings.populate == true`:
-    - Call `generate_species_from_world()` with world parameters
-    - If species generated, call `generate_species_history()` with tech level
-    - Store species + history alongside world data
-- In `Generator::generate()`:
-  - If `settings.populate`, trigger species generation for each system
-  - Apply expansion reach to mark neighboring systems as colonized
-- Wire `do_not_generate_*` body settings into orbit filling
-- Wire `fixed_spectral_type` / `fixed_luminosity_class` into star generation
+**Struct:** `RadiationEnvironment { surface_dose_msv_yr, uv_index_peak, radiation_hazard }`
+**Enum:** `RadiationHazard` (Negligible, Low, Moderate, High, Extreme)
 
-**Files to modify:**
-- `src/generator/mod.rs` - check populate flag
-- `src/system/celestial_body/world/generator.rs` - call species generator
-- `src/system/contents/generator.rs` - check do_not_generate settings
-- `src/system/star/generator.rs` - check fixed spectral/luminosity settings
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 16. Photochemical Hazes
+## 15. Seismic Profile
 
-**Status:** Atmospheric composition generated but haze formation not modeled.
+**What:** Gutenberg-Richter a/b values, max magnitude, quake rate, source type.
+**Formula:** `log10(N) = a - b*M`, b~1.0. Tidal: Mw_max from e^2*R^5/a^6 scaling.
 
-**What to do:**
-- For atmospheres with CH4 + N2 and significant UV flux:
-  - Compute haze optical depth from CH4 fraction, UV flux, pressure
-  - Titan: CH4 > 1%, N2 dominant, sufficient UV -> opaque haze
-- Add `haze_optical_depth: f32` to atmosphere data (0 = clear, > 1 = opaque)
-- Affects surface visibility and greenhouse effect
+**Struct:** `SeismicProfile { max_magnitude, quakes_per_year_m4, seismicity_source }`
+**Enum:** `SeismicitySource` (None, Residual, TidalOnly, TectonicModerate, TectonicExtreme, TidalExtreme)
 
-**Files to modify:**
-- `src/system/celestial_body/world/generator.rs` - compute after atmosphere
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 17. Lagrange Trojans
+## 16. Dust Storm Profile
 
-**Status:** Not modeled.
+**What:** Global storm possibility, recurrence interval, peak winds, dust fraction, dust devils.
+**Key:** Mars: planet-encircling every ~3 Mars years. Needs fine dust + thin atmosphere.
 
-**What to do:**
-- For planets with mass ratio to star > 1:25 (i.e., most gas giants):
-  - Generate trojan population at L4/L5 points
-  - Population size proportional to planet mass and system age
-  - Composition similar to nearby belt material
-- Add `trojan_population: Option<u32>` to planet data
+**Struct:** `DustStormProfile { global_storms_possible, global_storm_interval_years, peak_wind_ms, dust_devils_active }`
 
-**Files to modify:**
-- `src/system/contents/generator.rs` - add trojan check after orbit filling
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
-## 18. Oort Cloud and Comet Reservoirs
+## 17. Lightning Profile
 
-**Status:** Not modeled. Outer system structure doesn't exist.
+**What:** Presence, flash rate, mechanism, energy.
+**Key:** Jupiter 1000-10000x Earth per flash. Mars: triboelectric in dust. Volcanic lightning universal.
 
-**What to do:**
-- For systems with gas giants:
-  - Generate Kuiper belt analog beyond outermost giant (mass ~ 0.01-0.1 M_earth)
-  - Generate Oort cloud (mass ~ 1-100 M_earth, extent ~ 1000-100000 AU)
-  - Comet injection rate from stellar perturbations and galactic tides
-- Add as system-level properties to `StarSystem`
+**Struct:** `LightningProfile { present, flash_rate_relative, mechanism }`
+**Enum:** `LightningMechanism` (None, WaterCloud, VolcanicPlume, DustTriboelectric, AcidCloud)
 
-**Files to modify:**
-- `src/system/mod.rs` - add outer system fields
-- `src/system/generator.rs` - generate after planet formation
+**Files:** `telluric/types.rs`, `world/generator.rs`
 
 ---
 
 ## Suggested Implementation Order
 
-**Tier 0 - Fix plausibility (generation currently wrong):**
-- [x] 1. Atmospheric escape validation
-- [x] 2. Tidal locking from physics
-- [x] 3. Quantitative tidal heating
-- [x] 12. Beta distribution for eccentricity
+**Tier 1 - Atmosphere (builds on existing atmospheric_pressure + composition):**
+- [ ] 1. Atmospheric layers
+- [ ] 2. Breathability & toxicity
+- [ ] 3. Cloud decks
+- [ ] 4. Greenhouse quantification
+- [ ] 5. Sky appearance
+- [ ] 6. Wind profile
 
-**Tier 1 - Wire existing dead code:**
-- [x] 15. Wire life system into generation - populate_system() + fixed_spectral_type wiring
+**Tier 2 - Surface water/ice (builds on existing hydrosphere + climate):**
+- [ ] 7. Hydrography (rivers)
+- [ ] 8. Lake distribution
+- [ ] 9. Glaciation state
+- [ ] 10. Ocean chemistry
 
-**Tier 2 - Missing physics (high impact):**
-- [x] 4. Orbital resonance detection
-- [x] 5. Ring and belt generation - ring/belt/shell generators implemented
-- [x] 6. Magnetopause and radiation belts
-- [x] 8. Stellar flare activity
+**Tier 3 - Geology (builds on existing volcanism + tectonics):**
+- [ ] 11. Volcanic profile
+- [ ] 12. Mineral diversity
+- [ ] 13. Surface material
 
-**Tier 3 - Natural phenomena (enrichment):**
-- [x] 7. Hadley circulation cells
-- [x] 9. Subsurface ocean estimation - ice shell thickness + ocean depth
-- [x] 10. Crater population
-- [x] 11. Spin-orbit resonance - Mercury 3:2, Venus thermal tide, tidal locking
-- [x] 13. Cryovolcanism - activity level + plume height from tidal heating
-- [x] 14. Frost cycles
-- [x] 16. Photochemical hazes - optical depth from CH4/N2 + UV
-- [x] 17. Lagrange trojans - population estimation from planet mass
-- [x] 18. Oort cloud and comet reservoirs - mass + comet injection rate on StarSystem
+**Tier 4 - Hazards (builds on everything above):**
+- [ ] 14. Radiation environment
+- [ ] 15. Seismic profile
+- [ ] 16. Dust storm profile
+- [ ] 17. Lightning profile
