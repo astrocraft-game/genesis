@@ -799,30 +799,30 @@ fn white_dwarf_final_mass(initial_mass: f64) -> f64 {
 - [x] 0a. IAU 2015 Constants (item 18a)
 - [x] 0b. Stefan-Boltzmann fix (item 18b)
 - [x] 0c. Habitable zone formula (item 18f)
-- [ ] 0d. White dwarf/neutron star fixes (item 18g)
+- [x] 0d. White dwarf/neutron star fixes (item 18g) - added Mestel cooling law
 - [x] 0e. Subdwarf luminosity fix (item 5)
 
 **Tier 1 - Quick wins (standalone, no dependencies):**
-- [ ] 1. Local Group Galaxies data (item 2) - just data entry
-- [x] 2. Galaxy Names (item 1) - small feature
-- [x] 3. Sector Names (item 4) - small feature
-- [x] 4. Star/System Peculiarities (item 7) - uses existing enums
-- [x] 5. Magnitude system (item 18c) - add to Star struct
-- [ ] 6. Enhanced spectral type table (item 18d) - extend constants
-- [x] 7. B-V color index (item 18e) - add star color data
+- [x] 1. Local Group Galaxies data (item 2) - 35 galaxies populated
+- [x] 2. Galaxy Names (item 1) - syllable-based generation
+- [x] 3. Sector Names (item 4) - region-based naming
+- [x] 4. Star/System Peculiarities (item 7) - both star and system
+- [x] 5. Magnitude system (item 18c) - absolute_magnitude field
+- [x] 6. Enhanced spectral type table (item 18d) - 26-entry reference
+- [x] 7. B-V color index (item 18e) - color_bv field + bv_to_rgb()
 
 **Tier 2 - Medium effort (build on existing systems):**
-- [ ] 8. Configurable Stars (item 6)
+- [x] 8. Configurable Stars (item 6) - settings fields + wiring
 - [ ] 9. Binary Star Orbits (item 8)
 - [ ] 10. Orbit Refinements (item 9)
 - [ ] 11. World Parameters/Climate TODOs (item 10)
-- [ ] 12. Life Presence (item 12) - needed before species
+- [x] 12. Life Presence (item 12) - score-based life level
 
 **Tier 3 - New subsystems:**
-- [ ] 13. Resources (item 11)
+- [x] 13. Resources (item 11) - 6 resource types with abundance/accessibility
 - [ ] 14. Exotic Planets (item 15)
 - [ ] 15. Points of Interest (item 13)
-- [ ] 16. Region Mapping - temporary (item 3a)
+- [x] 16. Region Mapping - temporary (item 3a) - nucleus/bulge/bar/arm/disk/halo
 - [ ] 17. Region Mapping - proper (item 3b)
 - [ ] 18. Map Generation (item 14)
 
