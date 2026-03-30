@@ -114,3 +114,86 @@ pub struct PlanetaryResource {
     pub abundance: ResourceAbundance,
     pub accessibility: ResourceAccessibility,
 }
+
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize,
+)]
+pub enum POIType {
+    // Geological
+    MassiveCanyon,
+    SuperVolcano,
+    ImpactCrater,
+    CrystalFormation,
+    LavaLake,
+    GeyserField,
+    CaveSystem,
+    // Hydrological
+    SubterraneanOcean,
+    ThermalVents,
+    IceGeysers,
+    // Atmospheric
+    PermanentStorm,
+    AuroraField,
+    // Biological
+    FossilSite,
+    ExtremeLifeColony,
+    // Anomalous
+    GravityAnomaly,
+    MagneticAnomaly,
+    RadioactiveZone,
+    #[default]
+    UnusualMineral,
+}
+
+impl Display for POIType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
+            POIType::MassiveCanyon => "Massive Canyon",
+            POIType::SuperVolcano => "Super Volcano",
+            POIType::ImpactCrater => "Impact Crater",
+            POIType::CrystalFormation => "Crystal Formation",
+            POIType::LavaLake => "Lava Lake",
+            POIType::GeyserField => "Geyser Field",
+            POIType::CaveSystem => "Cave System",
+            POIType::SubterraneanOcean => "Subterranean Ocean",
+            POIType::ThermalVents => "Thermal Vents",
+            POIType::IceGeysers => "Ice Geysers",
+            POIType::PermanentStorm => "Permanent Storm",
+            POIType::AuroraField => "Aurora Field",
+            POIType::FossilSite => "Fossil Site",
+            POIType::ExtremeLifeColony => "Extreme Life Colony",
+            POIType::GravityAnomaly => "Gravity Anomaly",
+            POIType::MagneticAnomaly => "Magnetic Anomaly",
+            POIType::RadioactiveZone => "Radioactive Zone",
+            POIType::UnusualMineral => "Unusual Mineral Deposit",
+        })
+    }
+}
+
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize,
+)]
+pub enum POISignificance {
+    Minor,
+    #[default]
+    Notable,
+    Major,
+    Unique,
+}
+
+impl Display for POISignificance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
+            POISignificance::Minor => "Minor",
+            POISignificance::Notable => "Notable",
+            POISignificance::Major => "Major",
+            POISignificance::Unique => "Unique",
+        })
+    }
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct PointOfInterest {
+    pub poi_type: POIType,
+    pub significance: POISignificance,
+}

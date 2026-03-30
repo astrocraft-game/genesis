@@ -43,6 +43,7 @@ impl TelluricBodyDetails {
                 WorldTemperatureCategory::Frozen,
                 WorldClimateType::Dead,
                 Vec::new(),
+                Vec::new(),
             )),
         }
     }
@@ -379,6 +380,7 @@ impl TelluricBodyDetails {
                 0.0,
                 WorldTemperatureCategory::Frozen,
                 WorldClimateType::Dead,
+                Vec::new(),
                 Vec::new(),
             )),
         }

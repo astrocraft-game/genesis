@@ -67,6 +67,7 @@ impl WorldGenerator {
                     WorldTemperatureCategory::Frozen,
                     WorldClimateType::Dead,
                     Vec::new(),
+                    Vec::new(),
                 )),
             }),
             moons
@@ -1759,6 +1760,7 @@ impl WorldGenerator {
                     temperature_category,
                     climate,
                     Self::generate_resources(body_type, volcanism, size, &seed, coord, system_index, star_id, orbital_point_id),
+                    Self::generate_points_of_interest(volcanism, hydrosphere, atmospheric_pressure, life_level, size, &seed, coord, system_index, star_id, orbital_point_id),
                 )),
             )),
             orbits.clone(),
@@ -2490,6 +2492,74 @@ impl WorldGenerator {
         } else {
             world_type
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn generate_points_of_interest(
+        volcanism: f32,
+        hydrosphere: f32,
+        atmospheric_pressure: f32,
+        life_level: LifeLevel,
+        size: CelestialBodySize,
+        seed: &Rc<str>,
+        coord: SpaceCoordinates,
+        system_index: u16,
+        star_id: u32,
+        orbital_point_id: u32,
+    ) -> Vec<PointOfInterest> {
+        let mut rng = SeededDiceRoller::new(
+            seed,
+            &format!("sys_{}_{}_str_{}_bdy{}_poi", coord, system_index, star_id, orbital_point_id),
+        );
+        let mut pois = Vec::new();
+        let max_pois = match size {
+            CelestialBodySize::Puny | CelestialBodySize::Tiny => 2,
+            CelestialBodySize::Small => 3,
+            CelestialBodySize::Standard => 5,
+            CelestialBodySize::Large => 6,
+            _ => 8,
+        };
+
+        let candidates: Vec<(POIType, i32)> = vec![
+            (POIType::ImpactCrater, 30),
+            (POIType::CaveSystem, 20),
+            (POIType::GravityAnomaly, 5),
+            (POIType::MagneticAnomaly, 5),
+            (POIType::RadioactiveZone, 8),
+            (POIType::UnusualMineral, 15),
+            // Volcanism-dependent
+            (POIType::SuperVolcano, if volcanism > 30.0 { 20 } else { 2 }),
+            (POIType::LavaLake, if volcanism > 50.0 { 15 } else { 1 }),
+            (POIType::GeyserField, if volcanism > 15.0 { 15 } else { 3 }),
+            (POIType::CrystalFormation, if volcanism > 10.0 { 12 } else { 5 }),
+            // Hydro-dependent
+            (POIType::ThermalVents, if hydrosphere > 20.0 { 15 } else { 1 }),
+            (POIType::SubterraneanOcean, if hydrosphere < 5.0 { 8 } else { 2 }),
+            (POIType::IceGeysers, if hydrosphere > 0.0 { 10 } else { 2 }),
+            (POIType::MassiveCanyon, if hydrosphere < 30.0 { 15 } else { 5 }),
+            // Atmosphere-dependent
+            (POIType::PermanentStorm, if atmospheric_pressure > 0.5 { 12 } else { 1 }),
+            (POIType::AuroraField, if atmospheric_pressure > 0.1 { 10 } else { 2 }),
+            // Life-dependent
+            (POIType::FossilSite, if life_level.as_u8() >= LifeLevel::PluriCellular.as_u8() { 15 } else { 0 }),
+            (POIType::ExtremeLifeColony, if life_level.as_u8() >= LifeLevel::UniCellular.as_u8() { 10 } else { 0 }),
+        ];
+
+        for (poi_type, chance) in candidates {
+            if chance > 0 && rng.roll(1, 100, 0) <= chance as i64 && pois.len() < max_pois {
+                let sig = match rng.roll(1, 10, 0) {
+                    1..=4 => POISignificance::Minor,
+                    5..=7 => POISignificance::Notable,
+                    8..=9 => POISignificance::Major,
+                    _ => POISignificance::Unique,
+                };
+                pois.push(PointOfInterest {
+                    poi_type,
+                    significance: sig,
+                });
+            }
+        }
+        pois
     }
 
     #[allow(clippy::too_many_arguments)]
