@@ -686,32 +686,29 @@ pub fn calculate_planet_orbit_eccentricity(
         } else {
             0
         };
-    let roll = rng.roll(3, 6, eccentricity_modifier);
-    let eccentricity = ((if roll <= 3 {
-        0.0
-    } else if roll <= 6 {
-        0.05
-    } else if roll <= 9 {
-        0.1
-    } else if roll <= 11 {
-        0.15
-    } else if roll <= 12 {
-        0.2
-    } else if roll <= 13 {
-        0.3
-    } else if roll <= 14 {
-        0.4
-    } else if roll <= 15 {
-        0.5
-    } else if roll <= 16 {
-        0.6
-    } else if roll <= 17 {
-        0.7
+    // Physics-informed eccentricity from Beta-like distribution
+    // Hot planets (close-in): circularized by tidal forces
+    // Moons: low eccentricity
+    // Gas giants: Beta(1.0, 2.79) approximation
+    // Small planets: Rayleigh(sigma=0.05-0.1)
+    let u = rng.gen_f64().clamp(0.01, 0.99);
+    let base_ecc = if is_moon {
+        // Moons: very low eccentricity, Rayleigh sigma=0.02
+        0.02 * (-2.0 * (1.0 - u).ln()).sqrt()
+    } else if orbit_distance < 0.1 {
+        // Hot planets: tidally circularized
+        0.01 * (-2.0 * (1.0 - u).ln()).sqrt()
+    } else if is_gas_giant {
+        // Gas giants: Beta(1.0, 2.79) approximation via power transform
+        u.powf(1.0 / 1.0) * (1.0 - u.powf(1.0 / 2.79))
     } else {
-        0.8
-    }) + (rng.roll(1, 11, -6) as f64 * 0.01))
-        .max(0.0)
-        .min(0.8);
+        // Small planets: Rayleigh(sigma=0.08)
+        0.08 * (-2.0 * (1.0 - u).ln()).sqrt()
+    };
+    // Apply arrangement modifiers
+    let modifier_shift = eccentricity_modifier as f64 * 0.03;
+    let eccentricity = (base_ecc + modifier_shift + rng.roll(1, 11, -6) as f64 * 0.005)
+        .clamp(0.0, 0.8);
     let min_separation = if eccentricity < 0.001 {
         orbit_distance
     } else {
