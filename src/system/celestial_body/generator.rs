@@ -114,8 +114,17 @@ pub(crate) fn get_world_type(
     star_age: f32,
     rng: &mut SeededDiceRoller,
 ) -> CelestialBodyWorldType {
+    // Lava worlds: extremely hot and close to star
+    if blackbody_temperature > 1500 && matches!(size, CelestialBodySize::Standard | CelestialBodySize::Large) {
+        return CelestialBodyWorldType::LavaWorld;
+    }
+    // Iron worlds: very close metallic bodies that lost their mantle
+    if blackbody_temperature > 800 && body_type == CelestialBodyComposition::Metallic
+        && matches!(size, CelestialBodySize::Small | CelestialBodySize::Tiny)
+    {
+        return CelestialBodyWorldType::IronWorld;
+    }
     if blackbody_temperature > 1272
-        // TODO: Add if special_trait == rogue planet, skip the following conditions, or on the contrary randomly set protoworld:
         || (star_age <= 0.15 && size == CelestialBodySize::Small)
         || (star_age <= 0.2 && size == CelestialBodySize::Standard)
         || (star_age <= 0.3 && size == CelestialBodySize::Large)
@@ -144,6 +153,14 @@ pub(crate) fn get_world_type(
             }
         }
         CelestialBodySize::Standard => {
+            // Eyeball world: tidally locked in habitable zone of M/K dwarfs
+            if primary_star_mass < 0.6
+                && blackbody_temperature > 200
+                && blackbody_temperature <= 320
+                && rng.roll(1, 6, 0) >= 5
+            {
+                return CelestialBodyWorldType::EyeballWorld;
+            }
             if blackbody_temperature <= 80 {
                 CelestialBodyWorldType::Hadean
             } else if blackbody_temperature > 151

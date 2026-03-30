@@ -3118,7 +3118,13 @@ impl WorldGenerator {
             CelestialBodyWorldType::Greenhouse
             | CelestialBodyWorldType::Chthonian
             | CelestialBodyWorldType::VolatilesGiant
-            | CelestialBodyWorldType::ProtoWorld => (0, 0, 0, 0),
+            | CelestialBodyWorldType::ProtoWorld
+            | CelestialBodyWorldType::LavaWorld
+            | CelestialBodyWorldType::IronWorld
+            | CelestialBodyWorldType::MiniNeptune => (0, 0, 0, 0),
+            CelestialBodyWorldType::CarbonWorld => (5000, 2000, 1000, 5000),
+            CelestialBodyWorldType::RoguePlanet => (10000, 8000, 7000, 10000),
+            CelestialBodyWorldType::EyeballWorld => (15000, 5000, 3000, 8000),
             CelestialBodyWorldType::Ice | CelestialBodyWorldType::Hadean => {
                 (10000, 7000, 6500, 10000)
             }

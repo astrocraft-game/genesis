@@ -34,6 +34,22 @@ pub enum CelestialBodyWorldType {
     Chthonian,
     /// Worlds that are mostly made of an endless atmosphere of volatiles, like ice and gas giants.
     VolatilesGiant,
+    /// Worlds with a high carbon-to-oxygen ratio resulting in diamond/graphite mantles, tar oceans,
+    /// and methane/CO atmospheres. Form in carbon-rich systems.
+    CarbonWorld,
+    /// Worlds with little to no atmosphere, extremely close to their star, with a permanent magma
+    /// ocean on the day side and frozen rock on the night side.
+    LavaWorld,
+    /// Worlds tidally locked in the habitable zone, with a frozen dark side, scorched sun side,
+    /// and a habitable ring along the terminator.
+    EyeballWorld,
+    /// Worlds ejected from their parent system, drifting through interstellar space.
+    /// May have subsurface oceans heated by radioactive decay.
+    RoguePlanet,
+    /// Worlds stripped of their mantle, consisting almost entirely of an iron core.
+    IronWorld,
+    /// Worlds between rocky and gas giant size with a thick H/He envelope over a rocky core.
+    MiniNeptune,
 }
 
 impl Display for CelestialBodyWorldType {
@@ -54,6 +70,12 @@ impl Display for CelestialBodyWorldType {
                 CelestialBodyWorldType::Greenhouse => "Greenhouse",
                 CelestialBodyWorldType::Chthonian => "Chthonian",
                 CelestialBodyWorldType::VolatilesGiant => "Volatiles Giant",
+                CelestialBodyWorldType::CarbonWorld => "Carbon World",
+                CelestialBodyWorldType::LavaWorld => "Lava World",
+                CelestialBodyWorldType::EyeballWorld => "Eyeball World",
+                CelestialBodyWorldType::RoguePlanet => "Rogue Planet",
+                CelestialBodyWorldType::IronWorld => "Iron World",
+                CelestialBodyWorldType::MiniNeptune => "Mini-Neptune",
             }
         )
     }
