@@ -1,5 +1,6 @@
 use crate::internal::*;
 use crate::prelude::*;
+pub mod detail;
 pub mod generator;
 pub mod types;
 
