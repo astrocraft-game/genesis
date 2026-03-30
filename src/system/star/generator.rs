@@ -315,6 +315,8 @@ impl Star {
         let absolute_magnitude =
             crate::system::star::absolute_magnitude_from_luminosity(luminosity);
         let color_bv = crate::system::star::temperature_to_bv(temperature);
+        let flare_activity =
+            crate::system::star::compute_flare_activity(&spectral_type, age / 1000.0);
 
         Self {
             name,
@@ -332,6 +334,7 @@ impl Star {
             zones: vec![],
             absolute_magnitude,
             color_bv,
+            flare_activity,
         }
     }
 }

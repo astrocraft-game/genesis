@@ -36,6 +36,20 @@ pub struct Star {
     pub absolute_magnitude: f32,
     /// B-V color index (derived from temperature).
     pub color_bv: f32,
+    /// Stellar flare activity level.
+    pub flare_activity: FlareActivity,
+}
+
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize,
+)]
+pub enum FlareActivity {
+    VeryQuiet,
+    #[default]
+    Quiet,
+    Moderate,
+    Active,
+    Hyperactive,
 }
 
 impl Star {
@@ -56,6 +70,7 @@ impl Star {
     ) -> Self {
         let absolute_magnitude = absolute_magnitude_from_luminosity(luminosity);
         let color_bv = temperature_to_bv(temperature);
+        let flare_activity = compute_flare_activity(&spectral_type, age);
         Self {
             name,
             mass,
@@ -72,6 +87,7 @@ impl Star {
             zones,
             absolute_magnitude,
             color_bv,
+            flare_activity,
         }
     }
 
@@ -145,6 +161,39 @@ pub fn absolute_magnitude_from_luminosity(luminosity_solar: f32) -> f32 {
 /// L/L_sun = 10^((M_V_sun - M_V) / 2.5)
 pub fn luminosity_from_absolute_magnitude(abs_mag: f32) -> f32 {
     10.0_f64.powf(((4.83 - abs_mag) / 2.5) as f64) as f32
+}
+
+impl Display for FlareActivity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", match self {
+            FlareActivity::VeryQuiet => "Very Quiet",
+            FlareActivity::Quiet => "Quiet",
+            FlareActivity::Moderate => "Moderate",
+            FlareActivity::Active => "Active",
+            FlareActivity::Hyperactive => "Hyperactive",
+        })
+    }
+}
+
+/// Compute flare activity from spectral type and age.
+pub fn compute_flare_activity(spectral_type: &StarSpectralType, age_gyr: f32) -> FlareActivity {
+    let is_young = age_gyr < 1.0;
+    match spectral_type {
+        StarSpectralType::M(_) => {
+            if is_young { FlareActivity::Hyperactive } else { FlareActivity::Active }
+        }
+        StarSpectralType::K(_) => {
+            if is_young { FlareActivity::Active } else { FlareActivity::Moderate }
+        }
+        StarSpectralType::G(_) => {
+            if is_young { FlareActivity::Moderate } else { FlareActivity::Quiet }
+        }
+        StarSpectralType::F(_) => FlareActivity::Quiet,
+        StarSpectralType::A(_) | StarSpectralType::B(_) | StarSpectralType::O(_) => {
+            FlareActivity::VeryQuiet
+        }
+        _ => FlareActivity::Quiet,
+    }
 }
 
 /// Approximate B-V color index from temperature (Ballesteros 2012 inverse).
