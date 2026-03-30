@@ -1,6 +1,6 @@
 # Recipe Tracker
 
-## Current: 457 / 750 target
+## Current: 598 / 750 target (80%)
 
 ---
 
