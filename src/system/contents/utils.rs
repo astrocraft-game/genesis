@@ -138,6 +138,30 @@ pub(crate) fn jeans_parameter(
     v_e / v_rms
 }
 
+/// Estimate Lagrange trojan population for a planet.
+/// L4/L5 points are stable when mass ratio > 25:1 (planet:star).
+/// Returns estimated number of trojans (order of magnitude) or 0.
+pub(crate) fn estimate_trojan_population(
+    planet_mass_solar: f64,
+    star_mass_solar: f64,
+    system_age_gyr: f32,
+) -> u32 {
+    if planet_mass_solar <= 0.0 || star_mass_solar <= 0.0 {
+        return 0;
+    }
+    let mass_ratio = star_mass_solar / planet_mass_solar;
+    // L4/L5 stable only if mass ratio > ~25
+    if mass_ratio < 25.0 {
+        return 0;
+    }
+    // Population scales with planet mass and system age
+    // Jupiter has ~10,000 known trojans
+    let jupiter_mass_solar = 9.545e-4;
+    let mass_factor = (planet_mass_solar / jupiter_mass_solar).sqrt();
+    let age_factor = (system_age_gyr as f64 / 4.5).min(2.0);
+    (mass_factor * age_factor * 5000.0) as u32
+}
+
 /// Estimate photochemical haze optical depth for atmospheres with CH4/N2 under UV.
 /// Returns haze optical depth (0 = clear, >1 = opaque like Titan).
 pub(crate) fn estimate_photochemical_haze(
@@ -637,6 +661,19 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_trojans_jupiter_like() {
+        let pop = estimate_trojan_population(9.545e-4, 1.0, 4.5);
+        assert!(pop > 1000, "Jupiter-like should have thousands of trojans, got {}", pop);
+    }
+
+    #[test]
+    fn test_trojans_earth_like() {
+        // Earth mass is too small relative to Sun for significant trojans
+        let pop = estimate_trojan_population(3.0e-6, 1.0, 4.5);
+        assert!(pop < 500, "Earth-like should have few trojans, got {}", pop);
     }
 
     #[test]
