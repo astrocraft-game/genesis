@@ -138,6 +138,33 @@ pub(crate) fn jeans_parameter(
     v_e / v_rms
 }
 
+/// Checks if two orbital periods are in a near-integer resonance.
+/// Returns Some((p, q)) if period1/period2 is within tolerance of p/q.
+pub(crate) fn detect_orbital_resonance(
+    period1: f32,
+    period2: f32,
+    tolerance: f64,
+) -> Option<(u8, u8)> {
+    if period1 <= 0.0 || period2 <= 0.0 {
+        return None;
+    }
+    let ratio = if period1 > period2 {
+        period1 as f64 / period2 as f64
+    } else {
+        period2 as f64 / period1 as f64
+    };
+    let resonances: &[(u8, u8)] = &[
+        (2, 1), (3, 2), (4, 3), (5, 3), (5, 2), (3, 1), (4, 1), (5, 4), (7, 4),
+    ];
+    for &(p, q) in resonances {
+        let expected = p as f64 / q as f64;
+        if (ratio - expected).abs() / expected < tolerance {
+            return Some((p, q));
+        }
+    }
+    None
+}
+
 /// Computes tidal heating flux in W/m^2.
 /// Based on: E_dot ~ (21/2) * k2/Q * G * M_host^2 * R^5 * n * e^2 / a^6
 /// Simplified with empirical calibration to match Io (~2 W/m^2) and Europa (~0.02 W/m^2).
@@ -477,6 +504,25 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_detect_resonance_2_1() {
+        let res = detect_orbital_resonance(365.0, 183.0, 0.05);
+        assert_eq!(res, Some((2, 1)));
+    }
+
+    #[test]
+    fn test_detect_resonance_3_2() {
+        // Io-Europa: 1.77 days vs 3.55 days -> 2:1
+        let res = detect_orbital_resonance(3.55, 1.77, 0.05);
+        assert_eq!(res, Some((2, 1)));
+    }
+
+    #[test]
+    fn test_detect_no_resonance() {
+        let res = detect_orbital_resonance(365.0, 200.0, 0.03);
+        assert!(res.is_none());
     }
 
     #[test]

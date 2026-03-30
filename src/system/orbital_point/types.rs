@@ -35,6 +35,10 @@ pub struct Orbit {
     pub rotation: f32,
     /// The time it takes in terran days between two sunrises on the object in this orbit.
     pub day_length: f32,
+    /// Orbital resonance with another body, if any. (p, q) means p:q period ratio.
+    pub resonance: Option<(u8, u8)>,
+    /// ID of the resonance partner body, if any.
+    pub resonance_partner: Option<u32>,
 }
 
 impl Orbit {
@@ -68,6 +72,8 @@ impl Orbit {
             orbital_period,
             rotation,
             day_length,
+            resonance: None,
+            resonance_partner: None,
         }
     }
 }
