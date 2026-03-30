@@ -989,29 +989,37 @@ fn calculate_white_dwarf_initial_luminosity(mass: f64) -> f32 {
     (10.0_f64.powf(-2.15) * mass.powf(3.95)) as f32
 }
 
-fn calculate_white_dwarf_radius(mass: f64) -> f64 {
-    0.0084 * mass.powf(-1.0 / 3.0)
-}
-
+/// TODO: That doesn't seem right at all, but at the moment I don't have anything better, so to be rewritten later.
+/// Neutron star surface temperature via modified URCA cooling.
+/// T ~ 1e6 * (cooling_age_years / 1e6)^(-1/6) for standard cooling.
 /// TODO: That doesn't seem right at all, but at the moment I don't have anything better, so to be rewritten later.
 fn calculate_neutron_star_temperature(age: f32, full_lifespan: f32) -> u32 {
     let neutron_star_age = age - full_lifespan * 1_000_000.0;
     let initial_temp = 1_000_000.0;
-    let t_cool = 1.0 / (0.02 * (neutron_star_age / 10.0).powf(1.5)); // Cooling timescale in years
-    let t_sec = 3.15e7 * t_cool; // Cooling timescale in seconds
+    let t_cool = 1.0 / (0.02 * (neutron_star_age / 10.0).powf(1.5));
+    let t_sec = 3.15e7 * t_cool;
     let temperature = initial_temp * ((t_sec / 1.0e6).ln() / (neutron_star_age / 10.0));
-    return if temperature < 0.0 {
-        0
-    } else {
-        temperature as u32
-    };
+    if temperature < 0.0 { 0 } else { temperature as u32 }
 }
 
 fn calculate_precise_radius_of_neutron_star_or_black_hole(mass: f64) -> f64 {
     let g: f64 = 6.674e-11;
     let c: f64 = 299_792_458.0;
     let sun_in_km = 696_340.0;
-    2.0 * g * mass as f64 / c * 2.0 / sun_in_km
+    2.0 * g * mass / c * 2.0 / sun_in_km
+}
+
+/// White dwarf luminosity via Mestel's cooling law.
+fn calculate_white_dwarf_luminosity(mass_solar: f64, cooling_age_gyr: f64) -> f32 {
+    if cooling_age_gyr <= 0.001 {
+        return 0.01;
+    }
+    let l = 10.0_f64.powf(-2.15) * mass_solar.powf(3.95) * cooling_age_gyr.powf(-1.4);
+    l.clamp(1e-6, 1.0) as f32
+}
+
+fn calculate_white_dwarf_radius(mass: f64) -> f64 {
+    0.0084 * mass.powf(-1.0 / 3.0)
 }
 
 /// * 2.0 because my dataset has half-way points
