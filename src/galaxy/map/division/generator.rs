@@ -10,7 +10,7 @@ impl GalacticMapDivision {
         galaxy: &Galaxy,
     ) -> Self {
         let mut division = Self {
-            name: generate_division_name(index, level, galaxy),
+            name: "Sector".into(),
             region: GalacticRegion::Multiple,
             level,
             x: (index.x % parent_division_level.x_subdivisions as i64) as u8,
@@ -20,12 +20,16 @@ impl GalacticMapDivision {
             size: SpaceCoordinates::new(-1, -1, -1),
         };
         division.region = get_region(&mut division, galaxy);
+        division.name = generate_division_name(index, level, &division.region);
         division
     }
 }
 
-fn generate_division_name(index: SpaceCoordinates, level: u8, galaxy: &Galaxy) -> Rc<str> {
-    let region = generate_region(index, galaxy);
+fn generate_division_name(
+    index: SpaceCoordinates,
+    level: u8,
+    region: &GalacticRegion,
+) -> Rc<str> {
     let region_prefix = match region {
         GalacticRegion::Core => "Core",
         GalacticRegion::Nucleus => "Nucleus",
@@ -94,22 +98,94 @@ fn get_region(division: &mut GalacticMapDivision, galaxy: &Galaxy) -> GalacticRe
     }
 }
 
-/// Returns the proper region for a given coordinate.
-/// TODO: Generate regions properly
+/// Returns the proper region for a given coordinate based on distance from center.
 fn generate_region(coord: SpaceCoordinates, galaxy: &Galaxy) -> GalacticRegion {
-    let spheroid_sizes = match galaxy.category {
-        GalaxyCategory::Spiral(r, _) | GalaxyCategory::Lenticular(r, _) => {
-            SpaceCoordinates::new(r as i64 * 2, r as i64 * 2, (r as i64 * 2) / 10)
-        }
+    let (radius, height) = match galaxy.category {
+        GalaxyCategory::Spiral(r, h) | GalaxyCategory::Lenticular(r, h) => (r as f64, h as f64),
         GalaxyCategory::Elliptical(r) | GalaxyCategory::DominantElliptical(r) => {
-            SpaceCoordinates::new(r as i64 * 2, r as i64 * 2, r as i64 * 2)
+            (r as f64, r as f64)
         }
-        _ => return GalacticRegion::Multiple,
+        GalaxyCategory::Irregular(x, y, z) => (x.max(y) as f64, z as f64),
+        _ => return GalacticRegion::Void,
     };
 
-    let abs_coord = coord.abs(galaxy.get_galactic_start());
-    if is_within_sphere_in_non_equal_planes(abs_coord, spheroid_sizes, galaxy) {
-        GalacticRegion::Ellipse
+    let center = galaxy.get_galactic_center();
+    let dx = (coord.x - center.x) as f64;
+    let dy = (coord.y - center.y) as f64;
+    let dz = (coord.z - center.z) as f64;
+    let planar_dist = (dx * dx + dy * dy).sqrt();
+    let dist_ratio = planar_dist / radius;
+    let z_ratio = dz.abs() / height.max(1.0);
+
+    // Outside the galaxy
+    if dist_ratio > 1.0 && z_ratio > 1.0 {
+        return GalacticRegion::Void;
+    }
+
+    // For ellipticals, use simple distance-based regions
+    if matches!(
+        galaxy.category,
+        GalaxyCategory::Elliptical(_) | GalaxyCategory::DominantElliptical(_)
+    ) {
+        return if dist_ratio < 0.05 {
+            GalacticRegion::Core
+        } else if dist_ratio < 0.5 {
+            GalacticRegion::Ellipse
+        } else if dist_ratio <= 1.0 {
+            GalacticRegion::Halo
+        } else {
+            GalacticRegion::Void
+        };
+    }
+
+    // For irregular galaxies
+    if matches!(galaxy.category, GalaxyCategory::Irregular(_, _, _)) {
+        return if dist_ratio <= 1.0 && z_ratio <= 1.0 {
+            GalacticRegion::Aura
+        } else {
+            GalacticRegion::Void
+        };
+    }
+
+    // Spirals and lenticulars: layered regions
+    if z_ratio > 2.0 {
+        return GalacticRegion::Void;
+    }
+    if z_ratio > 1.0 {
+        return GalacticRegion::Halo;
+    }
+
+    if dist_ratio < 0.03 {
+        GalacticRegion::Nucleus
+    } else if dist_ratio < 0.1 {
+        GalacticRegion::Bulge
+    } else if dist_ratio < 0.15
+        && matches!(galaxy.sub_category, GalaxySubCategory::BarredSpiral)
+    {
+        GalacticRegion::Bar
+    } else if dist_ratio <= 0.85 {
+        // In a spiral, check if we're near an arm
+        // Simplified: use angular position to determine arm vs disk
+        let angle = dy.atan2(dx);
+        let arm_count = match galaxy.sub_category {
+            GalaxySubCategory::BarredSpiral | GalaxySubCategory::ClassicSpiral => 4,
+            GalaxySubCategory::FlatSpiral => 2,
+            _ => 3,
+        };
+        // Logarithmic spiral: arm_angle = b * ln(r/a), check proximity
+        let arm_angle_spacing = std::f64::consts::TAU / arm_count as f64;
+        let spiral_tightness = 0.3;
+        let expected_angle = spiral_tightness * (dist_ratio * 10.0).ln();
+        let angular_offset = ((angle - expected_angle) % arm_angle_spacing).abs();
+        let arm_width = arm_angle_spacing * 0.3;
+
+        if angular_offset < arm_width || angular_offset > (arm_angle_spacing - arm_width) {
+            GalacticRegion::Arm
+        } else {
+            GalacticRegion::Disk
+        }
+    } else if dist_ratio <= 1.0 {
+        GalacticRegion::Halo
     } else {
         GalacticRegion::Void
     }
