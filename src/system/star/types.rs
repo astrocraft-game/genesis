@@ -56,6 +56,16 @@ pub struct StarSettings {
     /// The likelihood of violet stars of bigger size to be generated in star generation.
     #[default = 1]
     pub violet_star_three_gen_chance: u32,
+    /// Force a specific spectral type during generation, if any.
+    pub fixed_spectral_type: Option<StarSpectralType>,
+    /// Force a specific luminosity class during generation, if any.
+    pub fixed_luminosity_class: Option<StarLuminosityClass>,
+    /// Force a specific population during generation, if any.
+    pub fixed_population: Option<StellarEvolution>,
+    /// Minimum number of stars in the system.
+    pub min_stars: Option<u8>,
+    /// Maximum number of stars in the system.
+    pub max_stars: Option<u8>,
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
