@@ -37,6 +37,8 @@ pub struct TelluricBodyDetails {
     pub temperature_category: WorldTemperatureCategory,
     /// A descriptive name for the world’s over-all climate.
     pub climate: WorldClimateType,
+    /// Planetary resources with abundance and accessibility.
+    pub resources: Vec<PlanetaryResource>,
     // pub landmasses: u32,
     // pub territories: Vec<Territory>,
     // pub atmospheric_composition: AtmosphericCompositionType,
@@ -62,6 +64,7 @@ impl TelluricBodyDetails {
         humidity: f32,
         temperature_category: WorldTemperatureCategory,
         climate: WorldClimateType,
+        resources: Vec<PlanetaryResource>,
     ) -> Self {
         Self {
             body_type,
@@ -80,6 +83,7 @@ impl TelluricBodyDetails {
             humidity,
             temperature_category,
             climate,
+            resources,
         }
     }
 

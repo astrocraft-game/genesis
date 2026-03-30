@@ -66,6 +66,7 @@ impl WorldGenerator {
                     0.0,
                     WorldTemperatureCategory::Frozen,
                     WorldClimateType::Dead,
+                    Vec::new(),
                 )),
             }),
             moons
@@ -1745,6 +1746,7 @@ impl WorldGenerator {
                     humidity,
                     temperature_category,
                     climate,
+                    Self::generate_resources(body_type, volcanism, size, &seed, coord, system_index, star_id, orbital_point_id),
                 )),
             )),
             orbits.clone(),
@@ -2476,6 +2478,85 @@ impl WorldGenerator {
         } else {
             world_type
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn generate_resources(
+        body_type: TelluricBodyComposition,
+        volcanism: f32,
+        size: CelestialBodySize,
+        seed: &Rc<str>,
+        coord: SpaceCoordinates,
+        system_index: u16,
+        star_id: u32,
+        orbital_point_id: u32,
+    ) -> Vec<PlanetaryResource> {
+        let mut rng = SeededDiceRoller::new(
+            seed,
+            &format!("sys_{}_{}_str_{}_bdy{}_res", coord, system_index, star_id, orbital_point_id),
+        );
+
+        let size_mod: i32 = match size {
+            CelestialBodySize::Puny | CelestialBodySize::Tiny => -2,
+            CelestialBodySize::Small => -1,
+            CelestialBodySize::Standard => 0,
+            CelestialBodySize::Large => 1,
+            _ => 2,
+        };
+        let volc_mod: i32 = if volcanism > 50.0 { 2 } else if volcanism > 20.0 { 1 } else { 0 };
+
+        let resource_types = [
+            ResourceType::CommonMetals,
+            ResourceType::PreciousMetals,
+            ResourceType::Radioactives,
+            ResourceType::IndustrialMinerals,
+            ResourceType::Volatiles,
+            ResourceType::OrganicCompounds,
+        ];
+
+        let mut resources = Vec::new();
+        for rt in resource_types {
+            let base_mod = match (&rt, &body_type) {
+                (ResourceType::CommonMetals, TelluricBodyComposition::Metallic) => 3,
+                (ResourceType::CommonMetals, TelluricBodyComposition::Rocky) => 1,
+                (ResourceType::PreciousMetals, TelluricBodyComposition::Metallic) => 2,
+                (ResourceType::Volatiles, TelluricBodyComposition::Icy) => 3,
+                (ResourceType::OrganicCompounds, TelluricBodyComposition::Icy) => 1,
+                (ResourceType::Volatiles, TelluricBodyComposition::Metallic) => -2,
+                _ => 0,
+            };
+
+            let roll = rng.roll(2, 6, size_mod + volc_mod + base_mod);
+            let abundance = match roll {
+                i64::MIN..=3 => ResourceAbundance::Absent,
+                4..=5 => ResourceAbundance::Trace,
+                6..=7 => ResourceAbundance::Poor,
+                8..=10 => ResourceAbundance::Average,
+                11..=12 => ResourceAbundance::Rich,
+                _ => ResourceAbundance::Motherlode,
+            };
+
+            if abundance == ResourceAbundance::Absent {
+                continue;
+            }
+
+            let acc_roll = rng.roll(1, 6, volc_mod);
+            let accessibility = match acc_roll {
+                i64::MIN..=1 => ResourceAccessibility::Inaccessible,
+                2 => ResourceAccessibility::Deep,
+                3..=4 => ResourceAccessibility::Subsurface,
+                5 => ResourceAccessibility::Surface,
+                _ => ResourceAccessibility::Atmospheric,
+            };
+
+            resources.push(PlanetaryResource {
+                resource_type: rt,
+                abundance,
+                accessibility,
+            });
+        }
+
+        resources
     }
 
     fn generate_climate(
