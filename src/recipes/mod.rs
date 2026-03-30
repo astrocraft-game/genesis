@@ -20,6 +20,7 @@ pub mod oils;
 pub mod spice;
 pub mod textile;
 pub mod biomaterial;
+pub mod advanced_materials;
 
 use types::Recipe;
 
@@ -43,6 +44,7 @@ pub fn all_recipes() -> Vec<&'static Recipe> {
     all.extend(spice::SPICE_RECIPES.iter());
     all.extend(textile::TEXTILE_RECIPES.iter());
     all.extend(biomaterial::BIOMATERIAL_RECIPES.iter());
+    all.extend(advanced_materials::ADVANCED_MATERIAL_RECIPES.iter());
     all
 }
 

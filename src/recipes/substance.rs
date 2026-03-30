@@ -165,4 +165,16 @@ pub enum Substance {
     BirchBark, CaseinProtein, Starch, WoodPulpRaw,
     ChromiumSulfate, BrainTissue,
     OilSeed, AgavePlant,
+
+    // === ADVANCED MATERIALS ===
+    CarbonNanotube, Graphene, Fullerene, QuantumDot, Aerogel, MOF,
+    YBCO, MgB2Superconductor, NbTi,
+    GalliumArsenide, GalliumNitride, SiliconCarbideSemi, IndiuPhosphide,
+    CdTeSolar, CIGSSolar, PerovskiteSolar,
+    SiliconNitrideCeramic, BoronCarbide, AluminumNitride, YSZ, PZT, BariumFerrite,
+    Sapphire, OpticalFiber,
+    CarbonFiber, CFRP, Kevlar, UHMWPE,
+    Hydroxyapatite, BioactiveGlass, PLA, Chitosan,
+    SiliconSolarCell, NMCCathode, SolidElectrolyte, MetalHydride, BiTe,
+    Nanocellulose, SilverNanoparticle, GoldNanoparticle, TiO2Nano, IronOxideNano, SilicaNano,
 }
