@@ -813,21 +813,21 @@ fn white_dwarf_final_mass(initial_mass: f64) -> f64 {
 
 **Tier 2 - Medium effort (build on existing systems):**
 - [x] 8. Configurable Stars (item 6) - settings fields + wiring
-- [ ] 9. Binary Star Orbits (item 8)
-- [ ] 10. Orbit Refinements (item 9)
-- [ ] 11. World Parameters/Climate TODOs (item 10)
+- [x] 9. Binary Star Orbits (item 8) - eccentricity, inclination, period
+- [x] 10. Orbit Refinements (item 9) - rotation clamping
+- [x] 11. World Parameters/Climate TODOs (item 10) - sublimation + age-based core cooling
 - [x] 12. Life Presence (item 12) - score-based life level
 
 **Tier 3 - New subsystems:**
 - [x] 13. Resources (item 11) - 6 resource types with abundance/accessibility
 - [ ] 14. Exotic Planets (item 15)
-- [ ] 15. Points of Interest (item 13)
+- [x] 15. Points of Interest (item 13) - 18 POI types with significance
 - [x] 16. Region Mapping - temporary (item 3a) - nucleus/bulge/bar/arm/disk/halo
-- [ ] 17. Region Mapping - proper (item 3b)
-- [ ] 18. Map Generation (item 14)
+- [x] 17. Region Mapping - proper (item 3b) - clusters, associations, tidal streams
+- [x] 18. Map Generation (item 14) - biome distribution, elevation, tectonic plates
 
 **Tier 4 - Major features (depend on Tier 2-3):**
-- [ ] 19. Species Generation phases 1-3 (item 16)
+- [x] 19. Species Generation phases 1-3 (item 16) - data model + condition-based generation
 - [ ] 20. Species History phase 4 (item 16)
 - [ ] 21. Species Expansion phase 5 (item 16)
 - [ ] 22. Populated Objects (item 17)
