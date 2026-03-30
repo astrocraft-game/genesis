@@ -1,0 +1,9 @@
+[package]
+name = "crafting"
+version = "0.1.0"
+edition = "2021"
+description = "Recipe/crafting system with 750+ real-world material science recipes and dependency graph"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+petgraph = "0.7"
