@@ -361,27 +361,27 @@ Focused on physical plausibility, real data distributions, and natural phenomena
 ## Suggested Implementation Order
 
 **Tier 0 - Fix plausibility (generation currently wrong):**
-- [ ] 1. Atmospheric escape validation
-- [ ] 2. Tidal locking from physics
-- [ ] 3. Quantitative tidal heating
-- [ ] 12. Beta distribution for eccentricity
+- [x] 1. Atmospheric escape validation
+- [x] 2. Tidal locking from physics
+- [x] 3. Quantitative tidal heating
+- [x] 12. Beta distribution for eccentricity
 
 **Tier 1 - Wire existing dead code:**
 - [ ] 15. Wire life system into generation
 
 **Tier 2 - Missing physics (high impact):**
-- [ ] 4. Orbital resonance detection
+- [x] 4. Orbital resonance detection
 - [ ] 5. Ring and belt generation
-- [ ] 6. Magnetopause and radiation belts
-- [ ] 8. Stellar flare activity
+- [x] 6. Magnetopause and radiation belts
+- [x] 8. Stellar flare activity
 
 **Tier 3 - Natural phenomena (enrichment):**
-- [ ] 7. Hadley circulation cells
+- [x] 7. Hadley circulation cells
 - [ ] 9. Subsurface ocean estimation
-- [ ] 10. Crater population
+- [x] 10. Crater population
 - [ ] 11. Spin-orbit resonance
 - [ ] 13. Cryovolcanism
-- [ ] 14. Frost cycles
+- [x] 14. Frost cycles
 - [ ] 16. Photochemical hazes
 - [ ] 17. Lagrange trojans
 - [ ] 18. Oort cloud and comet reservoirs
