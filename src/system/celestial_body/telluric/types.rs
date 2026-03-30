@@ -308,6 +308,10 @@ pub struct PlanetSurfaceMap {
     pub deepest_ocean_km: f32,
     /// Number of tectonic plates.
     pub tectonic_plate_count: u8,
+    /// Seasonal temperature swing in Kelvin (from axial tilt + eccentricity).
+    pub temperature_range_k: f32,
+    /// If a major atmospheric gas seasonally condenses as frost.
+    pub seasonal_frost: bool,
     /// Crater density class based on surface age and resurfacing.
     pub crater_density: CraterDensity,
     /// Diameter of the largest impact crater in km.

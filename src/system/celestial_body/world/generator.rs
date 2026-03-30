@@ -1766,7 +1766,7 @@ impl WorldGenerator {
                     climate,
                     Self::generate_resources(body_type, volcanism, size, &seed, coord, system_index, star_id, orbital_point_id),
                     Self::generate_points_of_interest(volcanism, hydrosphere, atmospheric_pressure, life_level, size, &seed, coord, system_index, star_id, orbital_point_id),
-                    Self::generate_surface_map(climate, hydrosphere, ice_over_water, ice_over_land, volcanism, tectonics, gravity, radius, size, &seed, coord, system_index, star_id, orbital_point_id),
+                    Self::generate_surface_map(climate, hydrosphere, ice_over_water, ice_over_land, volcanism, tectonics, gravity, radius, blackbody_temperature, own_orbit.axial_tilt, own_orbit.eccentricity, size, &seed, coord, system_index, star_id, orbital_point_id),
                     {
                         // Atmospheric circulation from thermal Rossby number
                         if atmospheric_pressure > 0.01 {
@@ -2569,6 +2569,9 @@ impl WorldGenerator {
         tectonics: f32,
         gravity: f32,
         radius: f64,
+        blackbody_temperature: u32,
+        axial_tilt: f32,
+        eccentricity: f32,
         size: CelestialBodySize,
         seed: &Rc<str>,
         coord: SpaceCoordinates,
@@ -2687,6 +2690,15 @@ impl WorldGenerator {
         // Filter out negligible biomes
         biomes.retain(|(_, frac)| *frac > 0.005);
 
+        // Seasonal temperature range from axial tilt and eccentricity
+        let tilt_rad = axial_tilt.to_radians();
+        let temperature_range_k = blackbody_temperature as f32 * tilt_rad.sin().abs() * 0.4
+            * (1.0 + eccentricity * 2.0);
+
+        // Seasonal frost: check if any major atmospheric gas condenses at minimum temperature
+        let t_min = blackbody_temperature as f32 - temperature_range_k * 0.5;
+        let seasonal_frost = t_min < 195.0 && blackbody_temperature > 195; // CO2 frost at ~195K
+
         // Crater density: young/active surfaces have fewer craters
         let resurfacing_rate = volcanism + tectonics;
         let crater_density = if resurfacing_rate > 80.0 {
@@ -2717,6 +2729,8 @@ impl WorldGenerator {
             highest_elevation_km,
             deepest_ocean_km,
             tectonic_plate_count,
+            temperature_range_k,
+            seasonal_frost,
             crater_density,
             largest_crater_km,
         })
