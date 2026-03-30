@@ -2,6 +2,9 @@
 use super::types::*;
 use super::substance::Substance as S;
 
+const CRG_PROPYLENE_OXIDE: u32 = 400;
+const CRG_ACETIC_ACID: u32 = 401;
+
 pub static ORGANIC_RECIPES: &[Recipe] = &[
     // ===== HYDROCARBONS =====
     Recipe { id: 800, name: "Steam Cracking (Ethylene)", category: RecipeCategory::ChemicalSynthesis,
@@ -122,4 +125,194 @@ pub static ORGANIC_RECIPES: &[Recipe] = &[
     Recipe { id: 882, name: "Nylon-6 from Caprolactam", category: RecipeCategory::ChemicalSynthesis,
         inputs: &[(S::Caprolactam, 1.0), (S::Water, 0.05)], outputs: &[(S::NylonResin, 1.0)], byproducts: &[],
         min_temp_c: 260, pressure_atm: 1.0, catalyst: None, duration_hours: 12.0, cross_recipe_group: None },
+
+    // ===== ADDITIONAL ORGANIC RECIPES =====
+
+    // 1. Formic acid from CO + NaOH (Koch carbonylation)
+    Recipe { id: 883, name: "Formic Acid (CO + NaOH)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::SynGas, 0.45), (S::SodiumHydroxide, 0.55)], outputs: &[(S::FormicAcid, 0.7)],
+        byproducts: &[(S::Water, 0.3)],
+        min_temp_c: 130, pressure_atm: 8.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
+
+    // 2. Oxalic acid from sodium formate pyrolysis
+    Recipe { id: 884, name: "Oxalic Acid (Sodium Formate Pyrolysis)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::SodiumFormate, 1.0)], outputs: &[(S::OxalicAcid, 0.65)],
+        byproducts: &[(S::Hydrogen, 0.05), (S::SodiumHydroxide, 0.3)],
+        min_temp_c: 400, pressure_atm: 1.0, catalyst: None, duration_hours: 1.5, cross_recipe_group: None },
+
+    // 3. MEK from 2-butanol dehydrogenation
+    Recipe { id: 885, name: "MEK (2-Butanol Dehydrogenation)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::SecButanol, 1.0)], outputs: &[(S::MethylEthylKetone, 0.95)],
+        byproducts: &[(S::HydrogenGas, 0.05)],
+        min_temp_c: 300, pressure_atm: 1.0, catalyst: Some(S::Copper), duration_hours: 0.5, cross_recipe_group: None },
+
+    // 4. Glycerol synthetic route via propylene (allyl chloride -> epichlorohydrin -> glycerol)
+    Recipe { id: 886, name: "Glycerol Synthetic (via Propylene)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Propylene, 0.6), (S::ChlorineGas, 0.3), (S::SodiumHydroxide, 0.3)],
+        outputs: &[(S::Glycerol, 0.7)],
+        byproducts: &[(S::HydrochloricAcid, 0.2), (S::Salt, 0.3)],
+        min_temp_c: 510, pressure_atm: 1.0, catalyst: None, duration_hours: 3.0, cross_recipe_group: None },
+
+    // 5. MMA from acetone cyanohydrin (ACH process)
+    Recipe { id: 887, name: "MMA (Acetone Cyanohydrin Process)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Acetone, 0.4), (S::HydrogenCyanide, 0.2), (S::Methanol, 0.2), (S::SulfuricAcid, 0.2)],
+        outputs: &[(S::MethylMethacrylate, 0.7)],
+        byproducts: &[(S::Ammonium, 0.2), (S::Water, 0.1)],
+        min_temp_c: 80, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
+
+    // 6. MTBE from methanol + isobutylene
+    Recipe { id: 888, name: "MTBE (Methanol + Isobutylene)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Methanol, 0.35), (S::Butadiene, 0.65)], outputs: &[(S::MTBE, 1.0)], byproducts: &[],
+        min_temp_c: 75, pressure_atm: 7.0, catalyst: Some(S::SulfuricAcid), duration_hours: 1.0, cross_recipe_group: None },
+
+    // 7. Propylene oxide chlorohydrin process
+    Recipe { id: 889, name: "Propylene Oxide (Chlorohydrin)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Propylene, 0.5), (S::ChlorineGas, 0.35), (S::SodiumHydroxide, 0.3)],
+        outputs: &[(S::PropyleneOxide, 0.7)],
+        byproducts: &[(S::Salt, 0.3), (S::Water, 0.15)],
+        min_temp_c: 50, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: Some(CRG_PROPYLENE_OXIDE) },
+
+    // 8. Propylene oxide HPPO process (H2O2 / TS-1 zeolite)
+    Recipe { id: 890, name: "Propylene Oxide (HPPO Process)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Propylene, 0.55), (S::HydrogenPeroxide, 0.45)],
+        outputs: &[(S::PropyleneOxide, 0.75)],
+        byproducts: &[(S::Water, 0.25)],
+        min_temp_c: 45, pressure_atm: 30.0, catalyst: Some(S::Titanium), duration_hours: 0.5, cross_recipe_group: Some(CRG_PROPYLENE_OXIDE) },
+
+    // 9. CCl4 from methane + excess Cl2
+    Recipe { id: 891, name: "Carbon Tetrachloride (Methane + Cl2)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Methane, 0.1), (S::ChlorineGas, 0.9)], outputs: &[(S::CarbonTetrachloride, 0.8)],
+        byproducts: &[(S::HydrochloricAcid, 0.2)],
+        min_temp_c: 560, pressure_atm: 1.0, catalyst: None, duration_hours: 0.5, cross_recipe_group: None },
+
+    // 10. Freon-12 (CFC-12) from CCl4 + HF (Swarts reaction)
+    Recipe { id: 892, name: "Freon-12 (Swarts Reaction)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::CarbonTetrachloride, 0.7), (S::HydrochloricAcid, 0.3)],
+        outputs: &[(S::Freon12, 0.8)],
+        byproducts: &[(S::HydrochloricAcid, 0.2)],
+        min_temp_c: 130, pressure_atm: 1.0, catalyst: Some(S::Chromium), duration_hours: 2.0, cross_recipe_group: None },
+
+    // 11. TFE from CHClF2 pyrolysis (for Teflon)
+    Recipe { id: 893, name: "Tetrafluoroethylene (CHClF2 Pyrolysis)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Freon12, 1.0)], outputs: &[(S::Tetrafluoroethylene, 0.8)],
+        byproducts: &[(S::HydrochloricAcid, 0.2)],
+        min_temp_c: 700, pressure_atm: 1.0, catalyst: None, duration_hours: 0.01, cross_recipe_group: None },
+
+    // 12. PTFE (Teflon) polymerization from TFE
+    Recipe { id: 894, name: "PTFE Polymerization", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Tetrafluoroethylene, 1.0)], outputs: &[(S::PTFE, 1.0)], byproducts: &[],
+        min_temp_c: 70, pressure_atm: 25.0, catalyst: None, duration_hours: 8.0, cross_recipe_group: None },
+
+    // 13. Polypropylene from propylene (Ziegler-Natta)
+    Recipe { id: 895, name: "Polypropylene (Ziegler-Natta)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Propylene, 1.0)], outputs: &[(S::Polypropylene, 1.0)], byproducts: &[],
+        min_temp_c: 70, pressure_atm: 30.0, catalyst: Some(S::Titanium), duration_hours: 4.0, cross_recipe_group: None },
+
+    // 14. Nitrobenzene from benzene nitration
+    Recipe { id: 896, name: "Nitrobenzene (Benzene Nitration)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Benzene, 0.55), (S::NitricAcid, 0.45)],
+        outputs: &[(S::Nitrobenzene, 0.85)],
+        byproducts: &[(S::Water, 0.15)],
+        min_temp_c: 55, pressure_atm: 1.0, catalyst: Some(S::SulfuricAcid), duration_hours: 1.0, cross_recipe_group: None },
+
+    // 15. Acetic acid (Cativa process - Ir catalyzed methanol carbonylation)
+    Recipe { id: 897, name: "Acetic Acid (Cativa Process)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Methanol, 0.5), (S::SynGas, 0.5)], outputs: &[(S::AceticAcid, 1.0)], byproducts: &[],
+        min_temp_c: 180, pressure_atm: 30.0, catalyst: Some(S::Platinum), duration_hours: 0.5, cross_recipe_group: Some(CRG_ACETIC_ACID) },
+
+    // 16. Acetic acid from vinegar fermentation
+    Recipe { id: 898, name: "Acetic Acid (Vinegar Fermentation)", category: RecipeCategory::FoodBiological,
+        inputs: &[(S::Ethanol, 0.6), (S::Oxygen, 0.4)], outputs: &[(S::AceticAcid, 0.8)],
+        byproducts: &[(S::Water, 0.2)],
+        min_temp_c: 30, pressure_atm: 1.0, catalyst: None, duration_hours: 168.0, cross_recipe_group: Some(CRG_ACETIC_ACID) },
+
+    // 17. Cyclohexanone from cyclohexane oxidation
+    Recipe { id: 899, name: "Cyclohexanone (Cyclohexane Oxidation)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Benzene, 0.7), (S::HydrogenGas, 0.1), (S::Oxygen, 0.2)],
+        outputs: &[(S::Cyclohexanone, 0.85)],
+        byproducts: &[(S::Water, 0.15)],
+        min_temp_c: 155, pressure_atm: 12.0, catalyst: Some(S::Cobalt), duration_hours: 2.0, cross_recipe_group: None },
+
+    // 18. Styrene from ethylbenzene dehydrogenation
+    Recipe { id: 1100, name: "Styrene (Ethylbenzene Dehydrogenation)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Ethylbenzene, 1.0)], outputs: &[(S::Styrene, 0.9)],
+        byproducts: &[(S::HydrogenGas, 0.1)],
+        min_temp_c: 620, pressure_atm: 1.0, catalyst: Some(S::Iron), duration_hours: 0.1, cross_recipe_group: None },
+
+    // 19. Phenol from cumene oxidation (co-product split from cumene process)
+    Recipe { id: 1101, name: "Phenol (Cumene Oxidation)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Benzene, 0.55), (S::Propylene, 0.35), (S::Oxygen, 0.1)],
+        outputs: &[(S::Phenol, 0.65)],
+        byproducts: &[(S::Acetone, 0.35)],
+        min_temp_c: 90, pressure_atm: 5.0, catalyst: Some(S::PhosphoricAcid), duration_hours: 4.0, cross_recipe_group: None },
+
+    // 20. Ethylbenzene from benzene + ethylene
+    Recipe { id: 1102, name: "Ethylbenzene (Benzene + Ethylene)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Benzene, 0.55), (S::Ethylene, 0.45)],
+        outputs: &[(S::Ethylbenzene, 1.0)], byproducts: &[],
+        min_temp_c: 450, pressure_atm: 2.0, catalyst: Some(S::Aluminum), duration_hours: 0.5, cross_recipe_group: None },
+
+    // 21. Methyl chloride from methane + Cl2
+    Recipe { id: 1103, name: "Methyl Chloride (Methane + Cl2)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Methane, 0.3), (S::ChlorineGas, 0.7)], outputs: &[(S::MethylChloride, 0.8)],
+        byproducts: &[(S::HydrochloricAcid, 0.2)],
+        min_temp_c: 400, pressure_atm: 1.0, catalyst: None, duration_hours: 0.3, cross_recipe_group: None },
+
+    // 22. Dichloromethane from methane + Cl2
+    Recipe { id: 1104, name: "Dichloromethane (Methane + Cl2)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Methane, 0.2), (S::ChlorineGas, 0.8)], outputs: &[(S::Dichloromethane, 0.8)],
+        byproducts: &[(S::HydrochloricAcid, 0.2)],
+        min_temp_c: 400, pressure_atm: 1.0, catalyst: None, duration_hours: 0.3, cross_recipe_group: None },
+
+    // 23. Allyl chloride from propylene + Cl2
+    Recipe { id: 1105, name: "Allyl Chloride (Propylene + Cl2)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Propylene, 0.55), (S::ChlorineGas, 0.45)], outputs: &[(S::AllylChloride, 0.8)],
+        byproducts: &[(S::HydrochloricAcid, 0.2)],
+        min_temp_c: 510, pressure_atm: 1.0, catalyst: None, duration_hours: 0.1, cross_recipe_group: None },
+
+    // 24. Epichlorohydrin from allyl chloride
+    Recipe { id: 1106, name: "Epichlorohydrin (from Allyl Chloride)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::AllylChloride, 0.6), (S::ChlorineGas, 0.2), (S::SodiumHydroxide, 0.2)],
+        outputs: &[(S::Epichlorohydrin, 0.7)],
+        byproducts: &[(S::Salt, 0.2), (S::Water, 0.1)],
+        min_temp_c: 38, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
+
+    // 25. Acrylic acid from propylene oxidation
+    Recipe { id: 1107, name: "Acrylic Acid (Propylene Oxidation)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Propylene, 0.6), (S::Oxygen, 0.4)], outputs: &[(S::AcrylicAcid, 0.85)],
+        byproducts: &[(S::Water, 0.15)],
+        min_temp_c: 330, pressure_atm: 2.0, catalyst: Some(S::Molybdenum), duration_hours: 0.1, cross_recipe_group: None },
+
+    // 26. Maleic anhydride from butane oxidation
+    Recipe { id: 1108, name: "Maleic Anhydride (Butane Oxidation)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Butadiene, 0.5), (S::Oxygen, 0.5)], outputs: &[(S::MaleicAnhydride, 0.7)],
+        byproducts: &[(S::Water, 0.2), (S::CarbonDioxide, 0.1)],
+        min_temp_c: 400, pressure_atm: 2.0, catalyst: Some(S::Vanadium), duration_hours: 0.1, cross_recipe_group: None },
+
+    // 27. Phthalic anhydride from o-xylene
+    Recipe { id: 1109, name: "Phthalic Anhydride (o-Xylene Oxidation)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Xylene, 0.7), (S::Oxygen, 0.3)], outputs: &[(S::PhthalicAnhydride, 0.85)],
+        byproducts: &[(S::Water, 0.1), (S::CarbonDioxide, 0.05)],
+        min_temp_c: 370, pressure_atm: 1.0, catalyst: Some(S::Vanadium), duration_hours: 0.1, cross_recipe_group: None },
+
+    // 28. 2-Ethylhexanol from propylene (hydroformylation -> aldol -> hydrogenation)
+    Recipe { id: 1110, name: "2-Ethylhexanol (Propylene Hydroformylation)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Propylene, 0.5), (S::SynGas, 0.3), (S::HydrogenGas, 0.2)],
+        outputs: &[(S::Ethylhexanol, 0.9)],
+        byproducts: &[(S::Water, 0.1)],
+        min_temp_c: 130, pressure_atm: 20.0, catalyst: Some(S::Cobalt), duration_hours: 3.0, cross_recipe_group: None },
+
+    // 29. Vinyl acetate from ethylene + acetic acid + O2
+    Recipe { id: 1111, name: "Vinyl Acetate (Ethylene + Acetic Acid)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Ethylene, 0.35), (S::AceticAcid, 0.45), (S::Oxygen, 0.2)],
+        outputs: &[(S::VinylAcetate, 0.85)],
+        byproducts: &[(S::Water, 0.15)],
+        min_temp_c: 175, pressure_atm: 8.0, catalyst: Some(S::Gold), duration_hours: 0.5, cross_recipe_group: None },
+
+    // 30. Dimethyl terephthalate from p-xylene + methanol
+    Recipe { id: 1112, name: "Dimethyl Terephthalate (p-Xylene + MeOH)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Xylene, 0.6), (S::Methanol, 0.25), (S::Oxygen, 0.15)],
+        outputs: &[(S::DimethylTerephthalate, 0.85)],
+        byproducts: &[(S::Water, 0.15)],
+        min_temp_c: 250, pressure_atm: 5.0, catalyst: Some(S::Cobalt), duration_hours: 3.0, cross_recipe_group: None },
 ];

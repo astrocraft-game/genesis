@@ -8,7 +8,7 @@ pub enum Substance {
     Iron, Copper, Gold, Silver, Platinum, Tin, Lead, Zinc, Nickel, Cobalt,
     Chromium, Manganese, Tungsten, Molybdenum, Vanadium, Titanium, Aluminum,
     Silicon, Carbon, Sulfur, Phosphorus, Nitrogen, Oxygen, Hydrogen, Uranium,
-    Lithium, Magnesium, Sodium, Calcium, Mercury,
+    Lithium, Magnesium, Sodium, Calcium, Mercury, Potassium, Thorium, Argon,
 
     // === ORES (30) ===
     Hematite, Magnetite, Chalcopyrite, Galena, Sphalerite, Cassiterite, Bauxite,
@@ -71,6 +71,12 @@ pub enum Substance {
     Aniline, Caprolactam, Acrylonitrile, HydrogenCyanide, Melamine,
     DiethylEther, MTBE, VinylChloride, Chloroform,
     Phenol, Styrene, Acetaldehyde,
+    OxalicAcid, MethylEthylKetone, SecButanol, SodiumFormate,
+    CarbonTetrachloride, Freon12, Tetrafluoroethylene, PTFE, Polypropylene,
+    Nitrobenzene, Cyclohexanone, Ethylbenzene,
+    MethylChloride, Dichloromethane, AllylChloride, Epichlorohydrin,
+    AcrylicAcid, MaleicAnhydride, PhthalicAnhydride, Ethylhexanol,
+    VinylAcetate, DimethylTerephthalate,
 
     // === INORGANIC PRODUCTS ===
     SodiumChloride, SodiumSulfate, PotassiumNitrate, CalciumChloride,
@@ -80,14 +86,16 @@ pub enum Substance {
 
     // === ELECTROCHEMISTRY ===
     LeadAcidBattery, LithiumIonBattery, ZincCarbonBattery,
+    NiMHBattery, SodiumSulfurBattery, IronAirBattery, LFPBattery, VanadiumFlowBattery,
     ChromePlating, GoldPlating, NickelPlating, ZincPlating,
+    SilverPlating, TinPlating, CopperPlating,
 
     // === PIGMENTS ===
     YellowOchre, RedOchre, RawUmber, BurntUmber, RawSienna, BurntSienna,
     CarbonBlack, BoneBlack, ChromeYellow, CobaltBluePigment,
     SyntheticUltramarine, TitaniumWhite, EgyptianBlue, Vermilion,
     LeadWhite, NaplesYellow, ChromeGreen, CadmiumYellow, CadmiumRed,
-    Verdigris, ZincWhite,
+    Verdigris, ZincWhite, MarsYellow, MarsRed, MarsBlack,
 
     // === NATURAL/GEO ===
     Ite, Marble, Slate, Quartzite, SerpentineMinite,
