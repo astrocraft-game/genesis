@@ -201,4 +201,120 @@ pub static CHEMISTRY_RECIPES: &[Recipe] = &[
         byproducts: &[],
         min_temp_c: 150, pressure_atm: 3.0, catalyst: None, duration_hours: 0.5,
         cross_recipe_group: None },
+
+    // ===== MORE POLYMERS =====
+    Recipe { id: 360, name: "Polyester (PET)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::CrudeOil, 1.5)],
+        outputs: &[(S::PolyesterFiber, 1.0)],
+        byproducts: &[(S::Water, 0.3)],
+        min_temp_c: 280, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+    Recipe { id: 361, name: "Polypropylene", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::CrudeOil, 1.3)],
+        outputs: &[(S::Polyethylene, 1.0)], // PP placeholder
+        byproducts: &[],
+        min_temp_c: 70, pressure_atm: 30.0, catalyst: Some(S::Titanium), duration_hours: 3.0, cross_recipe_group: None },
+    Recipe { id: 362, name: "Polystyrene", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Benzene, 0.6), (S::CrudeOil, 0.5)],
+        outputs: &[(S::Polyethylene, 1.0)], // PS placeholder
+        byproducts: &[],
+        min_temp_c: 120, pressure_atm: 1.0, catalyst: None, duration_hours: 6.0, cross_recipe_group: None },
+    Recipe { id: 363, name: "Acrylic Fiber", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::CrudeOil, 1.2), (S::Ammonia, 0.2)],
+        outputs: &[(S::NylonFiber, 1.0)], // acrylic placeholder
+        byproducts: &[],
+        min_temp_c: 55, pressure_atm: 1.0, catalyst: None, duration_hours: 8.0, cross_recipe_group: None },
+
+    // ===== PHARMACEUTICAL =====
+    Recipe { id: 370, name: "Aspirin Synthesis", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::CrudeOil, 0.5), (S::SulfuricAcid, 0.1)],
+        outputs: &[(S::SoapProduct, 0.9)], // aspirin placeholder
+        byproducts: &[(S::Water, 0.1)],
+        min_temp_c: 90, pressure_atm: 1.0, catalyst: Some(S::PhosphoricAcid), duration_hours: 0.5, cross_recipe_group: None },
+    Recipe { id: 371, name: "Penicillin Fermentation", category: RecipeCategory::FoodBiological,
+        inputs: &[(S::Sugar, 2.0), (S::Water, 10.0)],
+        outputs: &[(S::SoapProduct, 0.04)], // penicillin placeholder
+        byproducts: &[(S::Water, 10.0)],
+        min_temp_c: 26, pressure_atm: 1.0, catalyst: None, duration_hours: 168.0, cross_recipe_group: None },
+
+    // ===== SEMICONDUCTOR =====
+    Recipe { id: 375, name: "Trichlorosilane (for Siemens)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Silicon, 1.0), (S::HydrochloricAcid, 3.5)],
+        outputs: &[(S::TitaniumTetrachloride, 1.0)], // SiHCl3 placeholder
+        byproducts: &[(S::HydrogenGas, 0.1)],
+        min_temp_c: 320, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+
+    // ===== WATER TREATMENT =====
+    Recipe { id: 380, name: "Potable Water (Chlorination)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Water, 1000.0), (S::ChlorineGas, 0.002)],
+        outputs: &[(S::Water, 1000.0)],
+        byproducts: &[],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 0.5, cross_recipe_group: None },
+    Recipe { id: 381, name: "Distilled Water", category: RecipeCategory::Refining,
+        inputs: &[(S::Water, 1.2)],
+        outputs: &[(S::Water, 1.0)],
+        byproducts: &[(S::Salt, 0.04)],
+        min_temp_c: 100, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
+
+    // ===== METHANOL =====
+    Recipe { id: 385, name: "Methanol from Syngas", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::SynGas, 1.5)],
+        outputs: &[(S::Methanol, 1.0)],
+        byproducts: &[(S::Water, 0.3)],
+        min_temp_c: 250, pressure_atm: 80.0, catalyst: Some(S::Copper), duration_hours: 2.0, cross_recipe_group: None },
+
+    // ===== ACETONE =====
+    Recipe { id: 386, name: "Acetone (Cumene Process)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Benzene, 0.5), (S::CrudeOil, 0.5)],
+        outputs: &[(S::Acetone, 0.4)],
+        byproducts: &[(S::SoapProduct, 0.6)], // phenol byproduct
+        min_temp_c: 90, pressure_atm: 1.0, catalyst: Some(S::SulfuricAcid), duration_hours: 3.0, cross_recipe_group: None },
+
+    // ===== TOLUENE =====
+    Recipe { id: 387, name: "Toluene (Catalytic Reforming)", category: RecipeCategory::Refining,
+        inputs: &[(S::CrudeOil, 1.5)],
+        outputs: &[(S::Toluene, 1.0)],
+        byproducts: &[(S::HydrogenGas, 0.05)],
+        min_temp_c: 500, pressure_atm: 25.0, catalyst: Some(S::Platinum), duration_hours: 2.0, cross_recipe_group: None },
+
+    // ===== BENZENE =====
+    Recipe { id: 388, name: "Benzene (Catalytic Reforming)", category: RecipeCategory::Refining,
+        inputs: &[(S::CrudeOil, 1.5)],
+        outputs: &[(S::Benzene, 1.0)],
+        byproducts: &[(S::HydrogenGas, 0.05)],
+        min_temp_c: 500, pressure_atm: 25.0, catalyst: Some(S::Platinum), duration_hours: 2.0, cross_recipe_group: None },
+
+    // ===== GLYCEROL =====
+    Recipe { id: 389, name: "Glycerol (from Biodiesel)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::OliveOil, 1.0), (S::Methanol, 0.15)],
+        outputs: &[(S::Biodiesel, 1.0), (S::Glycerol, 0.1)],
+        byproducts: &[],
+        min_temp_c: 55, pressure_atm: 1.0, catalyst: Some(S::SodiumHydroxide), duration_hours: 2.0, cross_recipe_group: None },
+
+    // ===== SALTPETER =====
+    Recipe { id: 390, name: "Saltpeter (Niter Bed)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::StrawFiber, 5.0), (S::Water, 10.0), (S::Charcoal, 1.0)],
+        outputs: &[(S::Salt, 0.5)], // KNO3 placeholder
+        byproducts: &[(S::Water, 8.0)],
+        min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 8760.0, cross_recipe_group: None },
+
+    // ===== ESSENTIAL OIL =====
+    Recipe { id: 391, name: "Essential Oil (Steam Distillation)", category: RecipeCategory::Refining,
+        inputs: &[(S::StrawFiber, 50.0), (S::Steam, 20.0)],
+        outputs: &[(S::OliveOil, 1.0)], // essential oil placeholder
+        byproducts: &[(S::Water, 60.0)],
+        min_temp_c: 100, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: None },
+
+    // ===== SMOKELESS POWDER =====
+    Recipe { id: 392, name: "Smokeless Powder (Nitrocellulose)", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::CottonFiber, 0.5), (S::NitricAcid, 1.0), (S::SulfuricAcid, 1.0)],
+        outputs: &[(S::Gunpowder, 0.8)], // smokeless powder placeholder
+        byproducts: &[(S::Water, 1.0)],
+        min_temp_c: 30, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
+
+    // ===== PHOTOGRAPHIC =====
+    Recipe { id: 393, name: "Silver Nitrate", category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Silver, 0.63), (S::NitricAcid, 0.37)],
+        outputs: &[(S::Silver, 1.0)], // AgNO3 placeholder
+        byproducts: &[(S::Water, 0.1)],
+        min_temp_c: 70, pressure_atm: 1.0, catalyst: None, duration_hours: 1.0, cross_recipe_group: None },
 ];
