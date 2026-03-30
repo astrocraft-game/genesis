@@ -1625,29 +1625,72 @@ impl WorldGenerator {
             final_composition
         };
 
-        // TODO: Life
-        let mut life_level = {
-            /// Bonii:
-            ///
-            /// Age of system
-            /// Liquid water (scale with quantity)
-            /// Yellow/orange/red star
-            ///
-            /// Malii:
-            ///
-            /// Not moderate zone
-            /// Not main sequence
-            /// No oxygen/carbon dioxide/methane in atmosphere
-            /// No mangetosphere
-            /// No atmosphere (scale)
-            /// Carbon system
-            /// Planet younger than 100 million years old/500 million years old/2 billion years old/4 billion years old
-            /// Star population II or III
-            /// Adjacent to belt?
-            /// Variable/flare star
-            /// High debris
-            /// Is gas planet
-            LifeLevel::Sentient
+        let life_level = {
+            let mut score: i32 = 0;
+
+            // Bonuses
+            // System age: +1 per 2 Gyr
+            score += (star_age / 2.0).min(5.0) as i32;
+            // Liquid water: +1 to +3 scaled by hydrosphere
+            if hydrosphere > 0.0 { score += 1; }
+            if hydrosphere > 20.0 { score += 1; }
+            if hydrosphere > 50.0 { score += 1; }
+            // Yellow/orange/red star (F/G/K/M)
+            if matches!(star_type, StarSpectralType::F(_) | StarSpectralType::G(_)
+                | StarSpectralType::K(_) | StarSpectralType::M(_)) {
+                score += 1;
+            }
+            // Magnetic field
+            if magnetic_field != MagneticFieldStrength::None { score += 1; }
+            if matches!(magnetic_field, MagneticFieldStrength::Moderate
+                | MagneticFieldStrength::Strong | MagneticFieldStrength::VeryStrong) {
+                score += 1;
+            }
+            // Moderate atmosphere
+            if atmospheric_pressure > 0.1 && atmospheric_pressure < 5.0 { score += 1; }
+
+            // Maluses
+            // Not in biozone
+            if own_orbit.zone != ZoneType::BioZone { score -= 3; }
+            // Star not main sequence
+            if *star_class != StarLuminosityClass::V { score -= 2; }
+            // Key atmospheric components missing
+            let has_life_gas = atmospheric_composition.iter().any(|(_, c)| matches!(c,
+                ChemicalComponent::Oxygen | ChemicalComponent::CarbonDioxide
+                | ChemicalComponent::Methane));
+            if !has_life_gas { score -= 2; }
+            // No magnetosphere
+            if magnetic_field == MagneticFieldStrength::None { score -= 2; }
+            // No/trace atmosphere
+            if atmospheric_pressure < 0.01 { score -= 3; }
+            // Carbon-rich system
+            if system_traits.iter().any(|t| matches!(t, SystemPeculiarity::CarbonRich)) {
+                score -= 1;
+            }
+            // Age thresholds (star_age in Gyr)
+            if star_age < 0.1 { score -= 4; }
+            else if star_age < 0.5 { score -= 3; }
+            else if star_age < 2.0 { score -= 2; }
+            else if star_age < 4.0 { score -= 1; }
+            // Variable/flare star
+            if star_traits.iter().any(|t| matches!(t, StarPeculiarity::VariableStar(_))) {
+                score -= 1;
+            }
+            // High debris
+            if system_traits.iter().any(|t| matches!(t,
+                SystemPeculiarity::UnusualDebrisDensity(DebrisDensity::Higher)
+                | SystemPeculiarity::UnusualDebrisDensity(DebrisDensity::MuchHigher))) {
+                score -= 1;
+            }
+
+            match score {
+                i32::MIN..=0 => LifeLevel::None,
+                1..=3 => LifeLevel::UniCellular,
+                4..=6 => LifeLevel::PluriCellular,
+                7..=9 => LifeLevel::PlantLike,
+                10..=12 => LifeLevel::AnimalLike,
+                _ => LifeLevel::Sentient,
+            }
         };
 
         let climate = Self::generate_climate(
