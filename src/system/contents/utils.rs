@@ -138,6 +138,50 @@ pub(crate) fn jeans_parameter(
     v_e / v_rms
 }
 
+/// Estimate subsurface ocean parameters for an icy body.
+/// Returns (ice_shell_thickness_km, ocean_depth_km) or None if no ocean possible.
+pub(crate) fn estimate_subsurface_ocean(
+    tidal_heating_flux: f64,
+    surface_temperature_k: u32,
+    body_radius_earth: f64,
+    body_mass_earth: f64,
+    has_ammonia: bool,
+) -> Option<(f32, f32)> {
+    // Minimum heating needed to maintain liquid water under ice
+    let min_flux = if has_ammonia { 0.002 } else { 0.01 }; // ammonia depresses melting point
+    if tidal_heating_flux < min_flux {
+        return None;
+    }
+    let melting_point = if has_ammonia { 176.0 } else { 273.0 };
+    if surface_temperature_k as f64 > melting_point {
+        return None; // Surface is already warm enough for surface water
+    }
+    // Ice shell thickness: d_ice ~ k_ice * (T_melt - T_surface) / q_tidal
+    // k_ice ~ 2.2 W/(m*K) for water ice
+    let k_ice = 2.2;
+    let delta_t = melting_point - surface_temperature_k as f64;
+    let ice_thickness_m = k_ice * delta_t / tidal_heating_flux;
+    let ice_thickness_km = (ice_thickness_m / 1000.0) as f32;
+
+    // Cap at body radius (can't have ice thicker than the body)
+    let body_radius_km = body_radius_earth as f32 * 6371.0;
+    let ice_thickness_km = ice_thickness_km.min(body_radius_km * 0.5);
+
+    if ice_thickness_km > body_radius_km * 0.4 {
+        return None; // Too thick, no room for ocean
+    }
+
+    // Ocean depth: rough estimate from remaining water budget
+    // Assume ~10-20% of body mass is water for icy bodies
+    let water_fraction = 0.15;
+    let water_mass_kg = body_mass_earth * 5.972e24 * water_fraction;
+    let ocean_surface_area = 4.0 * std::f64::consts::PI * (body_radius_earth * 6.371e6).powi(2);
+    let water_depth_m = water_mass_kg / (1000.0 * ocean_surface_area);
+    let ocean_depth_km = ((water_depth_m / 1000.0) as f32 - ice_thickness_km).max(1.0);
+
+    Some((ice_thickness_km, ocean_depth_km.min(500.0)))
+}
+
 /// Checks if two orbital periods are in a near-integer resonance.
 /// Returns Some((p, q)) if period1/period2 is within tolerance of p/q.
 pub(crate) fn detect_orbital_resonance(
@@ -504,6 +548,22 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_subsurface_ocean_europa_like() {
+        // Europa-like: moderate tidal heating, cold surface, icy
+        let result = estimate_subsurface_ocean(0.05, 100, 0.245, 0.008, false);
+        assert!(result.is_some());
+        let (ice_km, ocean_km) = result.unwrap();
+        assert!(ice_km > 1.0 && ice_km < 200.0, "ice={}", ice_km);
+        assert!(ocean_km > 0.0, "ocean={}", ocean_km);
+    }
+
+    #[test]
+    fn test_subsurface_ocean_no_heating() {
+        let result = estimate_subsurface_ocean(0.0001, 80, 0.2, 0.005, false);
+        assert!(result.is_none());
     }
 
     #[test]
