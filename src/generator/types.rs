@@ -19,6 +19,9 @@ pub struct GenerationSettings {
     pub star: StarSettings,
     /// A list of settings used to configure the [CelestialBody] generation.
     pub celestial_body: CelestialBodySettings,
+    /// Whether to generate species and populate systems.
+    #[default(false)]
+    pub populate: bool,
 }
 
 /// Data object filled with the results of a generation.

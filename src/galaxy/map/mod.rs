@@ -9,7 +9,6 @@ pub mod types;
 
 impl Galaxy {
     /// Returns the [GalacticHex] whose coordinates have been given in parameters.
-    /// TODO: Add a boolean "populate" parameter that generates life in the hex if needed.
     pub fn get_hex(&mut self, coord: SpaceCoordinates) -> Result<GalacticHex, Rc<str>> {
         if !self.are_coord_valid(coord) {
             return Err("Invalid coordinates.".into());
