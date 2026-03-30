@@ -3,6 +3,7 @@
 mod galaxy;
 mod generator;
 mod life;
+pub mod recipes;
 mod system;
 mod universe;
 mod utils;
