@@ -1535,7 +1535,19 @@ impl WorldGenerator {
                 guess_composition.push((ChemicalComponentPresence::Traces, entry.0));
             });
 
-            // TODO: If ice, might add the components into shallow atmospheres from sublimation
+            // Ice sublimation: add trace gases to thin atmospheres on icy bodies
+            if body_type == TelluricBodyComposition::Icy && atmospheric_pressure < 0.1 {
+                if blackbody_temperature > 40 && blackbody_temperature < 200 {
+                    guess_composition.push((ChemicalComponentPresence::Traces, ChemicalComponent::CarbonDioxide));
+                    guess_composition.push((ChemicalComponentPresence::Traces, ChemicalComponent::Nitrogen));
+                }
+                if blackbody_temperature > 100 {
+                    guess_composition.push((ChemicalComponentPresence::Traces, ChemicalComponent::Water));
+                }
+                if blackbody_temperature > 50 && blackbody_temperature < 150 {
+                    guess_composition.push((ChemicalComponentPresence::Traces, ChemicalComponent::Methane));
+                }
+            }
 
             // Consolidate duplicate entries
             let mut counts: HashMap<ChemicalComponent, usize> = HashMap::new();
@@ -3748,7 +3760,14 @@ impl WorldGenerator {
                 0
             };
             core_heat_modifier += (tidal_heating / 5) as i32;
-            // TODO: Lower the results, not enough active cores in systems as old as ours
+            // Age penalty: older systems have cooler cores
+            if star_age > 8.0 {
+                core_heat_modifier -= 3;
+            } else if star_age > 5.0 {
+                core_heat_modifier -= 2;
+            } else if star_age > 3.0 {
+                core_heat_modifier -= 1;
+            }
             rng.get_result(&CopyableRollToProcess::new(
                 vec![
                     CopyableWeightedResult::new(CelestialBodyCoreHeat::FrozenCore, 1),
