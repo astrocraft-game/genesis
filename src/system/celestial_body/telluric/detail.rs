@@ -38,20 +38,56 @@ pub fn generate_planetary_detail(
     let has_liquid = hydrosphere > 0.5;
     let land_fraction = (100.0 - hydrosphere).max(0.0) / 100.0;
 
+    // Pre-compute gas presence flags (used by multiple features)
+    let has_oxygen = atmospheric_composition.iter().any(|(f, c)| *c == ChemicalComponent::Oxygen && *f > 0.1);
+    let has_co2_high = atmospheric_composition.iter().any(|(f, c)| *c == ChemicalComponent::CarbonDioxide && *f > 0.05);
+    let has_h2s = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::HydrogenSulfide);
+    let has_so2 = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::SulfurDioxide);
+    let has_hcl = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Chlorine);
+    let has_methane = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Methane);
+    let has_nitrogen = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Nitrogen);
+    let has_ammonia = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Ammonia);
+
     // 1. Atmospheric layers
     let atmospheric_layers = if has_atmosphere {
-        let mean_molecular_mass = if atmospheric_composition.iter().any(|(f, c)| *f > 0.5 && *c == ChemicalComponent::CarbonDioxide) {
-            0.044
-        } else if atmospheric_composition.iter().any(|(f, c)| *f > 0.5 && *c == ChemicalComponent::Nitrogen) {
-            0.028
-        } else { 0.029 };
-        let scale_height = 8.314 * blackbody_temperature as f64 / (mean_molecular_mass * g_ms2 as f64 * 1000.0);
-        let scale_height_km = (scale_height / 1000.0) as f32;
-        let tropopause_km = scale_height_km * 2.0 * (atmospheric_pressure / 1.0).sqrt().min(8.0);
-        let has_o3_or_haze = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Oxygen)
-            || life_level.as_u8() >= LifeLevel::PlantLike.as_u8();
-        let exobase_km = tropopause_km * 10.0;
-        Some(AtmosphericLayers { scale_height_km, tropopause_km, has_stratosphere: has_o3_or_haze, exobase_km })
+        // Mean molecular mass from composition (weighted average)
+        let mean_molecular_mass: f64 = atmospheric_composition.iter().map(|(f, c)| {
+            let m = match c {
+                ChemicalComponent::Hydrogen => 0.002,
+                ChemicalComponent::Helium => 0.004,
+                ChemicalComponent::Nitrogen => 0.028,
+                ChemicalComponent::Oxygen => 0.032,
+                ChemicalComponent::CarbonDioxide => 0.044,
+                ChemicalComponent::Methane => 0.016,
+                ChemicalComponent::Ammonia => 0.017,
+                ChemicalComponent::Water => 0.018,
+                ChemicalComponent::Argon => 0.040,
+                ChemicalComponent::SulfurDioxide => 0.064,
+                _ => 0.029,
+            };
+            *f as f64 * m
+        }).sum::<f64>().max(0.002);
+
+        // Scale height: H = RT / (Mg)
+        let scale_height_m = 8.314 * blackbody_temperature as f64 / (mean_molecular_mass * g_ms2 as f64);
+        let scale_height_km = (scale_height_m / 1000.0) as f32;
+
+        // Lapse rate: dT/dz = -g*M/R (dry adiabatic) in K/km
+        let lapse_rate = (g_ms2 as f64 * mean_molecular_mass / 8.314 * 1000.0) as f32;
+
+        // Tropopause: where convection stops, scales with optical depth
+        // Venus: 65km, Earth: 12km, Mars: 40km (thin but high due to low gravity)
+        let tropopause_km = (scale_height_km * 1.5 * atmospheric_pressure.powf(0.3)).clamp(1.0, 100.0);
+
+        // Stratosphere: only exists with UV absorber (O3 from O2+life, or organic haze)
+        let has_strat = has_oxygen && life_level.as_u8() >= LifeLevel::PlantLike.as_u8()
+            || (has_methane && has_nitrogen); // tholin haze absorbs UV too
+        let stratopause_km = if has_strat { tropopause_km * 3.5 } else { 0.0 };
+
+        // Exobase: where mean free path > scale height
+        let exobase_km = scale_height_km * (atmospheric_pressure.max(0.001).ln() + 15.0).max(5.0);
+
+        Some(AtmosphericLayers { scale_height_km, tropopause_km, has_stratosphere: has_strat, exobase_km })
     } else { None };
 
     // 2. Breathability & Toxicity
@@ -65,15 +101,6 @@ pub fn generate_planetary_detail(
         p if p < 10.0 => AtmosphereBreathability::VeryDense,
         _ => AtmosphereBreathability::Superdense,
     };
-
-    let has_oxygen = atmospheric_composition.iter().any(|(f, c)| *c == ChemicalComponent::Oxygen && *f > 0.1);
-    let has_co2_high = atmospheric_composition.iter().any(|(f, c)| *c == ChemicalComponent::CarbonDioxide && *f > 0.05);
-    let has_h2s = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::HydrogenSulfide);
-    let has_so2 = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::SulfurDioxide);
-    let has_hcl = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Chlorine);
-    let has_methane = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Methane);
-    let has_nitrogen = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Nitrogen);
-    let has_ammonia = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Ammonia);
 
     // Partial pressures for toxicity thresholds
     let pp = |comp: ChemicalComponent| -> f32 {
@@ -242,16 +269,38 @@ pub fn generate_planetary_detail(
         Some(SkyAppearance { daytime_color, sunset_color, daytime_stars_visible: atmospheric_pressure < 0.05 })
     } else { Some(SkyAppearance { daytime_color: SkyColor::Black, sunset_color: SkyColor::Black, daytime_stars_visible: true }) };
 
-    // 6. Wind profile
+    // 6. Wind profile - derived from Rossby number and Hadley cell physics
     let wind = if has_atmosphere {
-        let omega = if rotation_days.abs() > 0.01 { 2.0 * std::f32::consts::PI / (rotation_days * 86400.0) } else { 0.0 };
-        let is_slow = rotation_days > 10.0;
-        let base_wind = (atmospheric_pressure * 5.0 + gravity * 3.0).sqrt() * 5.0;
-        let max_wind = base_wind * (2.0 + if is_slow { 3.0 } else { 1.0 });
+        let omega = if rotation_days.abs() > 0.01 {
+            2.0 * std::f32::consts::PI / (rotation_days * 86400.0)
+        } else { 0.0 };
+        let r_planet_m = radius as f32 * 6.371e6;
+        let scale_height_m = atmospheric_layers.as_ref().map_or(8500.0, |l| l.scale_height_km * 1000.0);
+        let delta_t = 50.0_f32; // equator-pole temp diff
+
+        // Thermal Rossby number determines circulation regime
+        let rossby = if omega > 1e-8 && r_planet_m > 1000.0 {
+            (gravity * scale_height_m * delta_t) / (omega * omega * r_planet_m * r_planet_m)
+        } else { 100.0 }; // very slow rotation = large Rossby
+
+        // Hadley cell count from Rossby number
+        let cells = if rossby > 10.0 { 1_u8 } // slow: Venus (1 cell, superrotation)
+            else if rossby > 1.0 { 2 }
+            else if rossby > 0.1 { 3 } // Earth-like
+            else if rossby > 0.01 { 5 }
+            else { 8 }; // fast: Jupiter
+
+        let is_slow = rossby > 5.0;
+        // Wind speed scales with cells and pressure
+        let base_wind = (cells as f32 * 3.0 + atmospheric_pressure.sqrt() * 5.0 + gravity * 2.0).min(200.0);
+        // Internal heat boost for gas-giant-type thick atmospheres
+        let internal_boost = if atmospheric_pressure > 10.0 && tidal_heating > 0 { 50.0 } else { 0.0 };
+        let max_wind = (base_wind * (2.0 + if is_slow { 3.0 } else { 1.0 }) + internal_boost).min(600.0);
         let superrotation = is_slow && atmospheric_pressure > 0.5;
+
         Some(WindProfile {
-            mean_surface_wind_ms: base_wind.min(200.0),
-            max_wind_ms: max_wind.min(600.0),
+            mean_surface_wind_ms: base_wind,
+            max_wind_ms: max_wind,
             superrotation,
         })
     } else { None };
@@ -543,25 +592,47 @@ pub fn generate_planetary_detail(
         Some(SurfaceMaterial { primary_type: primary, depth_m: depth, perchlorates: perchlorate, oxidized })
     };
 
-    // 14. Radiation environment
+    // 14. Radiation environment - with distance and shielding physics
     let radiation = {
-        let has_mag = magnetic_field != MagneticFieldStrength::None;
-        let mag_factor = if has_mag { 0.1 } else { 1.0 };
-        let atmo_factor = if atmospheric_pressure > 0.5 { 0.1 } else if atmospheric_pressure > 0.01 { 0.5 } else { 1.0 };
-        let base_dose = 400.0; // mSv/yr unshielded at 1 AU
-        let dose = base_dose * mag_factor * atmo_factor;
-        let uv = if has_atmosphere && atmospheric_pressure > 0.1 {
-            if has_oxygen { 8.0 } else { 25.0 }
-        } else { 50.0 };
-        let hazard = if dose < 5.0 { RadiationHazard::Negligible }
-            else if dose < 50.0 { RadiationHazard::Low }
-            else if dose < 500.0 { RadiationHazard::Moderate }
-            else if dose < 10000.0 { RadiationHazard::High }
+        // Magnetic shielding: continuous from field strength ratio
+        let mag_shielding = match magnetic_field {
+            MagneticFieldStrength::None => 1.0_f32,
+            MagneticFieldStrength::Weak => 0.5,
+            MagneticFieldStrength::Moderate => 0.1, // Earth-like
+            MagneticFieldStrength::Strong => 0.05,
+            MagneticFieldStrength::VeryStrong => 0.02,
+            MagneticFieldStrength::Extreme => 0.01,
+        };
+        // Atmospheric shielding: exponential with column density
+        // Earth 1 atm blocks ~90% of cosmic rays
+        let atmo_shielding = (-atmospheric_pressure * 2.3).exp(); // e^(-P*2.3): 1atm -> ~0.1
+        let combined = (mag_shielding * atmo_shielding).clamp(0.001, 1.0);
+
+        // Base dose: 600 mSv/yr in free space at 1 AU, scales as 1/d^2
+        // Use blackbody_temp as proxy for distance (closer = hotter = more radiation)
+        let distance_factor = (blackbody_temperature as f32 / 278.0).powi(2).max(0.1); // Earth=278K -> factor 1.0
+        let base_dose = 600.0 * distance_factor;
+        let dose = base_dose * combined;
+
+        // Radiation belt boost for tidally heated moons (Jupiter system analog)
+        let belt_boost = if tidal_heating > 5 { 100.0 } else { 1.0 };
+        let final_dose = dose * belt_boost;
+
+        // UV: depends on ozone (O2 + life), atmosphere thickness, stellar distance
+        let has_ozone = has_oxygen && life_level.as_u8() >= LifeLevel::PlantLike.as_u8();
+        let uv = if has_ozone && atmospheric_pressure > 0.3 { 8.0 * distance_factor.sqrt() } // Earth-like ozone
+            else if atmospheric_pressure > 0.1 { 25.0 * distance_factor.sqrt() } // atmosphere but no ozone
+            else { 50.0 * distance_factor.sqrt() }; // minimal atmosphere
+
+        let hazard = if final_dose < 5.0 { RadiationHazard::Negligible }
+            else if final_dose < 50.0 { RadiationHazard::Low }
+            else if final_dose < 500.0 { RadiationHazard::Moderate }
+            else if final_dose < 10000.0 { RadiationHazard::High }
             else { RadiationHazard::Extreme };
-        Some(RadiationEnvironment { surface_dose_msv_yr: dose, uv_index_peak: uv, radiation_hazard: hazard })
+        Some(RadiationEnvironment { surface_dose_msv_yr: final_dose, uv_index_peak: uv.min(100.0), radiation_hazard: hazard })
     };
 
-    // 15. Seismic profile
+    // 15. Seismic profile - Gutenberg-Richter: log10(N) = a - b*M
     let seismic = {
         let source = if tidal_heating > 15 { SeismicitySource::TidalExtreme }
             else if tidal_heating > 3 { SeismicitySource::TidalOnly }
@@ -569,22 +640,34 @@ pub fn generate_planetary_detail(
             else if tectonic_activity > 10.0 { SeismicitySource::TectonicModerate }
             else if volcanism > 5.0 { SeismicitySource::Residual }
             else { SeismicitySource::None };
+
+        // b-value: ~1.0 for tectonic, ~1.5 for volcanic, ~0.8 for tidal
+        let b_value: f32 = match source {
+            SeismicitySource::None => 1.0,
+            SeismicitySource::Residual => 1.5,
+            SeismicitySource::TidalOnly => 0.8,
+            SeismicitySource::TectonicModerate => 1.0,
+            SeismicitySource::TectonicExtreme => 1.0,
+            SeismicitySource::TidalExtreme => 0.7,
+        };
+
+        // Max magnitude from source
         let max_mag = match source {
             SeismicitySource::None => 0.0,
             SeismicitySource::Residual => 3.0 + rng.roll(1, 20, 0) as f32 / 10.0,
-            SeismicitySource::TidalOnly => 3.0 + rng.roll(1, 20, 0) as f32 / 10.0,
-            SeismicitySource::TectonicModerate => 6.0 + rng.roll(1, 20, 0) as f32 / 10.0,
-            SeismicitySource::TectonicExtreme => 8.0 + rng.roll(1, 15, 0) as f32 / 10.0,
-            SeismicitySource::TidalExtreme => 5.0 + rng.roll(1, 30, 0) as f32 / 10.0,
+            SeismicitySource::TidalOnly => 3.5 + rng.roll(1, 20, 0) as f32 / 10.0,
+            SeismicitySource::TectonicModerate => 7.0 + rng.roll(1, 15, 0) as f32 / 10.0, // up to M8.5
+            SeismicitySource::TectonicExtreme => 8.5 + rng.roll(1, 10, 0) as f32 / 10.0, // subduction M9+
+            SeismicitySource::TidalExtreme => 5.0 + rng.roll(1, 20, 0) as f32 / 10.0,
         };
-        let quakes_m4 = match source {
-            SeismicitySource::None => 0,
-            SeismicitySource::Residual => rng.roll(1, 100, 0) as u32,
-            SeismicitySource::TidalOnly => rng.roll(1, 500, 50) as u32,
-            SeismicitySource::TectonicModerate => rng.roll(1, 10000, 5000) as u32,
-            SeismicitySource::TectonicExtreme => rng.roll(1, 20000, 10000) as u32,
-            SeismicitySource::TidalExtreme => rng.roll(1, 50000, 10000) as u32,
-        };
+
+        // Gutenberg-Richter: log10(N_m4) = a - b*(4.0)
+        // Solve for a from max_mag: a = b * max_mag + log10(1) = b * max_mag
+        // Then N(>=4) = 10^(b * (max_mag - 4.0))
+        let quakes_m4 = if max_mag > 4.0 {
+            (10.0_f32.powf(b_value * (max_mag - 4.0))).min(100000.0) as u32
+        } else { 0 };
+
         Some(SeismicProfile { max_magnitude: max_mag, quakes_per_year_m4: quakes_m4, seismicity_source: source })
     };
 
