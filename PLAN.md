@@ -820,7 +820,7 @@ fn white_dwarf_final_mass(initial_mass: f64) -> f64 {
 
 **Tier 3 - New subsystems:**
 - [x] 13. Resources (item 11) - 6 resource types with abundance/accessibility
-- [ ] 14. Exotic Planets (item 15)
+- [x] 14. Exotic Planets (item 15) - 6 new world types (Carbon, Lava, Eyeball, Rogue, Iron, MiniNeptune)
 - [x] 15. Points of Interest (item 13) - 18 POI types with significance
 - [x] 16. Region Mapping - temporary (item 3a) - nucleus/bulge/bar/arm/disk/halo
 - [x] 17. Region Mapping - proper (item 3b) - clusters, associations, tidal streams
@@ -828,6 +828,6 @@ fn white_dwarf_final_mass(initial_mass: f64) -> f64 {
 
 **Tier 4 - Major features (depend on Tier 2-3):**
 - [x] 19. Species Generation phases 1-3 (item 16) - data model + condition-based generation
-- [ ] 20. Species History phase 4 (item 16)
-- [ ] 21. Species Expansion phase 5 (item 16)
-- [ ] 22. Populated Objects (item 17)
+- [x] 20. Species History phase 4 (item 16) - era-based milestones and events
+- [x] 21. Species Expansion phase 5 (item 16) - colony generation and expansion reach
+- [x] 22. Populated Objects (item 17) - populate setting, life module exports
