@@ -142,14 +142,22 @@ impl Star {
                 main_lifespan,
             ) as u32;
 
-            spectral_type = calculate_spectral_type(temperature);
-            luminosity_class = calculate_luminosity_class(
-                luminosity,
-                spectral_type,
-                age,
-                main_lifespan,
-                subgiant_lifespan,
-            );
+            spectral_type = if let Some(fixed) = settings.star.fixed_spectral_type {
+                fixed
+            } else {
+                calculate_spectral_type(temperature)
+            };
+            luminosity_class = if let Some(fixed) = settings.star.fixed_luminosity_class {
+                fixed
+            } else {
+                calculate_luminosity_class(
+                    luminosity,
+                    spectral_type,
+                    age,
+                    main_lifespan,
+                    subgiant_lifespan,
+                )
+            };
         }
 
         radius = adjust_radius_to_population(radius, population);
