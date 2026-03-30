@@ -204,26 +204,26 @@ Deep planetary science: atmosphere, surface, geology, hazards. All derivable fro
 ## Suggested Implementation Order
 
 **Tier 1 - Atmosphere (builds on existing atmospheric_pressure + composition):**
-- [ ] 1. Atmospheric layers
-- [ ] 2. Breathability & toxicity
-- [ ] 3. Cloud decks
-- [ ] 4. Greenhouse quantification
-- [ ] 5. Sky appearance
-- [ ] 6. Wind profile
+- [x] 1. Atmospheric layers - scale height, tropopause, stratosphere, exobase
+- [x] 2. Breathability & toxicity - 8 breathability + 9 toxicity categories
+- [x] 3. Cloud decks - multi-layer with composition, altitude, optical depth
+- [x] 4. Greenhouse quantification - CO2 partial pressure, delta T, runaway flag
+- [x] 5. Sky appearance - color from Rayleigh/Mie/absorption, sunset color
+- [x] 6. Wind profile - surface/max winds, superrotation detection
 
 **Tier 2 - Surface water/ice (builds on existing hydrosphere + climate):**
-- [ ] 7. Hydrography (rivers)
-- [ ] 8. Lake distribution
-- [ ] 9. Glaciation state
-- [ ] 10. Ocean chemistry
+- [x] 7. Hydrography (rivers) - Hack's law river count/length, precipitation, deltas
+- [x] 8. Lake distribution - count, formation type, liquid composition
+- [x] 9. Glaciation state - ice coverage, snowball, Milankovitch, cap location
+- [x] 10. Ocean chemistry - salinity, pH, iron content, hydrothermal vents
 
 **Tier 3 - Geology (builds on existing volcanism + tectonics):**
-- [ ] 11. Volcanic profile
-- [ ] 12. Mineral diversity
-- [ ] 13. Surface material
+- [x] 11. Volcanic profile - type (shield/strato/caldera), count, tallest, supervolcano
+- [x] 12. Mineral diversity - 60 to 5800 minerals, evolution stage from water/O2/life
+- [x] 13. Surface material - regolith/soil/iron fines, depth, perchlorates
 
 **Tier 4 - Hazards (builds on everything above):**
-- [ ] 14. Radiation environment
-- [ ] 15. Seismic profile
-- [ ] 16. Dust storm profile
-- [ ] 17. Lightning profile
+- [x] 14. Radiation environment - dose mSv/yr, UV index, hazard class
+- [x] 15. Seismic profile - Gutenberg-Richter, max magnitude, source type
+- [x] 16. Dust storm profile - global storms, interval, peak winds, dust devils
+- [x] 17. Lightning profile - mechanism (water/volcanic/dust), flash rate
