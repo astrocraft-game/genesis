@@ -1726,7 +1726,11 @@ impl WorldGenerator {
             life_level,
         );
 
-        OrbitalPoint::new(
+        // Clone values needed for planetary detail before they're moved
+        let detail_atmo_comp = atmospheric_composition.clone();
+        let detail_special_traits = special_traits.clone();
+
+        let mut result = OrbitalPoint::new(
             orbital_point_id,
             Some(get_orbit_with_updated_zone(
                 own_orbit.clone(),
@@ -1829,7 +1833,25 @@ impl WorldGenerator {
                 )),
             )),
             orbits.clone(),
-        )
+        );
+
+        // Generate and attach planetary detail
+        let is_locked = detail_special_traits.iter().any(|t| matches!(t, CelestialBodySpecialTrait::TideLocked(_)));
+        let detail = crate::system::celestial_body::telluric::detail::generate_planetary_detail(
+            atmospheric_pressure, &detail_atmo_comp, blackbody_temperature,
+            gravity, radius, hydrosphere, ice_over_water, ice_over_land,
+            volcanism, tectonics, magnetic_field, body_type, world_type,
+            life_level, own_orbit.axial_tilt, own_orbit.eccentricity,
+            own_orbit.rotation, is_locked, tidal_heating,
+            &seed, coord, system_index, star_id, orbital_point_id,
+        );
+        if let AstronomicalObject::TelluricBody(ref mut body) = result.object {
+            if let CelestialBodyDetails::Telluric(ref mut details) = body.details {
+                details.planetary_detail = Some(detail);
+            }
+        }
+
+        result
     }
 
     fn add_gas_methane_and_oxygen(
