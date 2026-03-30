@@ -138,6 +138,35 @@ pub(crate) fn jeans_parameter(
     v_e / v_rms
 }
 
+/// Determine spin-orbit resonance state from eccentricity and atmospheric pressure.
+/// Returns the resonance ratio (rotation:orbit) as (p, q), or None for non-resonant.
+/// Mercury is 3:2 at e=0.206, Venus is ~243:(-1) from thermal tides.
+pub(crate) fn determine_spin_orbit_resonance(
+    eccentricity: f32,
+    atmospheric_pressure: f32,
+    is_tidally_locked: bool,
+) -> Option<(u8, u8)> {
+    if is_tidally_locked {
+        return Some((1, 1)); // Synchronous rotation
+    }
+    // Thick atmosphere thermal tides prevent clean resonance (Venus case)
+    if atmospheric_pressure > 50.0 {
+        return None; // Chaotic/retrograde like Venus
+    }
+    // 3:2 resonance probability increases with eccentricity
+    // At e=0.206 (Mercury), capture probability ~55%
+    // At e>0.3, higher resonances become possible
+    if eccentricity > 0.15 && eccentricity <= 0.35 {
+        Some((3, 2))
+    } else if eccentricity > 0.35 && eccentricity <= 0.5 {
+        Some((2, 1))
+    } else if eccentricity > 0.5 {
+        Some((5, 2))
+    } else {
+        None
+    }
+}
+
 /// Estimate subsurface ocean parameters for an icy body.
 /// Returns (ice_shell_thickness_km, ocean_depth_km) or None if no ocean possible.
 pub(crate) fn estimate_subsurface_ocean(
@@ -548,6 +577,26 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_spin_orbit_mercury() {
+        // Mercury: e=0.206, thin atmosphere -> 3:2
+        let res = determine_spin_orbit_resonance(0.206, 0.0, false);
+        assert_eq!(res, Some((3, 2)));
+    }
+
+    #[test]
+    fn test_spin_orbit_venus() {
+        // Venus: thick atmosphere -> no clean resonance
+        let res = determine_spin_orbit_resonance(0.007, 92.0, false);
+        assert!(res.is_none());
+    }
+
+    #[test]
+    fn test_spin_orbit_locked() {
+        let res = determine_spin_orbit_resonance(0.01, 0.0, true);
+        assert_eq!(res, Some((1, 1)));
     }
 
     #[test]
