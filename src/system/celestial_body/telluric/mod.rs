@@ -51,6 +51,8 @@ pub struct TelluricBodyDetails {
     pub has_radiation_belts: bool,
     /// Aurora oval latitude in degrees from pole (0 if no aurora).
     pub aurora_latitude: f32,
+    /// Detailed planetary characteristics (atmosphere, surface, geology, hazards).
+    pub planetary_detail: Option<PlanetaryDetail>,
     // pub landmasses: u32,
     // pub territories: Vec<Territory>,
     // pub atmospheric_composition: AtmosphericCompositionType,
@@ -108,6 +110,7 @@ impl TelluricBodyDetails {
             magnetopause_radii,
             has_radiation_belts,
             aurora_latitude,
+            planetary_detail: None,
         }
     }
 

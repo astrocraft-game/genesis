@@ -317,3 +317,231 @@ pub struct PlanetSurfaceMap {
     /// Diameter of the largest impact crater in km.
     pub largest_crater_km: f32,
 }
+
+// =============================================================================
+// Planetary Detail Types (V3)
+// =============================================================================
+
+/// Comprehensive planetary detail computed from base world parameters.
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct PlanetaryDetail {
+    pub atmospheric_layers: Option<AtmosphericLayers>,
+    pub breathability: AtmosphereBreathability,
+    pub toxicity: AtmosphereToxicity,
+    pub cloud_decks: Vec<CloudDeck>,
+    pub greenhouse: Option<GreenhouseEffect>,
+    pub sky: Option<SkyAppearance>,
+    pub wind: Option<WindProfile>,
+    pub hydrography: Option<Hydrography>,
+    pub lakes: Option<LakeDistribution>,
+    pub glaciation: Option<GlaciationState>,
+    pub ocean_chemistry: Option<OceanChemistry>,
+    pub volcanic_profile: Option<VolcanicProfile>,
+    pub mineral_diversity: Option<MineralDiversity>,
+    pub surface_material: Option<SurfaceMaterial>,
+    pub radiation: Option<RadiationEnvironment>,
+    pub seismic: Option<SeismicProfile>,
+    pub dust_storms: Option<DustStormProfile>,
+    pub lightning: Option<LightningProfile>,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct AtmosphericLayers {
+    pub scale_height_km: f32,
+    pub tropopause_km: f32,
+    pub has_stratosphere: bool,
+    pub exobase_km: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum AtmosphereBreathability {
+    #[default] Vacuum, Trace, VeryThin, ThinBreathable, Standard, Dense, VeryDense, Superdense,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum AtmosphereToxicity {
+    #[default] Benign, Marginal, Filterable, Suffocating, MildlyToxic, HighlyToxic, LethallyToxic, Corrosive, Insidious,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum CloudComposition {
+    #[default] Water, WaterIce, SulfuricAcid, Ammonia, AmmoniumHydrosulfide, Methane, OrganicHaze, SiliconDust,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct CloudDeck {
+    pub composition: CloudComposition,
+    pub base_altitude_km: f32,
+    pub top_altitude_km: f32,
+    pub optical_depth: f32,
+    pub coverage_fraction: f32,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct GreenhouseEffect {
+    pub equilibrium_temp_k: f32,
+    pub surface_temp_k: f32,
+    pub greenhouse_delta_k: f32,
+    pub bond_albedo: f32,
+    pub is_runaway: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum SkyColor {
+    #[default] Black, DeepBlue, Blue, PaleBlue, White, Yellow, Amber, Orange, Butterscotch, Red, Green, Pink,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct SkyAppearance {
+    pub daytime_color: SkyColor,
+    pub sunset_color: SkyColor,
+    pub daytime_stars_visible: bool,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct WindProfile {
+    pub mean_surface_wind_ms: f32,
+    pub max_wind_ms: f32,
+    pub superrotation: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum DeltaType {
+    #[default] None, Arcuate, BirdFoot, Cuspate, Estuarine,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct Hydrography {
+    pub major_river_count: u32,
+    pub longest_river_km: f32,
+    pub mean_precipitation_mm: f32,
+    pub dominant_delta_type: DeltaType,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum LakeFormationType {
+    #[default] None, Glacial, Tectonic, Volcanic, Impact, Fluvial, Endorheic,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum LiquidType {
+    #[default] Water, Brine, MethaneEthane, Ammonia, Magma,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct LakeDistribution {
+    pub lake_count: u32,
+    pub dominant_type: LakeFormationType,
+    pub largest_lake_km2: f32,
+    pub liquid_type: LiquidType,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum IceCapLocation {
+    #[default] None, Polar, Equatorial, DarkSide, Global,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct GlaciationState {
+    pub ice_coverage_fraction: f32,
+    pub in_glacial_period: bool,
+    pub snowball_state: bool,
+    pub ice_cap_location: IceCapLocation,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum OceanIronContent {
+    #[default] Negligible, Low, Moderate, High,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct OceanChemistry {
+    pub liquid_type: LiquidType,
+    pub salinity_g_per_kg: f32,
+    pub ph: f32,
+    pub anoxic: bool,
+    pub iron_content: OceanIronContent,
+    pub hydrothermal_vents: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum VolcanoType {
+    #[default] Shield, Stratovolcano, Caldera, Fissure, FloodBasalt, Cryovolcano,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct VolcanicProfile {
+    pub active_count: u32,
+    pub dominant_type: VolcanoType,
+    pub flood_basalt_history: bool,
+    pub tallest_volcano_km: f32,
+    pub supervolcano_present: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum MineralEvolutionStage {
+    #[default] Primordial, Differentiated, Hydrated, TectonicallyActive, Oxidized, Biogenic,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct MineralDiversity {
+    pub mineral_count: u32,
+    pub evolution_stage: MineralEvolutionStage,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum SurfaceMaterialType {
+    #[default] BarrenRock, Regolith, IronOxideFines, Soil, SulfurDeposits, IceCrust, OrganicSediment, SandDunes, EvaporiteDeposits,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct SurfaceMaterial {
+    pub primary_type: SurfaceMaterialType,
+    pub depth_m: f32,
+    pub perchlorates: bool,
+    pub oxidized: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum RadiationHazard {
+    #[default] Negligible, Low, Moderate, High, Extreme,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct RadiationEnvironment {
+    pub surface_dose_msv_yr: f32,
+    pub uv_index_peak: f32,
+    pub radiation_hazard: RadiationHazard,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum SeismicitySource {
+    #[default] None, Residual, TidalOnly, TectonicModerate, TectonicExtreme, TidalExtreme,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct SeismicProfile {
+    pub max_magnitude: f32,
+    pub quakes_per_year_m4: u32,
+    pub seismicity_source: SeismicitySource,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct DustStormProfile {
+    pub global_storms_possible: bool,
+    pub global_storm_interval_years: f32,
+    pub peak_wind_ms: f32,
+    pub dust_devils_active: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize)]
+pub enum LightningMechanism {
+    #[default] None, WaterCloud, VolcanicPlume, DustTriboelectric, AcidCloud,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct LightningProfile {
+    pub present: bool,
+    pub flash_rate_relative: f32,
+    pub mechanism: LightningMechanism,
+}
