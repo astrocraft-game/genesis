@@ -27,6 +27,7 @@ pub mod prelude {
     pub use crate::galaxy::Galaxy;
     pub use crate::generator::types::*;
     pub use crate::generator::Generator;
+    pub use crate::life::species::*;
     pub use crate::life::types::*;
     pub use crate::system::celestial_body::gaseous::types::*;
     pub use crate::system::celestial_body::gaseous::GaseousBodyDetails;
