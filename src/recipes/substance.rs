@@ -177,4 +177,23 @@ pub enum Substance {
     Hydroxyapatite, BioactiveGlass, PLA, Chitosan,
     SiliconSolarCell, NMCCathode, SolidElectrolyte, MetalHydride, BiTe,
     Nanocellulose, SilverNanoparticle, GoldNanoparticle, TiO2Nano, IronOxideNano, SilicaNano,
+
+    // === CHEMISTRY PRODUCTS ===
+    SalicylicAcid, Crotonaldehyde, Cyclohexene, HDPE, SBRLatex, PVCBeads,
+    Polyamide, Epoxide, Triazole, SilicaGelProduct,
+
+    // === INORGANIC PRODUCTS (Extended) ===
+    HydroxylRadical, Diol, Patina, SilverSulfide, CementGel, Zeolite,
+    SilicaGel, WaterGlass, Potash, Borax, CalciumHypochlorite,
+    CopperSulfate, IronSulfate, ZincSulfate, ChromeAlum,
+    SodiumThiosulfate, SiliconTetrafluoride, Phosphine, Arsine, Diborane,
+    Ferrocene, TitaniumIsopropoxide, AluminumIsopropoxide,
+
+    // === NATURAL/GEO (Extended) ===
+    Dolomite, Phosphorite, Chert, Lignite, Bituminite, Anthracite,
+    Laterite, Saprolite, ManganeseNodule, BandedIronFormation,
+    Guano, Amber, PetrifiedWood, Fossil, CoralReef, Pearl,
+    Stromatolite, Biofilm, Humus, Peat, CalciumOxalite,
+    Stalactite, Travertine, Tufa, Geode, Agate, DesertVarnish,
+    RustScale, Saltpeter, Geyserite, IronPan, Calcrete,
 }
