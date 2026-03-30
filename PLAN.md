@@ -1,229 +1,195 @@
-# Implementation Plan V3 - Planetary Detail
+# Implementation Plan - Planetary Detail Fixes
 
-Deep planetary science: atmosphere, surface, geology, hazards. All derivable from existing data.
-
----
-
-## 1. Atmospheric Layers
-
-**What:** Scale height, tropopause, stratosphere presence, exobase altitude.
-**Formula:** `H = R*T / (M*g)` where R=8.314, T=temp K, M=molar mass kg/mol, g=gravity m/s^2.
-**Key:** Stratosphere only exists if UV absorber present (O3, tholin haze).
-
-**Struct:** `AtmosphericLayers { scale_height_km, tropopause_km, has_stratosphere, exobase_km }`
-
-**Files:** `telluric/types.rs` (struct), `world/generator.rs` (compute)
+Every feature needs its unused enum variants wired in, placeholder logic replaced with real physics, and generation gaps filled.
 
 ---
 
-## 2. Atmosphere Breathability & Toxicity
+## 1. Cloud Decks - Use ALL 8 compositions
 
-**What:** Classify atmosphere for habitability: Vacuum through Superdense pressure, plus Benign through Insidious toxicity.
-**Key thresholds:** CO2>5% narcotic, CO>100ppm lethal, H2S>100ppm lethal, O2<16% hypoxia, >50% toxic.
+**Currently:** Only 4 of 8 CloudComposition variants generated (Water, WaterIce, SulfuricAcid, Ammonia, Methane). Missing: AmmoniumHydrosulfide, OrganicHaze, SiliconDust.
 
-**Enums:** `AtmosphereBreathability`, `AtmosphereToxicity`
-
-**Files:** `telluric/types.rs` (enums), `world/generator.rs` (derive from pressure + composition)
-
----
-
-## 3. Cloud Decks
-
-**What:** Multiple cloud layers with composition, altitude, optical depth, coverage.
-**Key:** Clouds form where T_atmosphere = T_condensation for each compound. Jupiter has 3 decks.
-
-**Struct:** `CloudDeck { composition, base_altitude_km, top_altitude_km, optical_depth, coverage_fraction }`
-**Enum:** `CloudComposition` (Water, WaterIce, SulfuricAcid, Ammonia, Methane, OrganicHaze, etc.)
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
+**Fix:**
+- Add AmmoniumHydrosulfide clouds for NH3+H2S atmospheres between 200-250K
+- Add OrganicHaze for CH4+N2 atmospheres (Titan) - tholin layer at 100-300km
+- Add SiliconDust for lava worlds (T>1500K) - silicate vapor condensing
+- Add multi-deck logic for gas giant worlds: 3-layer (NH3 / NH4SH / H2O)
+- Compute altitude from condensation temperature vs lapse rate: `z = (T_surface - T_condensation) / lapse_rate`
 
 ---
 
-## 4. Greenhouse Effect Quantification
+## 2. Sky Color - Use ALL 12 variants
 
-**What:** Equilibrium temp, actual surface temp, greenhouse delta, CO2 partial pressure, runaway flag, bond albedo.
-**Formula:** `deltaT ~ 10 * ln(P_CO2 / 0.0004)` for CO2; runaway at >1.4x Earth flux.
+**Currently:** Only 7 of 12 SkyColor variants generated. Missing: DeepBlue, Green, Pink, Red, Yellow.
 
-**Struct:** `GreenhouseEffect { equilibrium_temp_k, surface_temp_k, greenhouse_delta_k, co2_partial_pressure_bar, bond_albedo, is_runaway }`
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
-
----
-
-## 5. Sky Appearance
-
-**What:** Daytime color, sunset color, haze depth, daytime star visibility.
-**Key:** Rayleigh=blue, iron dust=butterscotch, tholins=orange, H2SO4=amber, CH4 absorption=deep blue.
-
-**Enum:** `SkyColor` (Black, Blue, PaleBlue, White, Yellow, Amber, Orange, Butterscotch, Red, Green, Pink)
-**Struct:** `SkyAppearance { daytime_color, sunset_color, daytime_stars_visible, haze_optical_depth }`
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
+**Fix:**
+- DeepBlue: CH4 absorption in thick H2/He atmospheres (Uranus/Neptune analogs)
+- Green: Cl2-rich atmospheres (exotic)
+- Pink: fine silicate dust + very thin atmosphere
+- Red: heavy iron oxide dust loading (extreme Mars storms)
+- Yellow: sulfur aerosol or dense CO2 without acid clouds
+- Make sunset color derive properly from daytime composition
 
 ---
 
-## 6. Wind Profile
+## 3. Toxicity - Use ALL 9 variants
 
-**What:** Mean/max surface winds, superrotation, equator-pole delta.
-**Key:** Neptune 580 m/s from internal heat. Venus superrotation 60x surface speed.
+**Currently:** Missing Filterable, LethallyToxic. Gas checks are binary (present/absent).
 
-**Struct:** `WindProfile { mean_surface_wind_ms, max_wind_ms, superrotation, superrotation_factor }`
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
-
----
-
-## 7. Hydrography (Rivers)
-
-**What:** Drainage density, major river count, longest river, mean precipitation, delta type.
-**Formula:** Hack's law `L = 1.4 * A^0.57`. Peak drainage at 250-360mm precipitation.
-
-**Struct:** `Hydrography { drainage_density, major_river_count, longest_river_km, mean_precipitation_mm, dominant_delta_type }`
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
+**Fix:**
+- Filterable: particulates, pollen, low-level SO2 (<10 ppm equivalent)
+- LethallyToxic: HCN, high CO, high Cl2 presence
+- Add partial pressure checks: CO2 >5% narcotic, >10% lethal. CO >100ppm. H2S >100ppm. SO2 >100ppm.
+- Compute toxicity from actual composition fractions * pressure, not just presence
 
 ---
 
-## 8. Lake Distribution
+## 4. Lake Distribution - Use ALL 7 formation types + ALL 5 liquid types
 
-**What:** Count, density, formation type, largest lake, liquid type.
-**Key:** Glaciated regions: 0.56 lakes/km^2. Titan: methane/ethane lakes at poles.
+**Currently:** Missing Impact, Endorheic lake types. Missing Brine, Magma liquids.
 
-**Struct:** `LakeDistribution { lake_count, lake_density, dominant_type, largest_lake_km2, liquid_type }`
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
-
----
-
-## 9. Glaciation State
-
-**What:** Ice coverage, glacial period flag, snowball state, Milankovitch cycles, ice cap location.
-**Key:** Tilt>40deg = equatorial ice. Snowball below ~260K mean. Obliquity cycle ~41kyr.
-
-**Struct:** `GlaciationState { ice_coverage_fraction, in_glacial_period, snowball_state, ice_cap_location }`
-**Enum:** `IceCapLocation` (None, Polar, Equatorial, DarkSide, Global)
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
+**Fix:**
+- Impact: generate when crater_density is Heavy/Saturated and hydrosphere > 5%
+- Endorheic: generate when precipitation < 300mm and temperature > 280K (arid + warm)
+- Brine: hyper-saline lakes in endorheic basins or salty oceans
+- Magma: lava lakes on volcanic worlds with volcanism > 70
 
 ---
 
-## 10. Ocean Chemistry
+## 5. Surface Material - Use ALL 9 types
 
-**What:** Liquid type, salinity, pH, anoxic flag, iron content, hydrothermal vents, subsurface flag.
-**Key:** Archean Earth: green iron oceans. Europa: salty subsurface. Titan: methane seas.
+**Currently:** Only 4 of 9 SurfaceMaterialType variants generated. Missing: SulfurDeposits, OrganicSediment, EvaporiteDeposits, SandDunes (wrong trigger), BarrenRock (fallback only).
 
-**Struct:** `OceanChemistry { liquid_type, salinity_g_per_kg, ph, anoxic, iron_content, hydrothermal_vents }`
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
-
----
-
-## 11. Volcanic Profile
-
-**What:** Active count, dominant type, flood basalt history, tallest volcano, supervolcano flag.
-**Key:** No tectonics = only shield volcanoes (grow huge). Subduction = stratovolcanoes.
-
-**Struct:** `VolcanicProfile { active_count, dominant_type, flood_basalt_history, tallest_volcano_km, supervolcano_present }`
-**Enum:** `VolcanoType` (Shield, Stratovolcano, Caldera, Cinder, Fissure, FloodBasalt, Cryovolcano)
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
+**Fix:**
+- SulfurDeposits: SO2-rich atmosphere + volcanism (Io-like)
+- OrganicSediment: life >= PluriCellular + hydrosphere > 20 (dead organic matter)
+- EvaporiteDeposits: low hydrosphere + warm + was once wetter (evaporated seas)
+- SandDunes: arid worlds with wind (pressure > 0.001, land > 50%, hydrosphere < 20%)
+- Fix: volcanism > 60 should NOT always produce sand dunes
 
 ---
 
-## 12. Mineral Diversity
+## 6. Volcanic Profile - Use ALL 6 types
 
-**What:** Mineral count, evolution stage, free oxygen flag.
-**Key:** No water=500, with water=1500, with O2=4000+, with life=5800.
+**Currently:** Missing Caldera, FloodBasalt as dominant types.
 
-**Struct:** `MineralDiversity { mineral_count, evolution_stage }`
-**Enum:** `MineralEvolutionStage` (Primordial, Differentiated, Hydrated, TectonicallyActive, Oxidized, Biogenic)
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
-
----
-
-## 13. Surface Material
-
-**What:** Primary type, depth, perchlorates, oxidation state, space weathering.
-**Key:** Mars: iron oxide fines + perchlorates (toxic). Moon: regolith 4-15m from impacts.
-
-**Struct:** `SurfaceMaterial { primary_type, depth_m, perchlorates, oxidized, space_weathering }`
-**Enum:** `SurfaceMaterialType` (Regolith, IronOxideFines, Soil, SulfurDeposits, IceCrust, OrganicSediment, etc.)
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
+**Fix:**
+- Caldera: dominant when volcanism > 60 AND tectonics > 30 (high viscosity magma)
+- FloodBasalt: dominant when volcanism > 70 AND tectonics < 10 (mantle plume, no tectonics)
+- Add eruption frequency estimate: `eruptions_per_year = volcanism * active_count / 5000`
+- Add magma viscosity class: basaltic (shield), andesitic (strato), rhyolitic (caldera)
 
 ---
 
-## 14. Radiation Environment
+## 7. Ocean Chemistry - Use ALL iron levels + ALL liquid types
 
-**What:** Surface dose mSv/yr, UV index, cosmic ray flux, shielding flags, hazard class.
-**Key:** Earth: 2.4 mSv/yr. Mars: 240. Europa: 5,400,000 (Jupiter belts).
+**Currently:** Only Negligible/High iron. Only Water/Ammonia/MethaneEthane liquids.
 
-**Struct:** `RadiationEnvironment { surface_dose_msv_yr, uv_index_peak, radiation_hazard }`
-**Enum:** `RadiationHazard` (Negligible, Low, Moderate, High, Extreme)
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
-
----
-
-## 15. Seismic Profile
-
-**What:** Gutenberg-Richter a/b values, max magnitude, quake rate, source type.
-**Formula:** `log10(N) = a - b*M`, b~1.0. Tidal: Mw_max from e^2*R^5/a^6 scaling.
-
-**Struct:** `SeismicProfile { max_magnitude, quakes_per_year_m4, seismicity_source }`
-**Enum:** `SeismicitySource` (None, Residual, TidalOnly, TectonicModerate, TectonicExtreme, TidalExtreme)
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
+**Fix:**
+- Low iron: partially oxygenated oceans (early oxygen rise)
+- Moderate iron: reducing conditions with some oxygen
+- Brine oceans: salinity > 100 g/kg (evaporating worlds, Europa subsurface)
+- Magma oceans: lava worlds with T > 1500K
+- Compute salinity from evaporation/precipitation ratio, not pure RNG
+- pH from CO2 partial pressure: `pH ~ 8.1 - 0.8 * log10(pCO2/0.0004)`
 
 ---
 
-## 16. Dust Storm Profile
+## 8. Lightning - Use ALL 5 mechanisms
 
-**What:** Global storm possibility, recurrence interval, peak winds, dust fraction, dust devils.
-**Key:** Mars: planet-encircling every ~3 Mars years. Needs fine dust + thin atmosphere.
+**Currently:** Missing AcidCloud mechanism.
 
-**Struct:** `DustStormProfile { global_storms_possible, global_storm_interval_years, peak_wind_ms, dust_devils_active }`
-
-**Files:** `telluric/types.rs`, `world/generator.rs`
+**Fix:**
+- AcidCloud: Venus-like worlds with H2SO4 cloud decks and high pressure
+- Scale flash rate from convective energy: `rate ~ CAPE * cloud_coverage`
+- Dust triboelectric rate should be higher (0.1, not 0.01)
 
 ---
 
-## 17. Lightning Profile
+## 9. Greenhouse - Add H2O + CH4 feedback
 
-**What:** Presence, flash rate, mechanism, energy.
-**Key:** Jupiter 1000-10000x Earth per flash. Mars: triboelectric in dust. Volcanic lightning universal.
+**Currently:** Only CO2 greenhouse. No water vapor feedback, no methane.
 
-**Struct:** `LightningProfile { present, flash_rate_relative, mechanism }`
-**Enum:** `LightningMechanism` (None, WaterCloud, VolcanicPlume, DustTriboelectric, AcidCloud)
+**Fix:**
+- H2O feedback: if surface_temp > 300K, each +1K increases H2O vapor which adds +0.5K
+- CH4 contribution: `deltaT_CH4 ~ 0.5 * ln(pCH4/0.000002)` per ppm above background
+- Runaway threshold: stellar flux > 1.4x Earth AND water available
+- Proper equilibrium temp from stellar luminosity + distance (not just blackbody)
 
-**Files:** `telluric/types.rs`, `world/generator.rs`
+---
+
+## 10. Wind Profile - Use rotation physics + connect AtmosphericCirculation
+
+**Currently:** Arbitrary sqrt formula. AtmosphericCirculation (Hadley cells) exists but is computed separately and not connected to winds.
+
+**Fix:**
+- Derive mean wind from Hadley cell count (already computed): more cells = stronger zonal winds
+- Superrotation: specifically for slow rotators (Rossby number >> 1), not just rotation > 10 days
+- Max wind: scale with internal heat for gas-giant-type atmospheres
+- Connect wind profile to AtmosphericCirculation already computed in world generator
+
+---
+
+## 11. Radiation - Add distance scaling + stellar type
+
+**Currently:** Fixed base 400 mSv/yr at 1 AU. No distance scaling.
+
+**Fix:**
+- Scale by `1/distance^2` from star
+- Scale by stellar UV output: M dwarfs have high flare UV, F stars have strong steady UV
+- Magnetic field strength: use numeric B-field ratio, not binary
+- Atmospheric shielding: continuous `exp(-column_density)` not 3 tiers
+- Add in-radiation-belt check for moons of gas giants
+
+---
+
+## 12. Atmospheric Layers - Add temperature profile
+
+**Currently:** Only scale height + tropopause. No temp profile.
+
+**Fix:**
+- Compute lapse rate: `dT/dz = -g/cp` (dry adiabatic) or `-g*M/(R)` simplified
+- Stratosphere height: if has_stratosphere, stratopause at ~3-5x scale height
+- Mesopause at ~8-10x scale height
+- Exobase from `H * ln(column_density)` properly
+
+---
+
+## 13. Seismic - Add Gutenberg-Richter
+
+**Currently:** Max magnitude and quakes are independent RNG. No G-R law.
+
+**Fix:**
+- Set b-value (~1.0 for tectonic, ~1.5 for volcanic, ~0.8 for tidal)
+- Derive quakes from: `log10(N_m4) = a - b*(4 - max_mag_offset)`
+- Subduction zones: allow M9+ for TectonicExtreme
+- Tidal: compute from actual tidal_heating value, not threshold
+
+---
+
+## 14. Hydrography - Use ALL 5 delta types + rain shadow
+
+**Currently:** Missing Estuarine deltas. No rain shadow.
+
+**Fix:**
+- Estuarine: tidal range > 4m (compute from moon mass + distance)
+- Rain shadow effect: reduce precipitation on leeward side of mountains (connect to tectonic_activity)
+- Drainage density from Langbein-Schumm curve (peak at 250-360mm precip)
 
 ---
 
 ## Suggested Implementation Order
 
-**Tier 1 - Atmosphere (builds on existing atmospheric_pressure + composition):**
-- [x] 1. Atmospheric layers - scale height, tropopause, stratosphere, exobase
-- [x] 2. Breathability & toxicity - 8 breathability + 9 toxicity categories
-- [x] 3. Cloud decks - multi-layer with composition, altitude, optical depth
-- [x] 4. Greenhouse quantification - CO2 partial pressure, delta T, runaway flag
-- [x] 5. Sky appearance - color from Rayleigh/Mie/absorption, sunset color
-- [x] 6. Wind profile - surface/max winds, superrotation detection
-
-**Tier 2 - Surface water/ice (builds on existing hydrosphere + climate):**
-- [x] 7. Hydrography (rivers) - Hack's law river count/length, precipitation, deltas
-- [x] 8. Lake distribution - count, formation type, liquid composition
-- [x] 9. Glaciation state - ice coverage, snowball, Milankovitch, cap location
-- [x] 10. Ocean chemistry - salinity, pH, iron content, hydrothermal vents
-
-**Tier 3 - Geology (builds on existing volcanism + tectonics):**
-- [x] 11. Volcanic profile - type (shield/strato/caldera), count, tallest, supervolcano
-- [x] 12. Mineral diversity - 60 to 5800 minerals, evolution stage from water/O2/life
-- [x] 13. Surface material - regolith/soil/iron fines, depth, perchlorates
-
-**Tier 4 - Hazards (builds on everything above):**
-- [x] 14. Radiation environment - dose mSv/yr, UV index, hazard class
-- [x] 15. Seismic profile - Gutenberg-Richter, max magnitude, source type
-- [x] 16. Dust storm profile - global storms, interval, peak winds, dust devils
-- [x] 17. Lightning profile - mechanism (water/volcanic/dust), flash rate
+- [ ] 1. Cloud decks (all 8 compositions)
+- [ ] 2. Sky color (all 12 variants)
+- [ ] 3. Toxicity (all 9 variants with partial pressures)
+- [ ] 4. Lake distribution (all 7 types + 5 liquids)
+- [ ] 5. Surface material (all 9 types)
+- [ ] 6. Volcanic profile (all 6 types + eruption frequency)
+- [ ] 7. Ocean chemistry (all iron levels + liquid types + pH formula)
+- [ ] 8. Lightning (all 5 mechanisms)
+- [ ] 9. Greenhouse (H2O + CH4 feedback)
+- [ ] 10. Wind profile (connect to Hadley cells)
+- [ ] 11. Radiation (distance + stellar type scaling)
+- [ ] 12. Atmospheric layers (temperature profile + lapse rate)
+- [ ] 13. Seismic (Gutenberg-Richter law)
+- [ ] 14. Hydrography (all 5 deltas + rain shadow)
