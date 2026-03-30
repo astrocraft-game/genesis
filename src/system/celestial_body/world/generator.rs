@@ -69,6 +69,9 @@ impl WorldGenerator {
                     Vec::new(),
                     Vec::new(),
                     None,
+                    0.0,
+                    false,
+                    0.0,
                 )),
             }),
             moons
@@ -1763,6 +1766,40 @@ impl WorldGenerator {
                     Self::generate_resources(body_type, volcanism, size, &seed, coord, system_index, star_id, orbital_point_id),
                     Self::generate_points_of_interest(volcanism, hydrosphere, atmospheric_pressure, life_level, size, &seed, coord, system_index, star_id, orbital_point_id),
                     Self::generate_surface_map(climate, hydrosphere, ice_over_water, ice_over_land, volcanism, tectonics, gravity, size, &seed, coord, system_index, star_id, orbital_point_id),
+                    {
+                        // Magnetopause: R_mp ~ R * (B / B_earth)^(1/3) * (d_AU / d_earth)^(1/3)
+                        let b_ratio: f32 = match magnetic_field {
+                            MagneticFieldStrength::None => 0.0,
+                            MagneticFieldStrength::Weak => 0.3,
+                            MagneticFieldStrength::Moderate => 1.0,
+                            MagneticFieldStrength::Strong => 3.0,
+                            MagneticFieldStrength::VeryStrong => 10.0,
+                            MagneticFieldStrength::Extreme => 30.0,
+                        };
+                        if b_ratio > 0.0 {
+                            (b_ratio.powf(1.0 / 3.0) * (distance_from_star as f32).powf(1.0 / 3.0) * 6.0_f32).max(1.5)
+                        } else { 0.0 }
+                    },
+                    {
+                        magnetic_field != MagneticFieldStrength::None
+                        && magnetic_field != MagneticFieldStrength::Weak
+                    },
+                    {
+                        let mp = match magnetic_field {
+                            MagneticFieldStrength::None | MagneticFieldStrength::Weak => 0.0_f32,
+                            _ => {
+                                let b_ratio = match magnetic_field {
+                                    MagneticFieldStrength::Moderate => 1.0_f32,
+                                    MagneticFieldStrength::Strong => 3.0,
+                                    MagneticFieldStrength::VeryStrong => 10.0,
+                                    MagneticFieldStrength::Extreme => 30.0,
+                                    _ => 0.0,
+                                };
+                                b_ratio.powf(1.0 / 3.0) * 6.0
+                            }
+                        };
+                        if mp > 1.0 { (1.0_f32 / mp).sqrt().acos().to_degrees() } else { 0.0 }
+                    },
                 )),
             )),
             orbits.clone(),

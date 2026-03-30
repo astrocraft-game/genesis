@@ -45,6 +45,9 @@ impl TelluricBodyDetails {
                 Vec::new(),
                 Vec::new(),
                 None,
+                0.0,
+                false,
+                0.0,
             )),
         }
     }
@@ -384,6 +387,9 @@ impl TelluricBodyDetails {
                 Vec::new(),
                 Vec::new(),
                 None,
+                0.0,
+                false,
+                0.0,
             )),
         }
     }
