@@ -197,3 +197,57 @@ pub struct PointOfInterest {
     pub poi_type: POIType,
     pub significance: POISignificance,
 }
+
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize,
+)]
+pub enum BiomeType {
+    Tundra,
+    Taiga,
+    TemperateForest,
+    TropicalForest,
+    #[default]
+    Grassland,
+    Desert,
+    Savanna,
+    Wetland,
+    Alpine,
+    Volcanic,
+    IceCap,
+    Ocean,
+    Barren,
+}
+
+impl Display for BiomeType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
+            BiomeType::Tundra => "Tundra",
+            BiomeType::Taiga => "Taiga",
+            BiomeType::TemperateForest => "Temperate Forest",
+            BiomeType::TropicalForest => "Tropical Forest",
+            BiomeType::Grassland => "Grassland",
+            BiomeType::Desert => "Desert",
+            BiomeType::Savanna => "Savanna",
+            BiomeType::Wetland => "Wetland",
+            BiomeType::Alpine => "Alpine",
+            BiomeType::Volcanic => "Volcanic",
+            BiomeType::IceCap => "Ice Cap",
+            BiomeType::Ocean => "Ocean",
+            BiomeType::Barren => "Barren",
+        })
+    }
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct PlanetSurfaceMap {
+    /// Number of distinct continents.
+    pub continent_count: u8,
+    /// Biome distribution: (biome_type, fraction of total surface 0.0-1.0).
+    pub biome_distribution: Vec<(BiomeType, f32)>,
+    /// Highest point above sea level in km.
+    pub highest_elevation_km: f32,
+    /// Deepest ocean point in km.
+    pub deepest_ocean_km: f32,
+    /// Number of tectonic plates.
+    pub tectonic_plate_count: u8,
+}

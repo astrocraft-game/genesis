@@ -44,6 +44,7 @@ impl TelluricBodyDetails {
                 WorldClimateType::Dead,
                 Vec::new(),
                 Vec::new(),
+                None,
             )),
         }
     }
@@ -382,6 +383,7 @@ impl TelluricBodyDetails {
                 WorldClimateType::Dead,
                 Vec::new(),
                 Vec::new(),
+                None,
             )),
         }
     }

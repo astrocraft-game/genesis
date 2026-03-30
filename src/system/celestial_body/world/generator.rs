@@ -68,6 +68,7 @@ impl WorldGenerator {
                     WorldClimateType::Dead,
                     Vec::new(),
                     Vec::new(),
+                    None,
                 )),
             }),
             moons
@@ -1761,6 +1762,7 @@ impl WorldGenerator {
                     climate,
                     Self::generate_resources(body_type, volcanism, size, &seed, coord, system_index, star_id, orbital_point_id),
                     Self::generate_points_of_interest(volcanism, hydrosphere, atmospheric_pressure, life_level, size, &seed, coord, system_index, star_id, orbital_point_id),
+                    Self::generate_surface_map(climate, hydrosphere, ice_over_water, ice_over_land, volcanism, tectonics, gravity, size, &seed, coord, system_index, star_id, orbital_point_id),
                 )),
             )),
             orbits.clone(),
@@ -2492,6 +2494,142 @@ impl WorldGenerator {
         } else {
             world_type
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn generate_surface_map(
+        climate: WorldClimateType,
+        hydrosphere: f32,
+        ice_over_water: f32,
+        ice_over_land: f32,
+        volcanism: f32,
+        tectonics: f32,
+        gravity: f32,
+        size: CelestialBodySize,
+        seed: &Rc<str>,
+        coord: SpaceCoordinates,
+        system_index: u16,
+        star_id: u32,
+        orbital_point_id: u32,
+    ) -> Option<PlanetSurfaceMap> {
+        // Only generate maps for worlds with meaningful surfaces
+        if matches!(
+            climate,
+            WorldClimateType::Dead
+        ) && hydrosphere < 0.01 && volcanism < 0.01
+        {
+            return None;
+        }
+
+        let mut rng = SeededDiceRoller::new(
+            seed,
+            &format!("sys_{}_{}_str_{}_bdy{}_map", coord, system_index, star_id, orbital_point_id),
+        );
+
+        let continent_count = if hydrosphere > 95.0 {
+            0
+        } else if hydrosphere > 80.0 {
+            rng.roll(1, 3, 0) as u8
+        } else if hydrosphere > 40.0 {
+            rng.roll(1, 6, 1) as u8
+        } else {
+            rng.roll(1, 4, 0) as u8
+        };
+
+        let tectonic_plate_count = if tectonics < 1.0 {
+            1
+        } else if tectonics < 20.0 {
+            rng.roll(1, 4, 1) as u8
+        } else {
+            rng.roll(1, 8, 4) as u8
+        };
+
+        // Elevation scaled by gravity (lower gravity = taller mountains)
+        let gravity_factor = if gravity > 0.01 { 1.0 / gravity } else { 1.0 };
+        let base_elevation = (tectonics * 0.15 + volcanism * 0.05) * gravity_factor;
+        let highest_elevation_km = (base_elevation + rng.roll(1, 6, 0) as f32).min(30.0);
+        let deepest_ocean_km = if hydrosphere > 5.0 {
+            (hydrosphere * 0.12 * gravity_factor + rng.roll(1, 4, 0) as f32).min(20.0)
+        } else {
+            0.0
+        };
+
+        // Biome distribution derived from climate
+        let land_fraction = 1.0 - hydrosphere / 100.0;
+        let ocean_fraction = hydrosphere / 100.0;
+        let ice_fraction = (ice_over_water / 100.0 * ocean_fraction
+            + ice_over_land / 100.0 * land_fraction)
+            .min(1.0);
+
+        let mut biomes: Vec<(BiomeType, f32)> = Vec::new();
+        if ocean_fraction > 0.01 {
+            biomes.push((BiomeType::Ocean, ocean_fraction * (1.0 - ice_over_water / 100.0)));
+        }
+        if ice_fraction > 0.01 {
+            biomes.push((BiomeType::IceCap, ice_fraction));
+        }
+
+        let dry_land = (land_fraction * (1.0 - ice_over_land / 100.0)).max(0.0);
+        if dry_land > 0.01 {
+            match climate {
+                WorldClimateType::Desert => {
+                    biomes.push((BiomeType::Desert, dry_land * 0.8));
+                    biomes.push((BiomeType::Barren, dry_land * 0.2));
+                }
+                WorldClimateType::Arctic => {
+                    biomes.push((BiomeType::Tundra, dry_land * 0.7));
+                    biomes.push((BiomeType::Taiga, dry_land * 0.3));
+                }
+                WorldClimateType::Tundra => {
+                    biomes.push((BiomeType::Tundra, dry_land * 0.5));
+                    biomes.push((BiomeType::Taiga, dry_land * 0.3));
+                    biomes.push((BiomeType::Alpine, dry_land * 0.2));
+                }
+                WorldClimateType::Jungle | WorldClimateType::Tropical => {
+                    biomes.push((BiomeType::TropicalForest, dry_land * 0.6));
+                    biomes.push((BiomeType::Wetland, dry_land * 0.2));
+                    biomes.push((BiomeType::Savanna, dry_land * 0.2));
+                }
+                WorldClimateType::Terrestrial => {
+                    biomes.push((BiomeType::TemperateForest, dry_land * 0.3));
+                    biomes.push((BiomeType::Grassland, dry_land * 0.3));
+                    biomes.push((BiomeType::Desert, dry_land * 0.15));
+                    biomes.push((BiomeType::Alpine, dry_land * 0.1));
+                    biomes.push((BiomeType::Tundra, dry_land * 0.15));
+                }
+                WorldClimateType::Savanna | WorldClimateType::Steppe => {
+                    biomes.push((BiomeType::Savanna, dry_land * 0.4));
+                    biomes.push((BiomeType::Grassland, dry_land * 0.3));
+                    biomes.push((BiomeType::Desert, dry_land * 0.3));
+                }
+                WorldClimateType::Taiga => {
+                    biomes.push((BiomeType::Taiga, dry_land * 0.6));
+                    biomes.push((BiomeType::Tundra, dry_land * 0.2));
+                    biomes.push((BiomeType::TemperateForest, dry_land * 0.2));
+                }
+                WorldClimateType::Rainforest => {
+                    biomes.push((BiomeType::TropicalForest, dry_land * 0.7));
+                    biomes.push((BiomeType::Wetland, dry_land * 0.3));
+                }
+                _ => {
+                    biomes.push((BiomeType::Barren, dry_land));
+                }
+            }
+            if volcanism > 30.0 && dry_land > 0.05 {
+                biomes.push((BiomeType::Volcanic, dry_land * 0.05));
+            }
+        }
+
+        // Filter out negligible biomes
+        biomes.retain(|(_, frac)| *frac > 0.005);
+
+        Some(PlanetSurfaceMap {
+            continent_count,
+            biome_distribution: biomes,
+            highest_elevation_km,
+            deepest_ocean_km,
+            tectonic_plate_count,
+        })
     }
 
     #[allow(clippy::too_many_arguments)]

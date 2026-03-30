@@ -41,6 +41,8 @@ pub struct TelluricBodyDetails {
     pub resources: Vec<PlanetaryResource>,
     /// Notable locations and features on this world.
     pub points_of_interest: Vec<PointOfInterest>,
+    /// Data-driven surface map with biome distribution.
+    pub surface_map: Option<PlanetSurfaceMap>,
     // pub landmasses: u32,
     // pub territories: Vec<Territory>,
     // pub atmospheric_composition: AtmosphericCompositionType,
@@ -68,6 +70,7 @@ impl TelluricBodyDetails {
         climate: WorldClimateType,
         resources: Vec<PlanetaryResource>,
         points_of_interest: Vec<PointOfInterest>,
+        surface_map: Option<PlanetSurfaceMap>,
     ) -> Self {
         Self {
             body_type,
@@ -88,6 +91,7 @@ impl TelluricBodyDetails {
             climate,
             resources,
             points_of_interest,
+            surface_map,
         }
     }
 
