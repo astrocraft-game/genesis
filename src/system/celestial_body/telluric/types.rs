@@ -272,6 +272,30 @@ impl Display for WindIntensity {
     }
 }
 
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize,
+)]
+pub enum CraterDensity {
+    Pristine,
+    Light,
+    #[default]
+    Moderate,
+    Heavy,
+    Saturated,
+}
+
+impl Display for CraterDensity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
+            CraterDensity::Pristine => "Pristine",
+            CraterDensity::Light => "Light",
+            CraterDensity::Moderate => "Moderate",
+            CraterDensity::Heavy => "Heavy",
+            CraterDensity::Saturated => "Saturated",
+        })
+    }
+}
+
 #[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
 pub struct PlanetSurfaceMap {
     /// Number of distinct continents.
@@ -284,4 +308,8 @@ pub struct PlanetSurfaceMap {
     pub deepest_ocean_km: f32,
     /// Number of tectonic plates.
     pub tectonic_plate_count: u8,
+    /// Crater density class based on surface age and resurfacing.
+    pub crater_density: CraterDensity,
+    /// Diameter of the largest impact crater in km.
+    pub largest_crater_km: f32,
 }

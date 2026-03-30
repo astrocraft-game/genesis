@@ -1766,7 +1766,7 @@ impl WorldGenerator {
                     climate,
                     Self::generate_resources(body_type, volcanism, size, &seed, coord, system_index, star_id, orbital_point_id),
                     Self::generate_points_of_interest(volcanism, hydrosphere, atmospheric_pressure, life_level, size, &seed, coord, system_index, star_id, orbital_point_id),
-                    Self::generate_surface_map(climate, hydrosphere, ice_over_water, ice_over_land, volcanism, tectonics, gravity, size, &seed, coord, system_index, star_id, orbital_point_id),
+                    Self::generate_surface_map(climate, hydrosphere, ice_over_water, ice_over_land, volcanism, tectonics, gravity, radius, size, &seed, coord, system_index, star_id, orbital_point_id),
                     {
                         // Atmospheric circulation from thermal Rossby number
                         if atmospheric_pressure > 0.01 {
@@ -2568,6 +2568,7 @@ impl WorldGenerator {
         volcanism: f32,
         tectonics: f32,
         gravity: f32,
+        radius: f64,
         size: CelestialBodySize,
         seed: &Rc<str>,
         coord: SpaceCoordinates,
@@ -2686,12 +2687,38 @@ impl WorldGenerator {
         // Filter out negligible biomes
         biomes.retain(|(_, frac)| *frac > 0.005);
 
+        // Crater density: young/active surfaces have fewer craters
+        let resurfacing_rate = volcanism + tectonics;
+        let crater_density = if resurfacing_rate > 80.0 {
+            CraterDensity::Pristine
+        } else if resurfacing_rate > 50.0 {
+            CraterDensity::Light
+        } else if resurfacing_rate > 20.0 {
+            CraterDensity::Moderate
+        } else if resurfacing_rate > 5.0 {
+            CraterDensity::Heavy
+        } else {
+            CraterDensity::Saturated
+        };
+        // Largest crater scales with body size and surface age
+        let body_diameter_km = radius as f32 * 6371.0 * 2.0;
+        let age_factor = match crater_density {
+            CraterDensity::Pristine => 0.01,
+            CraterDensity::Light => 0.05,
+            CraterDensity::Moderate => 0.1,
+            CraterDensity::Heavy => 0.2,
+            CraterDensity::Saturated => 0.3,
+        };
+        let largest_crater_km = (body_diameter_km * age_factor + rng.roll(1, 100, 0) as f32).min(body_diameter_km * 0.4);
+
         Some(PlanetSurfaceMap {
             continent_count,
             biome_distribution: biomes,
             highest_elevation_km,
             deepest_ocean_km,
             tectonic_plate_count,
+            crater_density,
+            largest_crater_km,
         })
     }
 
