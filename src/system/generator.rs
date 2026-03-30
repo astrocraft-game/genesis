@@ -142,21 +142,29 @@ fn generate_number_of_stars_in_system(
         &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("sys_{}_{}_ste_evo", coord, system_index),
     );
-    rng.get_result(&CopyableRollToProcess::new(
-        vec![
-            CopyableWeightedResult::new(1, 400),
-            CopyableWeightedResult::new(2, 280),
-            CopyableWeightedResult::new(3, 120),
-            CopyableWeightedResult::new(4, 32),
-            CopyableWeightedResult::new(5, 20),
-            CopyableWeightedResult::new(6, 12),
-            CopyableWeightedResult::new(7, 4),
-            CopyableWeightedResult::new(8, 2),
-            CopyableWeightedResult::new(9, 1),
-        ],
-        RollMethod::SimpleRoll,
-    ))
-    .unwrap()
+    let mut count: u16 = rng
+        .get_result(&CopyableRollToProcess::new(
+            vec![
+                CopyableWeightedResult::new(1, 400),
+                CopyableWeightedResult::new(2, 280),
+                CopyableWeightedResult::new(3, 120),
+                CopyableWeightedResult::new(4, 32),
+                CopyableWeightedResult::new(5, 20),
+                CopyableWeightedResult::new(6, 12),
+                CopyableWeightedResult::new(7, 4),
+                CopyableWeightedResult::new(8, 2),
+                CopyableWeightedResult::new(9, 1),
+            ],
+            RollMethod::SimpleRoll,
+        ))
+        .unwrap();
+    if let Some(min) = galaxy.settings.star.min_stars {
+        count = count.max(min as u16);
+    }
+    if let Some(max) = galaxy.settings.star.max_stars {
+        count = count.min(max as u16);
+    }
+    count
 }
 
 fn generate_stars(
@@ -171,15 +179,19 @@ fn generate_stars(
 ) -> Vec<Star> {
     let mut stars = Vec::new();
     for star_index in 0..number_of_stars {
-        let evolution = generate_stellar_evolution(
-            system_gen_try,
-            star_index,
-            system_index,
-            coord,
-            hex,
-            sub_sector,
-            galaxy,
-        );
+        let evolution = if let Some(pop) = galaxy.settings.star.fixed_population {
+            pop
+        } else {
+            generate_stellar_evolution(
+                system_gen_try,
+                star_index,
+                system_index,
+                coord,
+                hex,
+                sub_sector,
+                galaxy,
+            )
+        };
 
         stars.push(Star::generate(
             system_gen_try,
