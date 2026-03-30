@@ -239,6 +239,40 @@ impl Display for BiomeType {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct AtmosphericCirculation {
+    /// Number of Hadley-like cells per hemisphere (1 = Venus, 3 = Earth, 5+ = Jupiter).
+    pub cells_per_hemisphere: u8,
+    /// Number of jet streams (= 2 * cells - 1).
+    pub jet_stream_count: u8,
+    /// Dominant wind speed class.
+    pub wind_intensity: WindIntensity,
+}
+
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize,
+)]
+pub enum WindIntensity {
+    Calm,
+    #[default]
+    Light,
+    Moderate,
+    Strong,
+    Extreme,
+}
+
+impl Display for WindIntensity {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
+            WindIntensity::Calm => "Calm",
+            WindIntensity::Light => "Light",
+            WindIntensity::Moderate => "Moderate",
+            WindIntensity::Strong => "Strong",
+            WindIntensity::Extreme => "Extreme",
+        })
+    }
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
 pub struct PlanetSurfaceMap {
     /// Number of distinct continents.
     pub continent_count: u8,

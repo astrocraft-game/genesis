@@ -43,6 +43,8 @@ pub struct TelluricBodyDetails {
     pub points_of_interest: Vec<PointOfInterest>,
     /// Data-driven surface map with biome distribution.
     pub surface_map: Option<PlanetSurfaceMap>,
+    /// Atmospheric circulation pattern.
+    pub atmospheric_circulation: Option<AtmosphericCirculation>,
     /// Magnetopause standoff distance in body radii (0 if no field).
     pub magnetopause_radii: f32,
     /// Whether radiation belts (Van Allen-like) are present.
@@ -77,6 +79,7 @@ impl TelluricBodyDetails {
         resources: Vec<PlanetaryResource>,
         points_of_interest: Vec<PointOfInterest>,
         surface_map: Option<PlanetSurfaceMap>,
+        atmospheric_circulation: Option<AtmosphericCirculation>,
         magnetopause_radii: f32,
         has_radiation_belts: bool,
         aurora_latitude: f32,
@@ -101,6 +104,7 @@ impl TelluricBodyDetails {
             resources,
             points_of_interest,
             surface_map,
+            atmospheric_circulation,
             magnetopause_radii,
             has_radiation_belts,
             aurora_latitude,
