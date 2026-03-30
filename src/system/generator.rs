@@ -551,33 +551,47 @@ fn find_center_of_binary_pair(
     let barycentre_distance_from_most_massive =
         calculate_barycentre(actual_distance, most_massive_mass, less_massive_mass);
 
+    let (star_ecc, star_incl, star_period) = generate_binary_star_orbit_params(
+        actual_distance,
+        most_massive_mass,
+        less_massive_mass,
+        star_index,
+        system_index,
+        coord,
+        galaxy,
+    );
+    let most_massive_min = barycentre_distance_from_most_massive * (1.0 - star_ecc as f64);
+    let most_massive_max = barycentre_distance_from_most_massive * (1.0 + star_ecc as f64);
     let most_massive_orbit = Orbit::new(
         next_id,
         Some(most_massive_point.id),
         ZoneType::ForbiddenZone,
         barycentre_distance_from_most_massive,
-        0.0,
-        0.0,
+        most_massive_min,
+        most_massive_max,
         barycentre_distance_from_most_massive,
+        star_ecc,
+        star_incl,
         0.0,
-        0.0,
-        0.0,
-        0.0,
+        star_period,
         0.0,
         f32::INFINITY,
     );
+    let less_dist = actual_distance - barycentre_distance_from_most_massive;
+    let less_min = less_dist * (1.0 - star_ecc as f64);
+    let less_max = less_dist * (1.0 + star_ecc as f64);
     let less_massive_orbit = Orbit::new(
         next_id,
         Some(less_massive_point.id),
         ZoneType::ForbiddenZone,
-        actual_distance - barycentre_distance_from_most_massive,
+        less_dist,
+        less_min,
+        less_max,
+        less_dist,
+        star_ecc,
+        star_incl,
         0.0,
-        0.0,
-        actual_distance - barycentre_distance_from_most_massive,
-        0.0,
-        0.0,
-        0.0,
-        0.0,
+        star_period,
         0.0,
         f32::INFINITY,
     );
@@ -680,6 +694,47 @@ fn update_existing_orbits(all_objects: &mut Vec<OrbitalPoint>) {
     all_objects
         .iter_mut()
         .for_each(|o| o.update_object_own_orbit());
+}
+
+/// Generate eccentricity, inclination, and orbital period for a binary star pair.
+#[allow(clippy::too_many_arguments)]
+fn generate_binary_star_orbit_params(
+    actual_distance: f64,
+    mass1: f64,
+    mass2: f64,
+    star_index: u16,
+    system_index: u16,
+    coord: SpaceCoordinates,
+    galaxy: &Galaxy,
+) -> (f32, f32, f32) {
+    let mut rng = SeededDiceRoller::new(
+        &galaxy.settings.seed,
+        &format!("star_{}_{}_{}_bin_orb", coord, system_index, star_index),
+    );
+    // Binary eccentricity depends on orbital period
+    // Short period (<10 days equiv ~0.05 AU): tidally circularized
+    // Medium period: 0-0.6
+    // Long period: thermal distribution f(e)=2e, up to 0.95
+    let ecc = if actual_distance < 0.05 {
+        rng.roll(1, 5, 0) as f32 * 0.01
+    } else if actual_distance < 1.0 {
+        let roll = rng.roll(2, 6, -2);
+        (roll as f32 * 0.05).clamp(0.0, 0.6)
+    } else {
+        // Thermal distribution approximation: sample uniform in e^2
+        let u = rng.gen_f64().clamp(0.01, 0.99);
+        (u.sqrt() as f32).min(0.95)
+    };
+
+    // Inclination: roughly isotropic (uniform in cos(i))
+    let cos_i = rng.gen_f64() * 2.0 - 1.0;
+    let incl = (cos_i.acos().to_degrees()) as f32;
+
+    // Orbital period via Kepler's third law
+    let period_years = (actual_distance.powi(3) / (mass1 + mass2)).sqrt();
+    let period_days = (period_years * 365.256) as f32;
+
+    (ecc, incl, period_days)
 }
 
 fn generate_distance_between_stars(
