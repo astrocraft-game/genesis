@@ -9,6 +9,7 @@ pub mod chemistry;
 pub mod construction;
 pub mod fuel;
 pub mod biological;
+pub mod phase_change;
 
 use types::Recipe;
 
@@ -21,6 +22,7 @@ pub fn all_recipes() -> Vec<&'static Recipe> {
     all.extend(construction::CONSTRUCTION_RECIPES.iter());
     all.extend(fuel::FUEL_RECIPES.iter());
     all.extend(biological::BIOLOGICAL_RECIPES.iter());
+    all.extend(phase_change::PHASE_CHANGE_RECIPES.iter());
     all
 }
 
