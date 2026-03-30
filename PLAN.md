@@ -1,279 +1,340 @@
-# Implementation Plan - Planetary Detail Fixes
+# Implementation Plan - Recipe/Crafting System
 
-Every feature needs its unused enum variants wired in, placeholder logic replaced with real physics, and generation gaps filled.
-
----
-
-## 0. Minerals & Materials - Real mineral list with 60+ species
-
-**Currently:** `MineralDiversity` only has a count + evolution stage. No actual minerals listed. The user sees "4500 minerals, Biogenic stage" - meaningless without knowing WHICH minerals.
-
-**What to add:**
-- A `Mineral` enum with 60+ real mineral species organized by category
-- A `MineralDeposit` struct with mineral type, abundance, and accessibility
-- A `Vec<MineralDeposit>` on `PlanetaryDetail` listing which minerals exist on this world
-- Generation logic that selects minerals based on composition, volcanism, water, oxygen, life
-
-**Mineral enum: 90 real species from IMA/Hazen/USGS databases:**
-
-**Native Elements (8):**
-Iron, Copper, Gold, Silver, Platinum, Sulfur, Diamond, Graphite
-
-**Carbides & Nitrides (3) - presolar/stellar:**
-Moissanite (SiC), Cohenite (Fe3C), Osbornite (TiN)
-
-**Sulfides (12):**
-Troilite (FeS), Pyrite (FeS2), Chalcopyrite (CuFeS2), Galena (PbS), Sphalerite (ZnS), Cinnabar (HgS), Molybdenite (MoS2), Pentlandite (NiFe), Pyrrhotite, Chalcocite (Cu2S), Stibnite (Sb2S3), Cobaltite (CoAsS)
-
-**Oxides & Hydroxides (12):**
-Hematite (Fe2O3), Magnetite (Fe3O4), Corundum (Al2O3), Rutile (TiO2), Cassiterite (SnO2), Chromite (FeCr2O4), Ilmenite (FeTiO3), Uraninite (UO2), Spinel (MgAl2O4), Goethite (FeOOH), Pyrolusite (MnO2), Cuprite (Cu2O)
-
-**Silicates - framework (6):**
-Quartz (SiO2), Plagioclase, Orthoclase, Nepheline, Sodalite, Analcime
-
-**Silicates - chain/sheet/island (16):**
-Olivine, Pyroxene (augite), Enstatite, Amphibole (hornblende), Muscovite, Biotite, Garnet, Tourmaline, Zircon, Beryl, Topaz, Kyanite, Talc, Serpentine, Kaolinite, Montmorillonite
-
-**Carbonates (6):**
-Calcite, Aragonite, Dolomite, Magnesite, Siderite, Malachite
-
-**Sulfates (5):**
-Gypsum, Barite, Anhydrite, Jarosite, Epsomite
-
-**Phosphates (3):**
-Apatite, Monazite, Turquoise
-
-**Halides (3):**
-Halite, Fluorite, Sylvite
-
-**Volatile Ices (5):**
-WaterIce, CarbonDioxideIce, MethaneIce, AmmoniaIce, NitrogenIce
-
-**Hydrated Salts - Europa/Mars (4):**
-Mirabilite, Hydrohalite, Kieserite, Hexahydrite
-
-**Organic/Biogenic (4):**
-Calcium shells (nacre), HydrocarbonDeposit, Tholin, Opal
-
-**Gemstone-notable (3):**
-Peridot (olivine gem), Ruby (corundum gem), Emerald (beryl gem)
-
-**Generation rules (from Hazen et al. 2008, real mineral evolution):**
-
-Stage 0 - Presolar (~12 minerals):
-Diamond, Graphite, Iron, Moissanite, Cohenite, Osbornite, Troilite, Corundum, Rutile, Spinel, Olivine, Enstatite
-
-Stage 1 - Solar nebula (~60): Add Pyroxene, Plagioclase, Magnetite, Pyrrhotite, Pentlandite
-
-Stage 2 - Aqueous alteration (~250): Add Serpentine, Kaolinite, Montmorillonite, Talc, Calcite, Dolomite, Magnesite, Siderite, Gypsum, Quartz, WaterIce
-
-Stage 3 - Igneous differentiation (~420): Add Orthoclase, Muscovite, Biotite, Hornblende, Garnet, all feldspars, Chromite, Ilmenite
-
-Stage 4 - Granites/pegmatites (~1000): Add Beryl, Tourmaline, Topaz, Zircon, Cassiterite, Uraninite, Fluorite, Spodumene, Monazite, Apatite
-
-Stage 5 - Plate tectonics (~1500): Add Kyanite, Garnet (pyrope), Amphibole, Sulfosalts, Galena, Sphalerite, Chalcopyrite
-
-Stage 7 - Great Oxidation (~4000+): Add Hematite, Goethite, Malachite, Cuprite, Pyrolusite, Jarosite, Barite, Turquoise, all Cu/Mn/U oxidized species
-
-Stage 10 - Biomineralization (~5700+): Add Calcite (biogenic), Aragonite, Apatite (bones), Opal, HydrocarbonDeposit, nacre
-
-Icy worlds: Add volatile ices by temperature + hydrated salts (Mirabilite, Epsomite, Kieserite)
-Carbon worlds: Replace silicates with Diamond, Graphite, Moissanite, Cohenite
-Metallic worlds: Concentrate Iron, Copper, Gold, Silver, Platinum, Sulfides
-
-**Files to modify:**
-- `telluric/types.rs` - add Mineral enum (60+ variants), MineralDeposit struct
-- `telluric/detail.rs` - replace mineral_count with actual mineral list generation
+New `src/recipes/` module with 750+ real recipes organized by category. Each recipe has inputs, outputs, byproducts, conditions (temperature, pressure, catalyst). Cross-recipes provide multiple paths to the same output.
 
 ---
 
-## 1. Cloud Decks - Use ALL 8 compositions
+## Architecture
 
-**Currently:** Only 4 of 8 CloudComposition variants generated (Water, WaterIce, SulfuricAcid, Ammonia, Methane). Missing: AmmoniumHydrosulfide, OrganicHaze, SiliconDust.
+```rust
+pub struct Recipe {
+    pub id: u32,
+    pub name: &'static str,
+    pub category: RecipeCategory,
+    pub inputs: Vec<(Substance, f32)>,       // (material, quantity in kg)
+    pub outputs: Vec<(Substance, f32)>,      // primary outputs
+    pub byproducts: Vec<(Substance, f32)>,   // waste/secondary outputs
+    pub conditions: RecipeConditions,
+}
 
-**Fix:**
-- Add AmmoniumHydrosulfide clouds for NH3+H2S atmospheres between 200-250K
-- Add OrganicHaze for CH4+N2 atmospheres (Titan) - tholin layer at 100-300km
-- Add SiliconDust for lava worlds (T>1500K) - silicate vapor condensing
-- Add multi-deck logic for gas giant worlds: 3-layer (NH3 / NH4SH / H2O)
-- Compute altitude from condensation temperature vs lapse rate: `z = (T_surface - T_condensation) / lapse_rate`
+pub struct RecipeConditions {
+    pub min_temperature_c: i32,        // minimum temperature needed
+    pub max_temperature_c: i32,        // max operating temp
+    pub pressure_atm: f32,             // required pressure (1.0 = ambient)
+    pub catalyst: Option<Substance>,   // catalyst needed (not consumed)
+    pub duration_hours: f32,           // how long the process takes
+}
 
----
+pub enum RecipeCategory {
+    Extraction,        // ore → element
+    Alloying,          // metal + metal → alloy
+    ChemicalSynthesis, // compounds → new compounds
+    Refining,          // crude → pure
+    Construction,      // raw materials → building materials
+    FuelProcessing,    // energy carriers
+    FoodBiological,    // fermentation, cooking, textiles
+    Manufacturing,     // advanced products
+    PhaseChange,       // melting, boiling, condensing
+    Recycling,         // product → partial inputs recovery
+}
 
-## 2. Sky Color - Use ALL 12 variants
-
-**Currently:** Only 7 of 12 SkyColor variants generated. Missing: DeepBlue, Green, Pink, Red, Yellow.
-
-**Fix:**
-- DeepBlue: CH4 absorption in thick H2/He atmospheres (Uranus/Neptune analogs)
-- Green: Cl2-rich atmospheres (exotic)
-- Pink: fine silicate dust + very thin atmosphere
-- Red: heavy iron oxide dust loading (extreme Mars storms)
-- Yellow: sulfur aerosol or dense CO2 without acid clouds
-- Make sunset color derive properly from daytime composition
-
----
-
-## 3. Toxicity - Use ALL 9 variants
-
-**Currently:** Missing Filterable, LethallyToxic. Gas checks are binary (present/absent).
-
-**Fix:**
-- Filterable: particulates, pollen, low-level SO2 (<10 ppm equivalent)
-- LethallyToxic: HCN, high CO, high Cl2 presence
-- Add partial pressure checks: CO2 >5% narcotic, >10% lethal. CO >100ppm. H2S >100ppm. SO2 >100ppm.
-- Compute toxicity from actual composition fractions * pressure, not just presence
-
----
-
-## 4. Lake Distribution - Use ALL 7 formation types + ALL 5 liquid types
-
-**Currently:** Missing Impact, Endorheic lake types. Missing Brine, Magma liquids.
-
-**Fix:**
-- Impact: generate when crater_density is Heavy/Saturated and hydrosphere > 5%
-- Endorheic: generate when precipitation < 300mm and temperature > 280K (arid + warm)
-- Brine: hyper-saline lakes in endorheic basins or salty oceans
-- Magma: lava lakes on volcanic worlds with volcanism > 70
+pub enum Substance {
+    // ~200 substances covering elements, ores, compounds, alloys, products
+    // Organized by: Elements, Ores, Metals, Alloys, Chemicals, Fuels,
+    // Construction, Food, Textiles, Advanced
+}
+```
 
 ---
 
-## 5. Surface Material - Use ALL 9 types
+## 1. Substance Enum (~200 entries)
 
-**Currently:** Only 4 of 9 SurfaceMaterialType variants generated. Missing: SulfurDeposits, OrganicSediment, EvaporiteDeposits, SandDunes (wrong trigger), BarrenRock (fallback only).
+**Elements (30):**
+Iron, Copper, Gold, Silver, Platinum, Tin, Lead, Zinc, Nickel, Cobalt, Chromium, Manganese, Tungsten, Molybdenum, Vanadium, Titanium, Aluminum, Silicon, Carbon, Sulfur, Phosphorus, Nitrogen, Oxygen, Hydrogen, Uranium, Lithium, Magnesium, Sodium, Calcium, Mercury
 
-**Fix:**
-- SulfurDeposits: SO2-rich atmosphere + volcanism (Io-like)
-- OrganicSediment: life >= PluriCellular + hydrosphere > 20 (dead organic matter)
-- EvaporiteDeposits: low hydrosphere + warm + was once wetter (evaporated seas)
-- SandDunes: arid worlds with wind (pressure > 0.001, land > 50%, hydrosphere < 20%)
-- Fix: volcanism > 60 should NOT always produce sand dunes
+**Ores (30):**
+Hematite, Magnetite, Chalcopyrite, Galena, Sphalerite, Cassiterite, Bauxite, Chromite, Pentlandite, Rutile, Ilmenite, Wolframite, Scheelite, Molybdenite, Cinnabar, Monazite, Uraninite, Spodumene, PyritOre, CopperOxideOre, GoldOre, SilverOre, Cobaltite, Stibnite, Limestone, SilicaSand,ite, Feldspar, Gypsum, PhosphateRock
 
----
+**Alloys (25):**
+LowCarbonSteel, MediumCarbonSteel, HighCarbonSteel, StainlessSteel304, StainlessSteel316, CastIron, ToolSteel, TinBronze, PhosphorBronze, AluminumBronze, Brass, CuproNickel, BerylliumCopper, Duralumin, Inconel, Monel, Nichrome, TiAlloy6Al4V, SterlingSilver, Electrum, Solder, Pewter, Ferromanganese, Ferrochrome, TungstenCarbide
 
-## 6. Volcanic Profile - Use ALL 6 types
+**Chemicals (30):**
+SulfuricAcid, NitricAcid, HydrochloricAcid, Ammonia, SodiumHydroxide, ChlorineGas, SodaAsh, Ethanol, Methanol, Acetone, Benzene, Toluene, Polyethylene, Nylon, PVC, Glycerol, Soap, Bleach, Gunpowder, TNT, Dynamite, Nitroglycerin, CalciumCarbide, Acetylene, PhosphoricAcid, AmmoniumNitrate, Urea, SyntheticRubber, Formaldehyde, HydrogenPeroxide
 
-**Currently:** Missing Caldera, FloodBasalt as dominant types.
+**Fuels (15):**
+Charcoal, Coke, Gasoline, Diesel, Kerosene, FuelOil, NaturalGas, HydrogenGas, Biodiesel, Biogas, Bitumen, RocketFuelLOXRP1, RocketFuelLOXLH2, NuclearFuelRod, SolidRocketPropellant
 
-**Fix:**
-- Caldera: dominant when volcanism > 60 AND tectonics > 30 (high viscosity magma)
-- FloodBasalt: dominant when volcanism > 70 AND tectonics < 10 (mantle plume, no tectonics)
-- Add eruption frequency estimate: `eruptions_per_year = volcanism * active_count / 5000`
-- Add magma viscosity class: basaltic (shield), andesitic (strato), rhyolitic (caldera)
+**Construction Materials (20):**
+PortlandCement, Concrete, Brick, FireBrick, AdobeBrick, LimeMortar, CementMortar, Plaster, Quicklime, SlakedLime, Glass, BorosilicateGlass, Asphalt, Plywood, MDF, Fiberglass, RockWool, ReinforcedConcrete, Stucco, Porcelain
 
----
+**Food/Bio Products (20):**
+Flour, Bread, Beer, Wine, Cheese, Butter, Yogurt, Sugar, Salt, Vinegar, OliveOil, SoyaSauce, FishSauce, DriedMeat, PickledVegetables, Spirits, Honey, Chocolate, Coffee, Tea
 
-## 7. Ocean Chemistry - Use ALL iron levels + ALL liquid types
+**Textiles/Organic (15):**
+CottonFiber, WoolFiber, SilkFiber, LinenFiber, Leather, NylonFiber, PolyesterFiber, Paper, ActivatedCarbon, NaturalRubber, VulcanizedRubber, IndigoDye, Tannin, Lye, Alum
 
-**Currently:** Only Negligible/High iron. Only Water/Ammonia/MethaneEthane liquids.
-
-**Fix:**
-- Low iron: partially oxygenated oceans (early oxygen rise)
-- Moderate iron: reducing conditions with some oxygen
-- Brine oceans: salinity > 100 g/kg (evaporating worlds, Europa subsurface)
-- Magma oceans: lava worlds with T > 1500K
-- Compute salinity from evaporation/precipitation ratio, not pure RNG
-- pH from CO2 partial pressure: `pH ~ 8.1 - 0.8 * log10(pCO2/0.0004)`
+**Intermediate Products (15):**
+PigIron, WroughtIron, BlisterSteel, CopperMatte, BlisterCopper, Alumina, Clinker, SynGas, CrudeOil, Slag, Tailings, RedMud, FlyAsh, Yellowcake, TitaniumTetrachloride
 
 ---
 
-## 8. Lightning - Use ALL 5 mechanisms
+## 2. Extraction Recipes (~150)
 
-**Currently:** Missing AcidCloud mechanism.
+### Iron (6 paths)
+- Bloomery: Hematite + Charcoal → WroughtIron + Slag (1200°C)
+- Blast Furnace: Hematite + Coke + Limestone → PigIron + Slag (1500°C)
+- Blast Furnace from Magnetite: Magnetite + Coke + Limestone → PigIron + Slag (1500°C)
+- Direct Reduction: Hematite + HydrogenGas → Iron + Water (900°C)
+- Siderite calcination: Siderite → IronOxide + CO2 (500°C) then standard reduction
+- Pyrite roasting: PyritOre → Hematite + SulfurDioxide (700°C) then standard smelting
 
-**Fix:**
-- AcidCloud: Venus-like worlds with H2SO4 cloud decks and high pressure
-- Scale flash rate from convective energy: `rate ~ CAPE * cloud_coverage`
-- Dust triboelectric rate should be higher (0.1, not 0.01)
+### Copper (5 paths)
+- Ancient smelting: CopperOxideOre + Charcoal → Copper + Slag (1200°C)
+- Flash smelting: Chalcopyrite + Oxygen → CopperMatte + Slag + SO2 (1300°C)
+- Converting: CopperMatte + Oxygen → BlisterCopper + SO2 (1250°C)
+- Electrorefining: BlisterCopper → Copper (99.99%) + AnodeSlimes (60°C, electricity)
+- Heap leaching: CopperOxideOre + SulfuricAcid → CopperSulfate → Copper (ambient)
 
----
+### Gold (4 paths)
+- Gravity panning: GoldOre → Gold (ambient, water)
+- Mercury amalgamation: GoldOre + Mercury → GoldAmalgam → Gold + Mercury (350°C)
+- Cyanidation: GoldOre + SodiumCyanide + Oxygen → GoldCyanide → Gold (ambient)
+- Aqua regia: Gold + HCl + NitricAcid → GoldChloride → Gold (80°C)
 
-## 9. Greenhouse - Add H2O + CH4 feedback
+### Silver (3 paths)
+- Cupellation: SilverOre + Lead → LeadSilverAlloy → Silver (1000°C)
+- Cyanidation: SilverOre + SodiumCyanide → SilverCyanide → Silver (ambient)
+- Electrolytic: CrudeGold → Silver (from anode slimes, 35°C)
 
-**Currently:** Only CO2 greenhouse. No water vapor feedback, no methane.
+### Aluminum (2 paths)
+- Bayer+Hall-Héroult: Bauxite + NaOH → Alumina + RedMud (250°C); Alumina + Cryolite → Aluminum (960°C, electricity)
+- Direct: Bauxite → Alumina → Aluminum (two-step)
 
-**Fix:**
-- H2O feedback: if surface_temp > 300K, each +1K increases H2O vapor which adds +0.5K
-- CH4 contribution: `deltaT_CH4 ~ 0.5 * ln(pCH4/0.000002)` per ppm above background
-- Runaway threshold: stellar flux > 1.4x Earth AND water available
-- Proper equilibrium temp from stellar luminosity + distance (not just blackbody)
+### Tin: Cassiterite + Carbon → Tin + CO (1200°C)
+### Lead: Galena + Oxygen → LeadOxide + SO2 (800°C); LeadOxide + Carbon → Lead (900°C)
+### Zinc (3 paths): Roast-Leach-Electrowin, Imperial Smelting, Retort distillation
+### Titanium: Rutile + Chlorine + Carbon → TiCl4 (900°C); TiCl4 + Magnesium → Titanium (850°C)
+### Chromium: Chromite + Carbon → Ferrochrome (1600°C); Chromite + Aluminum → Chromium (aluminothermic, 2500°C)
+### Nickel (3 paths): Flash smelting, HPAL, Mond carbonyl
+### Cobalt: From copper-cobalt ore via acid leaching
+### Manganese: Pyrolusite + Carbon → Ferromanganese (1400°C)
+### Tungsten: Wolframite → APT → WO3 + H2 → Tungsten (1000°C)
+### Molybdenum: Molybdenite roasting → MoO3 + H2 → Molybdenum (1000°C)
+### Uranium: Uraninite + H2SO4 → Yellowcake → UF6 → enriched UO2 (multi-step)
+### Lithium (2 paths): Spodumene acid roast, Brine solar evaporation
+### Magnesium (2 paths): Pidgeon silicothermic, Dow electrolytic
+### Silicon: SilicaSand + Carbon → Silicon (1900°C)
+### Mercury: Cinnabar + Oxygen → Mercury + SO2 (400°C)
+### Rare Earths: Monazite + NaOH → REE hydroxides (150°C)
+### Platinum Group: From nickel-copper anode slimes, sequential precipitation
 
----
-
-## 10. Wind Profile - Use rotation physics + connect AtmosphericCirculation
-
-**Currently:** Arbitrary sqrt formula. AtmosphericCirculation (Hadley cells) exists but is computed separately and not connected to winds.
-
-**Fix:**
-- Derive mean wind from Hadley cell count (already computed): more cells = stronger zonal winds
-- Superrotation: specifically for slow rotators (Rossby number >> 1), not just rotation > 10 days
-- Max wind: scale with internal heat for gas-giant-type atmospheres
-- Connect wind profile to AtmosphericCirculation already computed in world generator
-
----
-
-## 11. Radiation - Add distance scaling + stellar type
-
-**Currently:** Fixed base 400 mSv/yr at 1 AU. No distance scaling.
-
-**Fix:**
-- Scale by `1/distance^2` from star
-- Scale by stellar UV output: M dwarfs have high flare UV, F stars have strong steady UV
-- Magnetic field strength: use numeric B-field ratio, not binary
-- Atmospheric shielding: continuous `exp(-column_density)` not 3 tiers
-- Add in-radiation-belt check for moons of gas giants
-
----
-
-## 12. Atmospheric Layers - Add temperature profile
-
-**Currently:** Only scale height + tropopause. No temp profile.
-
-**Fix:**
-- Compute lapse rate: `dT/dz = -g/cp` (dry adiabatic) or `-g*M/(R)` simplified
-- Stratosphere height: if has_stratosphere, stratopause at ~3-5x scale height
-- Mesopause at ~8-10x scale height
-- Exobase from `H * ln(column_density)` properly
+**Plus dozens more for: Antimony, Bismuth, Cadmium, Indium, Gallium, Germanium, Beryllium, Zirconium, Niobium, Tantalum, Rhenium, Selenium, Tellurium**
 
 ---
 
-## 13. Seismic - Add Gutenberg-Richter
+## 3. Alloy Recipes (~80)
 
-**Currently:** Max magnitude and quakes are independent RNG. No G-R law.
+Each alloy is a recipe: inputs are metals at specific ratios.
 
-**Fix:**
-- Set b-value (~1.0 for tectonic, ~1.5 for volcanic, ~0.8 for tidal)
-- Derive quakes from: `log10(N_m4) = a - b*(4 - max_mag_offset)`
-- Subduction zones: allow M9+ for TectonicExtreme
-- Tidal: compute from actual tidal_heating value, not threshold
+**Steels (20):** LowCarbon, MediumCarbon, HighCarbon, SS304, SS316, SS430, CastIron, DuctileIron, Hadfield, Chromoly, SiliconSteel, WeatheringSteel, ToolSteel(M2,D2,H13,O1,W1,S7), Damascus/Crucible
 
----
+**Copper alloys (10):** TinBronze, PhosphorBronze, AlBronze, SiBronze, Brass, NavalBrass, CartridgeBrass, CuproNickel, BeCu, Gunmetal
 
-## 14. Hydrography - Use ALL 5 delta types + rain shadow
+**Aluminum alloys (5):** Duralumin, Magnalium, AlSiCasting, 7075, AlLi
 
-**Currently:** Missing Estuarine deltas. No rain shadow.
+**Nickel alloys (5):** Inconel625, Inconel718, Monel400, Nichrome, Hastelloy
 
-**Fix:**
-- Estuarine: tidal range > 4m (compute from moon mass + distance)
-- Rain shadow effect: reduce precipitation on leeward side of mountains (connect to tectonic_activity)
-- Drainage density from Langbein-Schumm curve (peak at 250-360mm precip)
+**Titanium alloys (2):** Ti6Al4V, Nitinol
+
+**Precious (5):** SterlingSilver, 18KGold, WhiteGold, RoseGold, Electrum
+
+**Other (8):** Solder, LeadFreeSolder, Pewter, Stellite, TungstenCarbide, WoodsMetal, TypeMetal, BabbittMetal
 
 ---
 
-## Suggested Implementation Order
+## 4. Chemical Synthesis (~100)
 
-- [x] 0. Minerals (90 real IMA species with Hazen evolution stages)
-- [x] 1. Cloud decks (all 8: Water, WaterIce, SulfuricAcid, Ammonia, NH4SH, Methane, OrganicHaze, SiliconDust)
-- [x] 2. Sky color (all 12: Black, DeepBlue, Blue, PaleBlue, White, Yellow, Amber, Orange, Butterscotch, Red, Green, Pink)
-- [x] 3. Toxicity (all 9 with partial pressure thresholds for CO2, CO, H2S, O2)
-- [x] 4. Lake distribution (all 7 types + all 5 liquids including Brine and Magma)
-- [x] 5. Surface material (all 9: Regolith, IronOxideFines, Soil, SulfurDeposits, IceCrust, OrganicSediment, SandDunes, EvaporiteDeposits, BarrenRock)
-- [x] 6. Volcanic profile (all 6: Shield, Stratovolcano, Caldera, Fissure, FloodBasalt, Cryovolcano)
-- [x] 7. Ocean chemistry (all 4 iron levels + all 5 liquids + pH from CO2 partial pressure)
-- [x] 8. Lightning (all 5: WaterCloud, AcidCloud, VolcanicPlume, DustTriboelectric, None)
-- [x] 9. Greenhouse (CO2 + CH4 + H2O feedback + runaway detection)
-- [x] 10. Wind profile (Rossby number -> Hadley cells -> wind speed, superrotation)
-- [x] 11. Radiation (1/d^2 distance scaling, continuous mag/atmo shielding, radiation belt boost)
-- [x] 12. Atmospheric layers (weighted molecular mass, lapse rate, proper tropopause/stratopause/exobase)
-- [x] 13. Seismic (Gutenberg-Richter b-values, log10(N) = b*(Mmax-4) for M4+ count)
-- [x] 14. Hydrography (all 5 deltas including Estuarine)
+- Haber: N2 + 3H2 → 2NH3 (450°C, 200atm, Fe catalyst)
+- Contact: SO2 + O2 → SO3 → H2SO4 (450°C, V2O5 catalyst)
+- Ostwald: NH3 + O2 → NO → NO2 → HNO3 (900°C, Pt-Rh catalyst)
+- Solvay: NaCl + CaCO3 → Na2CO3 + CaCl2 (multi-step)
+- Chloralkali: NaCl + H2O → NaOH + Cl2 + H2 (electricity)
+- Fischer-Tropsch: CO + H2 → hydrocarbons (200-350°C, Fe/Co catalyst)
+- Polyethylene: ethylene → PE (150-300°C, 1000-3000atm / or Ziegler-Natta)
+- Nylon: adipic acid + hexamethylenediamine → nylon66 (280°C)
+- PVC: vinyl chloride → PVC (50°C)
+- Vulcanization: rubber + sulfur → vulcanized rubber (150°C)
+- Soap: fat + NaOH → soap + glycerol (40°C)
+- Bleach: Cl2 + NaOH → NaOCl (ambient)
+- Gunpowder: KNO3 + charcoal + sulfur → gunpowder (ambient mixing)
+- TNT: toluene + HNO3/H2SO4 → TNT (30-100°C)
+- Dynamite: nitroglycerin + diatomaceous earth → dynamite
+- Nitroglycerin: glycerol + HNO3 + H2SO4 → nitroglycerin (<10°C)
+- ANFO: ammonium nitrate + fuel oil → ANFO (ambient)
+- Urea: NH3 + CO2 → urea (180°C, 200atm)
+- Ammonium nitrate: NH3 + HNO3 → NH4NO3
+- Calcium carbide: CaO + carbon → CaC2 (2000°C, arc furnace)
+- Acetylene: CaC2 + H2O → C2H2 + Ca(OH)2 (ambient)
+- Aspirin: salicylic acid + acetic anhydride → aspirin (85°C)
+- Penicillin: fermentation of Penicillium (26°C, 5-7 days)
+- Synthetic indigo: aniline synthesis chain
+- Phosphorus: phosphate rock + SiO2 + C → P4 (1500°C)
+
+**Plus ~75 more from the research data**
+
+---
+
+## 5. Construction Material Recipes (~60)
+
+- Portland cement: limestone + clay → clinker (1450°C) + gypsum → cement
+- Concrete: cement + sand + gravel + water (ambient)
+- Reinforced concrete: concrete + steel rebar
+- Roman concrete: quicklime + volcanic ash + seawater
+- Fired brick: clay → brick (1000°C)
+- Adobe: clay + sand + straw + water (sun-dried)
+- Fire brick: high-alumina clay (1600°C)
+- Quicklime: limestone → CaO + CO2 (950°C)
+- Slaked lime: CaO + H2O → Ca(OH)2 (exothermic)
+- Lime mortar: slaked lime + sand
+- Cement mortar: cement + sand + water
+- Gypsum plaster: gypsum → plaster of Paris (160°C)
+- Glass: SiO2 + Na2CO3 + CaCO3 → glass (1500°C)
+- Borosilicate glass: SiO2 + B2O3 + Na2O (1650°C)
+- Porcelain: kaolin + feldspar + quartz (1300°C)
+- Stoneware: stoneware clay (1250°C)
+- Earthenware: common clay (1000°C)
+- Asphalt: aggregate + bitumen (160°C)
+- Plywood: wood veneer + phenol resin (150°C press)
+- MDF: wood fiber + UF resin (190°C press)
+- Fiberglass: glass melt → spun fibers (1450°C)
+- Rock wool: basalt melt → spun fibers (1500°C)
+
+**Plus ~38 more variants**
+
+---
+
+## 6. Fuel/Energy Recipes (~40)
+
+- Charcoal: wood → charcoal + wood gas (450°C, no air)
+- Coke: bituminous coal → coke + coal tar + ammonia (1100°C, no air)
+- Petroleum distillation: crude oil → gasoline + diesel + kerosene + fuel oil + bitumen (350°C)
+- Catalytic cracking: heavy oil → gasoline + light gases (500°C, zeolite catalyst)
+- Biodiesel: vegetable oil + methanol + NaOH → biodiesel + glycerol (55°C)
+- Ethanol: sugar + yeast → ethanol + CO2 (30°C, 48h)
+- Hydrogen electrolysis: H2O → H2 + O2 (80°C, electricity)
+- Steam reforming: CH4 + H2O → CO + 3H2 (850°C, Ni catalyst)
+- Water-gas shift: CO + H2O → CO2 + H2 (350°C, Fe catalyst)
+- Biogas: organic waste → CH4 + CO2 (37°C, 30 days)
+- Producer gas: coal + limited air → CO + H2 + N2 (1000°C)
+- Nuclear fuel: UO2 pellets → fuel rods + zirconium cladding (1700°C sinter)
+- Solid propellant: NH4ClO4 + Al powder + binder → APCP (60°C cure)
+
+**Plus ~27 more**
+
+---
+
+## 7. Food/Biological Recipes (~80)
+
+- Bread: flour + water + yeast + salt → bread (240°C bake)
+- Sourdough: flour + water + starter → sourdough (245°C)
+- Beer: barley + water + hops + yeast → beer + CO2 (20°C, 14 days)
+- Wine: grapes + yeast → wine + CO2 (25°C, 14 days)
+- Spirits: fermented wash → distilled spirit (78°C)
+- Cheese: milk + rennet + culture → cheese + whey (32°C, months aging)
+- Butter: cream → butter + buttermilk (12°C churning)
+- Yogurt: milk + culture → yogurt (44°C, 6h)
+- Vinegar: ethanol + Acetobacter → acetic acid (28°C, weeks)
+- Sugar: sugarcane → juice → raw sugar (80°C evaporation)
+- Salt: seawater → salt (solar evaporation, weeks)
+- Olive oil: olives → oil + pomace (cold press, <27°C)
+- Soap: fat + lye → soap + glycerol (40°C)
+- Leather (vegetable): rawhide + tannin → leather (ambient, 45 days)
+- Leather (chrome): rawhide + Cr2(SO4)3 → leather (30°C, 2 days)
+- Cotton fabric: cotton bolls → ginned fiber → spun yarn → woven fabric
+- Wool fabric: fleece → scoured → carded → spun → woven
+- Silk: cocoons → reeled filament → thrown yarn → woven (100°C stifling)
+- Linen: flax → retted → broken → hackled → spun → woven
+- Paper (rag): cotton rags → beaten pulp → sheet (ambient)
+- Paper (wood): wood chips + NaOH + Na2S → cellulose pulp (170°C)
+- Charcoal activation: charcoal + steam → activated carbon (1000°C)
+- Composting: organic waste → humus (55°C, 8 weeks)
+- Indigo: indigo plant → fermented → oxidized → pigment
+- Cochineal: insects → dried → ground → carmine dye
+- Fish sauce: fish + salt → fermented sauce (35°C, 3 months)
+- Soy sauce: soybeans + wheat + koji mold → fermented → pressed (ambient, 12 months)
+
+**Plus ~53 more**
+
+---
+
+## 8. Phase Change Recipes (~30)
+
+Every substance with defined melting/boiling points becomes a recipe:
+- Ice → Water (0°C)
+- Water → Steam (100°C)
+- Iron ore sinter: powder → sintered pellets (1300°C)
+- Glass annealing: molten glass → solid glass (slow cool through 550°C)
+- Steel quenching: hot steel → hardened steel (rapid cool in water/oil)
+- Steel tempering: hardened steel → tempered steel (200-600°C, controlled)
+- Freeze-drying: frozen material + vacuum → dried material (-40°C, low pressure)
+- Sublimation: dry ice → CO2 gas (-78°C at 1atm)
+- Condensation: steam → water (cooling below 100°C)
+- Fractional crystallization: mixed salt solution → pure crystals (controlled cooling)
+
+**Plus ~20 more**
+
+---
+
+## 9. Cross-Recipes (alternate paths - marked in recipe data)
+
+Every output that has multiple recipes gets a `cross_recipe_group: Option<u32>` linking them:
+
+- Iron: 6 different extraction paths
+- Copper: 5 different paths
+- Gold: 4 different paths
+- Steel: BOF, EAF, cementation, crucible
+- Hydrogen: electrolysis, steam reforming, water-gas shift
+- Sulfuric acid: contact process from sulfur OR from pyrite roasting
+- Glass: soda-lime, borosilicate, lead crystal
+- Paper: rag, wood pulp (kraft), wood pulp (sulfite)
+- Ethanol: grain fermentation, sugar fermentation, wood hydrolysis
+- Soap: cold process, hot process, industrial
+- Cement: Portland, pozzolanic, slag, Roman
+
+**~100+ cross-recipe pairs**
+
+---
+
+## 10. Byproducts on Every Recipe
+
+Every recipe lists byproducts:
+- Blast furnace iron: **Slag** (calcium silicate)
+- Copper smelting: **SO2 gas** (captured for sulfuric acid)
+- Aluminum Bayer: **Red mud** (iron oxide waste)
+- Steel BOF: **Slag** + CO2
+- Petroleum refining: **each fraction** is a byproduct of the others
+- Cement: **CO2** (enormous - 8% of world emissions)
+- Charcoal: **wood vinegar** + tar + gases
+- Coke: **coal tar** + ammonia + benzene + coal gas
+- Beer: **spent grain** (animal feed) + CO2
+- Cheese: **whey** (used for ricotta, protein)
+- Copper electrorefining: **anode slimes** (contain gold, silver, platinum)
+- Paper kraft: **black liquor** (burned for energy recovery)
+- Sugar: **molasses** + **bagasse** (fuel)
+
+---
+
+## Implementation Order
+
+- [ ] 1. Create `src/recipes/mod.rs` with Substance enum (~200 variants)
+- [ ] 2. Create Recipe struct and RecipeCategory enum
+- [ ] 3. Create `src/recipes/extraction.rs` (~150 recipes)
+- [ ] 4. Create `src/recipes/alloys.rs` (~80 recipes)
+- [ ] 5. Create `src/recipes/chemistry.rs` (~100 recipes)
+- [ ] 6. Create `src/recipes/construction.rs` (~60 recipes)
+- [ ] 7. Create `src/recipes/fuel.rs` (~40 recipes)
+- [ ] 8. Create `src/recipes/biological.rs` (~80 recipes)
+- [ ] 9. Create `src/recipes/phase_change.rs` (~30 recipes)
+- [ ] 10. Add cross-recipe index and lookup functions
+- [ ] 11. Add tests validating recipe counts and cross-references
+- [ ] 12. Wire into lib.rs prelude
