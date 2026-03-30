@@ -367,21 +367,21 @@ Focused on physical plausibility, real data distributions, and natural phenomena
 - [x] 12. Beta distribution for eccentricity
 
 **Tier 1 - Wire existing dead code:**
-- [ ] 15. Wire life system into generation
+- [x] 15. Wire life system into generation - populate_system() + fixed_spectral_type wiring
 
 **Tier 2 - Missing physics (high impact):**
 - [x] 4. Orbital resonance detection
-- [ ] 5. Ring and belt generation
+- [x] 5. Ring and belt generation - ring/belt/shell generators implemented
 - [x] 6. Magnetopause and radiation belts
 - [x] 8. Stellar flare activity
 
 **Tier 3 - Natural phenomena (enrichment):**
 - [x] 7. Hadley circulation cells
-- [ ] 9. Subsurface ocean estimation
+- [x] 9. Subsurface ocean estimation - ice shell thickness + ocean depth
 - [x] 10. Crater population
-- [ ] 11. Spin-orbit resonance
-- [ ] 13. Cryovolcanism
+- [x] 11. Spin-orbit resonance - Mercury 3:2, Venus thermal tide, tidal locking
+- [x] 13. Cryovolcanism - activity level + plume height from tidal heating
 - [x] 14. Frost cycles
-- [ ] 16. Photochemical hazes
-- [ ] 17. Lagrange trojans
-- [ ] 18. Oort cloud and comet reservoirs
+- [x] 16. Photochemical hazes - optical depth from CH4/N2 + UV
+- [x] 17. Lagrange trojans - population estimation from planet mass
+- [x] 18. Oort cloud and comet reservoirs - mass + comet injection rate on StarSystem
