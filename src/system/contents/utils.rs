@@ -138,6 +138,37 @@ pub(crate) fn jeans_parameter(
     v_e / v_rms
 }
 
+/// Estimate cryovolcanic activity for an icy body.
+/// Returns (activity_level 0-100, plume_height_km) or None if no activity.
+pub(crate) fn estimate_cryovolcanism(
+    tidal_heating_flux: f64,
+    surface_temperature_k: u32,
+    gravity: f32,
+    has_subsurface_ocean: bool,
+) -> Option<(f32, f32)> {
+    // Need subsurface liquid and tidal heating
+    if !has_subsurface_ocean || tidal_heating_flux < 0.005 {
+        return None;
+    }
+    // Need cold surface for ice
+    if surface_temperature_k > 200 {
+        return None;
+    }
+    // Activity level scales with heating flux
+    let activity = ((tidal_heating_flux / 0.1) * 50.0).min(100.0) as f32;
+    // Plume height: h ~ v^2 / (2*g), eruption velocity from pressure
+    // Higher heating -> higher pressure -> higher plumes
+    // Enceladus: ~200 km plumes, g=0.113 m/s^2
+    let eruption_velocity = (tidal_heating_flux * 1000.0).sqrt().min(500.0);
+    let g_ms2 = gravity * 9.81;
+    let plume_height_km = if g_ms2 > 0.01 {
+        (eruption_velocity * eruption_velocity / (2.0 * g_ms2 as f64) / 1000.0) as f32
+    } else {
+        500.0
+    };
+    Some((activity, plume_height_km.min(1000.0)))
+}
+
 /// Determine spin-orbit resonance state from eccentricity and atmospheric pressure.
 /// Returns the resonance ratio (rotation:orbit) as (p, q), or None for non-resonant.
 /// Mercury is 3:2 at e=0.206, Venus is ~243:(-1) from thermal tides.
@@ -577,6 +608,21 @@ mod tests {
             ChemicalComponent::Hydrogen,
         );
         assert!((jeans_param_h2_earth - 4.1).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_cryovolcanism_enceladus_like() {
+        let result = estimate_cryovolcanism(0.1, 75, 0.012, true);
+        assert!(result.is_some());
+        let (activity, plume_km) = result.unwrap();
+        assert!(activity > 0.0, "activity={}", activity);
+        assert!(plume_km > 0.0, "plume_km={}", plume_km);
+    }
+
+    #[test]
+    fn test_cryovolcanism_no_ocean() {
+        let result = estimate_cryovolcanism(0.1, 75, 0.012, false);
+        assert!(result.is_none());
     }
 
     #[test]
