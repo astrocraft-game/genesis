@@ -10,6 +10,10 @@ pub mod construction;
 pub mod fuel;
 pub mod biological;
 pub mod phase_change;
+pub mod organic;
+pub mod inorganic;
+pub mod electrochemistry;
+pub mod natural;
 
 use types::Recipe;
 
@@ -23,6 +27,10 @@ pub fn all_recipes() -> Vec<&'static Recipe> {
     all.extend(fuel::FUEL_RECIPES.iter());
     all.extend(biological::BIOLOGICAL_RECIPES.iter());
     all.extend(phase_change::PHASE_CHANGE_RECIPES.iter());
+    all.extend(organic::ORGANIC_RECIPES.iter());
+    all.extend(inorganic::INORGANIC_RECIPES.iter());
+    all.extend(electrochemistry::ELECTROCHEMISTRY_RECIPES.iter());
+    all.extend(natural::NATURAL_RECIPES.iter());
     all
 }
 

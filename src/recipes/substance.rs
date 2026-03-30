@@ -62,4 +62,36 @@ pub enum Substance {
     Water, Steam, Air, Clay, Sand, Gravel, WoodLogs, WoodChips, StrawFiber,
     Yeast, RennetEnzyme, StarterCulture, Cryolite, DiatomaceousEarth,
     SodiumCyanide, Flux,
+
+    // === ORGANIC CHEMISTRY ===
+    Ethylene, Propylene, Butadiene, Xylene, Naphthalene,
+    Isopropanol, Butanol, EthyleneGlycol, EthyleneOxide, PropyleneOxide,
+    AceticAcid, FormicAcid, CitricAcid, AdipicAcid, TerephthalicAcid,
+    EthylAcetate, MethylMethacrylate,
+    Aniline, Caprolactam, Acrylonitrile, HydrogenCyanide, Melamine,
+    DiethylEther, MTBE, VinylChloride, Chloroform,
+    Phenol, Styrene, Acetaldehyde,
+
+    // === INORGANIC PRODUCTS ===
+    SodiumChloride, SodiumSulfate, PotassiumNitrate, CalciumChloride,
+    BariumSulfate, SilverChloride, IronHydroxide, LeadIodide,
+    CopperHydroxide, MagnesiumHydroxide,
+    PrussianBlue, IronOxideRed, MagnesiumOxide,
+
+    // === ELECTROCHEMISTRY ===
+    LeadAcidBattery, LithiumIonBattery, ZincCarbonBattery,
+    ChromePlating, GoldPlating, NickelPlating, ZincPlating,
+
+    // === PIGMENTS ===
+    YellowOchre, RedOchre, RawUmber, BurntUmber, RawSienna, BurntSienna,
+    CarbonBlack, BoneBlack, ChromeYellow, CobaltBluePigment,
+    SyntheticUltramarine, TitaniumWhite, EgyptianBlue, Vermilion,
+    LeadWhite, NaplesYellow, ChromeGreen, CadmiumYellow, CadmiumRed,
+    Verdigris, ZincWhite,
+
+    // === NATURAL/GEO ===
+    Ite, Marble, Slate, Quartzite, SerpentineMinite,
+    Ozone, NitrogenDioxide, SulfurDioxide, CarbonDioxide,
+    Glucose, LacticAcid, Cellulose, Chitin,
+    Nitrate, Ammonium, Methane,
 }
