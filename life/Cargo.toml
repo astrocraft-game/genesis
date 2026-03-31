@@ -1,0 +1,10 @@
+[package]
+name = "life"
+version = "0.1.0"
+edition = "2021"
+description = "Species generation, history, and expansion for procedural universe generation"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive", "rc"] }
+smart-default = "0.7"
+seeded_dice_roller = "1.0"

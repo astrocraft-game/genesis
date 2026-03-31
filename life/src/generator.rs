@@ -1,6 +1,10 @@
-use crate::internal::*;
-use crate::life::species::*;
-use crate::prelude::*;
+use serde::{Serialize, Deserialize};
+use smart_default::SmartDefault;
+use seeded_dice_roller::SeededDiceRoller;
+use std::rc::Rc;
+use crate::species::*;
+use crate::types::LifeLevel;
+use crate::world_types::*;
 
 /// Generates a species based on the conditions of its homeworld.
 pub fn generate_species_from_world(
