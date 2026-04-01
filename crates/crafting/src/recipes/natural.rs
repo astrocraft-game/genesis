@@ -317,7 +317,7 @@ pub static NATURAL_RECIPES: &[Recipe] = &[
         min_temp_c: 100, pressure_atm: 500.0, catalyst: None, duration_hours: 876000000.0, cross_recipe_group: None },
     Recipe { id: 2610, name: "Evaporite Sequence (Gypsum→Halite→Sylvite)", category: RecipeCategory::PhaseChange,
         inputs: &[(S::Water, 100.0), (S::Salt, 3.0), (S::Calcium, 0.5)],
-        outputs: &[(S::ite, 0.5), (S::Salt, 2.8), (S::Potassium, 0.2)],
+        outputs: &[(S::Gypsum, 0.5), (S::Salt, 2.8), (S::Potassium, 0.2)],
         byproducts: &[],
         min_temp_c: 30, pressure_atm: 1.0, catalyst: None, duration_hours: 87600.0, cross_recipe_group: None },
     Recipe { id: 2611, name: "Laterite Formation (Tropical Weathering)", category: RecipeCategory::PhaseChange,
@@ -457,7 +457,7 @@ pub static NATURAL_RECIPES: &[Recipe] = &[
         min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 8760.0, cross_recipe_group: None },
     Recipe { id: 2638, name: "CaSO4 Scaling (Gypsum in Pipes)", category: RecipeCategory::PhaseChange,
         inputs: &[(S::Calcium, 0.3), (S::SulfuricAcid, 0.4), (S::Water, 0.3)],
-        outputs: &[(S::ite, 0.8)], // gypsum
+        outputs: &[(S::Gypsum, 0.8)], // gypsum
         byproducts: &[(S::Water, 0.2)],
         min_temp_c: 50, pressure_atm: 3.0, catalyst: None, duration_hours: 8760.0, cross_recipe_group: None },
     Recipe { id: 2639, name: "Siliceous Sinter (Geyserite from Hot Springs)", category: RecipeCategory::PhaseChange,

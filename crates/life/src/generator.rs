@@ -46,6 +46,9 @@ pub fn generate_species_from_world(
 
     let is_aquatic = hydrosphere > 80.0;
     let is_high_g = gravity > 1.5;
+    let is_cold = matches!(climate, WorldClimateType::Arctic | WorldClimateType::Tundra);
+    let is_hot = matches!(climate, WorldClimateType::Desert);
+    let is_lush = matches!(climate, WorldClimateType::Jungle | WorldClimateType::Tropical | WorldClimateType::Rainforest);
 
     let body_plan = if is_aquatic {
         match rng.roll(1, 3, 0) {
@@ -163,6 +166,22 @@ pub fn generate_species_from_world(
     }
     if is_high_g {
         special_traits.push(SpeciesTrait::Armored);
+    }
+    // Climate-driven traits (using the climate parameter)
+    if is_aquatic && rng.roll(1, 3, 0) == 1 {
+        special_traits.push(SpeciesTrait::Amphibious);
+    }
+    if is_lush && rng.roll(1, 5, 0) == 1 {
+        special_traits.push(SpeciesTrait::Metamorphic);
+    }
+    if is_hot && trophic_level == TrophicLevel::Carnivore && rng.roll(1, 4, 0) == 1 {
+        special_traits.push(SpeciesTrait::Venomous);
+    }
+    if is_cold && lifespan_years > 100.0 {
+        special_traits.push(SpeciesTrait::LongLived);
+    }
+    if is_hot && lifespan_years < 30.0 {
+        special_traits.push(SpeciesTrait::ShortLived);
     }
     special_traits.truncate(3);
 

@@ -15,7 +15,7 @@ pub enum Substance {
     Chromite, Pentlandite, Rutile, Ilmenite, Wolframite, Scheelite, MolybdeniteOre,
     Cinnabar, Monazite, Uraninite, Spodumene, PyriteOre, CopperOxideOre, GoldOre,
     SilverOre, CobaltiteOre, StibniteOre, Limestone, SilicaSand, Clite, FeldsparOre,
-    ite, PhosphateRock,
+    Gypsum, PhosphateRock,
 
     // === ALLOYS (25) ===
     LowCarbonSteel, MediumCarbonSteel, HighCarbonSteel, StainlessSteel304,
@@ -98,7 +98,7 @@ pub enum Substance {
     Verdigris, ZincWhite, MarsYellow, MarsRed, MarsBlack,
 
     // === NATURAL/GEO ===
-    Ite, Marble, Slate, Quartzite, SerpentineMinite,
+    GypStone, Marble, Slate, Quartzite, SerpentineMinite,
     Ozone, NitrogenDioxide, SulfurDioxide, CarbonDioxide,
     Glucose, LacticAcid, Cellulose, Chitin,
     Nitrate, Ammonium, Methane,

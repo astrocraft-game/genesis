@@ -10,7 +10,7 @@ pub static INORGANIC_RECIPES: &[Recipe] = &[
         min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 0.01, cross_recipe_group: None },
     Recipe { id: 901, name: "H2SO4 + CaCO3 → Gypsum", category: RecipeCategory::ChemicalSynthesis,
         inputs: &[(S::SulfuricAcid, 0.50), (S::Limestone, 0.50)],
-        outputs: &[(S::ite, 0.80)], byproducts: &[(S::Water, 0.10), (S::CarbonDioxide, 0.10)],
+        outputs: &[(S::Gypsum, 0.80)], byproducts: &[(S::Water, 0.10), (S::CarbonDioxide, 0.10)],
         min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 0.5, cross_recipe_group: None },
     Recipe { id: 902, name: "HCl + NaHCO3 → NaCl + CO2", category: RecipeCategory::ChemicalSynthesis,
         inputs: &[(S::HydrochloricAcid, 0.4), (S::SodaAsh, 0.6)],

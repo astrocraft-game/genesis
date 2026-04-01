@@ -93,8 +93,10 @@ pub fn generate_species_history(
     let mut rng = SeededDiceRoller::new(seed, &format!("species_{}_history", species_name));
     let mut events = Vec::new();
 
-    // Scale based on tech level (higher TL = longer history)
-    let history_length_years = match tech_level {
+    // Scale based on tech level, adjusted by lifespan
+    // Longer-lived species develop slower (more conservative), shorter-lived faster
+    let lifespan_factor = (lifespan_years / 80.0) as f64; // 80 years = human baseline
+    let history_length_years = lifespan_factor * match tech_level {
         0..=1 => 10_000.0,
         2..=3 => 50_000.0,
         4..=5 => 200_000.0,

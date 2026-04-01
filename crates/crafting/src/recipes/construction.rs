@@ -22,12 +22,12 @@ pub static CONSTRUCTION_RECIPES: &[Recipe] = &[
 
     // ===== CEMENT (2 paths) =====
     Recipe { id: 405, name: "Portland Cement", category: RecipeCategory::Construction,
-        inputs: &[(S::Limestone, 1.2), (S::Clay, 0.3), (S::ite, 0.05)],
+        inputs: &[(S::Limestone, 1.2), (S::Clay, 0.3), (S::Gypsum, 0.05)],
         outputs: &[(S::Clinker, 1.0)],
         byproducts: &[(S::FlyAsh, 0.1)],
         min_temp_c: 1450, pressure_atm: 1.0, catalyst: None, duration_hours: 4.0, cross_recipe_group: Some(CRG_CEMENT) },
     Recipe { id: 406, name: "Cement from Clinker", category: RecipeCategory::Construction,
-        inputs: &[(S::Clinker, 0.95), (S::ite, 0.05)],
+        inputs: &[(S::Clinker, 0.95), (S::Gypsum, 0.05)],
         outputs: &[(S::PortlandCite, 1.0)],
         byproducts: &[],
         min_temp_c: 20, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: Some(CRG_CEMENT) },
@@ -75,7 +75,7 @@ pub static CONSTRUCTION_RECIPES: &[Recipe] = &[
 
     // ===== PLASTER =====
     Recipe { id: 430, name: "Plaster of Paris", category: RecipeCategory::Construction,
-        inputs: &[(S::ite, 1.2)],
+        inputs: &[(S::Gypsum, 1.2)],
         outputs: &[(S::PlasterOfParis, 1.0)],
         byproducts: &[(S::Water, 0.2)],
         min_temp_c: 160, pressure_atm: 1.0, catalyst: None, duration_hours: 2.0, cross_recipe_group: None },
