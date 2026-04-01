@@ -871,3 +871,57 @@ fn generate_system_peculiarities(
 
     traits
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::galaxy::map::division_level::GalacticMapDivisionLevel;
+
+    fn make_test_galaxy(seed: &str) -> Galaxy {
+        let mut galaxy = Galaxy::default();
+        galaxy.settings.seed = seed.into();
+        galaxy.division_levels =
+            GalacticMapDivisionLevel::generate_division_levels(&galaxy.settings);
+        galaxy
+    }
+
+    #[test]
+    fn generate_system_produces_objects() {
+        let coord = SpaceCoordinates::new(0, 0, 0);
+        let hex = GalacticHex::default();
+        let div = GalacticMapDivision::default();
+        let mut galaxy = make_test_galaxy("test_system_gen");
+
+        let system = generate_star_system(0, coord, &hex, &div, &mut galaxy);
+        assert!(!system.all_objects.is_empty(), "System should have at least one object");
+        assert!(system.name.len() > 0, "System should have a name");
+    }
+
+    #[test]
+    fn generate_multiple_systems_deterministic() {
+        let coord = SpaceCoordinates::new(1, 2, 3);
+        let hex = GalacticHex::default();
+        let div = GalacticMapDivision::default();
+
+        let mut g1 = make_test_galaxy("determinism_test");
+        let s1 = generate_star_system(0, coord, &hex, &div, &mut g1);
+
+        let mut g2 = make_test_galaxy("determinism_test");
+        let s2 = generate_star_system(0, coord, &hex, &div, &mut g2);
+
+        assert_eq!(s1.all_objects.len(), s2.all_objects.len(), "Same seed should produce same system");
+        assert_eq!(s1.name, s2.name);
+    }
+
+    #[test]
+    fn system_has_main_star() {
+        let coord = SpaceCoordinates::new(5, 5, 5);
+        let hex = GalacticHex::default();
+        let div = GalacticMapDivision::default();
+        let mut galaxy = make_test_galaxy("star_test");
+
+        let system = generate_star_system(0, coord, &hex, &div, &mut galaxy);
+        let main_star = system.all_objects.iter().find(|o| o.id == system.main_star_id);
+        assert!(main_star.is_some(), "System should have a main star");
+    }
+}

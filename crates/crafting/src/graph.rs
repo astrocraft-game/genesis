@@ -306,6 +306,46 @@ mod tests {
         let g = CraftingGraph::build_materials_only();
         let tree = g.print_tree(Substance::Hematite, 3);
         assert!(tree.contains("Hematite"), "Tree should start with Hematite");
-        println!("{}", tree);
+    }
+
+    #[test]
+    fn graph_has_final_products() {
+        let g = CraftingGraph::build_materials_only();
+        let finals = g.final_products();
+        assert!(!finals.is_empty(), "Should have final products with no further uses");
+    }
+
+    #[test]
+    fn all_recipes_in_graph() {
+        let g = CraftingGraph::build_all();
+        assert!(g.substance_count() > 100, "Full graph should have 100+ substances");
+        assert!(g.edge_count() > 500, "Full graph should have 500+ edges");
+    }
+
+    #[test]
+    fn graph_is_connected_from_raw_materials() {
+        let g = CraftingGraph::build_materials_only();
+        let raws = g.raw_materials();
+        let finals = g.final_products();
+        // At least some raw material should reach a final product
+        let mut any_connected = false;
+        for raw in &raws {
+            for fin in &finals {
+                if g.production_chain(*raw, *fin).is_some() {
+                    any_connected = true;
+                    break;
+                }
+            }
+            if any_connected { break; }
+        }
+        assert!(any_connected, "At least one raw material should connect to a final product");
+    }
+
+    #[test]
+    fn multiple_paths_to_steel() {
+        let g = CraftingGraph::build_materials_only();
+        // Steel should be reachable from multiple ore types
+        let inputs = g.what_do_i_need(Substance::LowCarbonSteel);
+        assert!(inputs.len() >= 2, "LowCarbonSteel should have multiple input paths, got {}", inputs.len());
     }
 }

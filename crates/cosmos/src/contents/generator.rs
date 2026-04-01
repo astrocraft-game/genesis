@@ -2321,3 +2321,121 @@ pub(crate) fn generate_outer_body_type(
     ))
     .expect("A body type should have been picked.")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_orbit_multiplier_is_deterministic_and_in_range() {
+        let mut rng = SeededDiceRoller::new("test_seed", "orbit_mult");
+        let results: Vec<f64> = (0..20).map(|_| get_orbit_multiplier(&mut rng)).collect();
+
+        // All values must be within the defined weighted range [1.4, 2.0]
+        for &v in &results {
+            assert!(
+                (1.4..=2.0).contains(&v),
+                "orbit multiplier {} out of range [1.4, 2.0]",
+                v
+            );
+        }
+
+        // Same seed must produce the same sequence
+        let mut rng2 = SeededDiceRoller::new("test_seed", "orbit_mult");
+        let results2: Vec<f64> = (0..20).map(|_| get_orbit_multiplier(&mut rng2)).collect();
+        assert_eq!(results, results2, "same seed should yield identical multiplier sequence");
+    }
+
+    #[test]
+    fn should_spawn_clamps_and_is_deterministic() {
+        // spawn_chances > 100 gets clamped to 100
+        let mut rng1a = SeededDiceRoller::new("spawn_test", "a");
+        let mut rng1b = SeededDiceRoller::new("spawn_test", "a");
+        assert_eq!(
+            should_spawn(&mut rng1a, 200),
+            should_spawn(&mut rng1b, 200),
+            "same seed should produce same spawn result"
+        );
+
+        // spawn_chances <= 0 should always return false (0% true weight)
+        for i in 0..50 {
+            let mut rng_neg = SeededDiceRoller::new("spawn_neg", &format!("neg_{}", i));
+            assert!(
+                !should_spawn(&mut rng_neg, -10),
+                "negative spawn_chances should always yield false (iteration {})", i
+            );
+        }
+    }
+
+    #[test]
+    fn apply_gas_giant_modifiers_no_traits() {
+        let system_traits: Vec<SystemPeculiarity> = vec![];
+        let star_traits: Vec<StarPeculiarity> = vec![];
+        let star_type = StarSpectralType::K(5);
+        let star_pop = StellarEvolution::Dwarf;
+
+        let (n, c, e, ep) = apply_gas_giant_arrangement_modifiers(
+            &system_traits,
+            &star_traits,
+            &star_type,
+            &star_pop,
+        );
+        // K-type dwarf: only the Dwarf population modifier applies (+10 conventional)
+        assert_eq!(n, 0, "nothing modifier for K-dwarf with no traits");
+        assert_eq!(c, 10, "conventional modifier for K-dwarf with Dwarf population");
+        assert_eq!(e, 0, "eccentric modifier for K-dwarf with no traits");
+        assert_eq!(ep, 0, "epistellar modifier for K-dwarf with no traits");
+    }
+
+    #[test]
+    fn apply_gas_giant_modifiers_m_star_paleodwarf() {
+        let system_traits: Vec<SystemPeculiarity> = vec![];
+        let star_traits: Vec<StarPeculiarity> = vec![];
+        let star_type = StarSpectralType::M(0);
+        let star_pop = StellarEvolution::Paleodwarf;
+
+        let (n, c, e, ep) = apply_gas_giant_arrangement_modifiers(
+            &system_traits,
+            &star_traits,
+            &star_type,
+            &star_pop,
+        );
+        // M-star: +19 nothing, -10 conv, -5 ecc, -4 ep
+        // Paleodwarf: +45 nothing, -28 conv, -13 ecc, -8 ep
+        assert_eq!(n, 19 + 45);
+        assert_eq!(c, -10 + -28);
+        assert_eq!(e, -5 + -13);
+        assert_eq!(ep, -4 + -8);
+    }
+
+    #[test]
+    fn place_orbit_if_possible_respects_zone_types() {
+        let zones = vec![
+            StarZone::new(0.0, 1.0, ZoneType::InnerZone),
+            StarZone::new(1.0, 3.0, ZoneType::BioZone),
+            StarZone::new(3.0, 5.0, ZoneType::ForbiddenZone),
+            StarZone::new(5.0, 10.0, ZoneType::OuterZone),
+        ];
+
+        // Orbit in InnerZone should be placed
+        let mut orbits = vec![];
+        let mut done = false;
+        place_orbit_if_possible(&zones, &mut orbits, 1, &mut done, 0.5, 0.5);
+        assert_eq!(orbits.len(), 1, "should place orbit in InnerZone");
+        assert!(!done);
+
+        // Orbit in ForbiddenZone should be skipped (no orbit added, not done)
+        let mut orbits2 = vec![];
+        let mut done2 = false;
+        place_orbit_if_possible(&zones, &mut orbits2, 1, &mut done2, 4.0, 4.0);
+        assert_eq!(orbits2.len(), 0, "should not place orbit in ForbiddenZone");
+        assert!(!done2);
+
+        // Orbit outside all zones should mark done
+        let mut orbits3 = vec![];
+        let mut done3 = false;
+        place_orbit_if_possible(&zones, &mut orbits3, 1, &mut done3, 15.0, 15.0);
+        assert_eq!(orbits3.len(), 0, "should not place orbit outside zones");
+        assert!(done3, "should mark done when orbit is outside all zones");
+    }
+}

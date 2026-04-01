@@ -10,3 +10,24 @@ pub use cosmos;
 pub use world;
 pub use life;
 pub use crafting;
+
+use cosmos::generator::Generator;
+use cosmos::generator::types::{GeneratedUniverse, GenerationSettings};
+use cosmos::system_generator::generate_star_system;
+use cosmos::prelude::*;
+
+/// Generate a complete universe from settings (universe → neighborhood → galaxies).
+pub fn generate_universe(settings: GenerationSettings) -> GeneratedUniverse {
+    Generator::generate(settings)
+}
+
+/// Generate a star system at a given coordinate within a galaxy.
+pub fn generate_system(
+    system_index: u16,
+    coord: SpaceCoordinates,
+    hex: &GalacticHex,
+    sub_sector: &GalacticMapDivision,
+    galaxy: &mut Galaxy,
+) -> StarSystem {
+    generate_star_system(system_index, coord, hex, sub_sector, galaxy)
+}

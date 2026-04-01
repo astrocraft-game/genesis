@@ -8,3 +8,4 @@ description = "Species generation, history, and expansion for procedural univers
 serde = { version = "1.0", features = ["derive", "rc"] }
 smart-default = "0.7"
 seeded_dice_roller = "1.0"
+world = { path = "../world" }

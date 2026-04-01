@@ -4,7 +4,7 @@ use seeded_dice_roller::SeededDiceRoller;
 use std::rc::Rc;
 use crate::species::*;
 use crate::types::LifeLevel;
-use crate::world_types::*;
+use crate::{CelestialBodyWorldType, WorldClimateType, WorldTemperatureCategory, SpaceCoordinates};
 
 /// Generates a species based on the conditions of its homeworld.
 pub fn generate_species_from_world(

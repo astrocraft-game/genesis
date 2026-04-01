@@ -4362,3 +4362,132 @@ fn generate_atmosphere(
     }
     atmospheric_pressure
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn default_settings(seed: &str) -> GenerationSettings {
+        GenerationSettings {
+            seed: Rc::from(seed),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn check_if_ribbon_world_returns_true_for_tide_locked_to_orbited() {
+        let traits = vec![CelestialBodySpecialTrait::TideLocked(
+            TideLockTarget::Orbited,
+        )];
+        assert!(WorldGenerator::check_if_ribbon_world(&traits));
+    }
+
+    #[test]
+    fn check_if_ribbon_world_returns_false_otherwise() {
+        assert!(!WorldGenerator::check_if_ribbon_world(&vec![]));
+        assert!(!WorldGenerator::check_if_ribbon_world(&vec![
+            CelestialBodySpecialTrait::TideLocked(TideLockTarget::Satellite),
+        ]));
+        assert!(!WorldGenerator::check_if_ribbon_world(&vec![
+            CelestialBodySpecialTrait::NoPeculiarity,
+        ]));
+    }
+
+    #[test]
+    fn ocean_reclassified_to_terrestrial_when_low_hydrosphere() {
+        assert_eq!(
+            WorldGenerator::set_ocean_as_terrestrial_if_too_little_water(
+                CelestialBodyWorldType::Ocean,
+                50.0
+            ),
+            CelestialBodyWorldType::Terrestrial,
+        );
+        // At threshold: 87.5 should stay Ocean
+        assert_eq!(
+            WorldGenerator::set_ocean_as_terrestrial_if_too_little_water(
+                CelestialBodyWorldType::Ocean,
+                87.5
+            ),
+            CelestialBodyWorldType::Ocean,
+        );
+        // Non-ocean type is unchanged
+        assert_eq!(
+            WorldGenerator::set_ocean_as_terrestrial_if_too_little_water(
+                CelestialBodyWorldType::Rock,
+                10.0
+            ),
+            CelestialBodyWorldType::Rock,
+        );
+    }
+
+    #[test]
+    fn terrestrial_reclassified_to_ocean_when_high_hydrosphere() {
+        assert_eq!(
+            WorldGenerator::set_as_ocean_if_too_much_water(
+                CelestialBodyWorldType::Terrestrial,
+                95.0
+            ),
+            CelestialBodyWorldType::Ocean,
+        );
+        // Below threshold: stays Terrestrial
+        assert_eq!(
+            WorldGenerator::set_as_ocean_if_too_much_water(
+                CelestialBodyWorldType::Terrestrial,
+                89.9
+            ),
+            CelestialBodyWorldType::Terrestrial,
+        );
+        // Non-terrestrial type is unchanged
+        assert_eq!(
+            WorldGenerator::set_as_ocean_if_too_much_water(
+                CelestialBodyWorldType::Rock,
+                95.0
+            ),
+            CelestialBodyWorldType::Rock,
+        );
+    }
+
+    #[test]
+    fn generate_core_heat_deterministic_and_edge_cases() {
+        let settings = default_settings("test_seed");
+        let coord = SpaceCoordinates::new(0, 0, 0);
+        let orbit = Orbit::default();
+
+        // Tiny size always returns FrozenCore regardless of other params
+        let result = WorldGenerator::generate_core_heat(
+            coord, 0, 0, 5.0, 1, &orbit,
+            CelestialBodySize::Tiny, 4.0,
+            TelluricBodyComposition::Rocky,
+            CelestialBodyWorldType::Rock,
+            &vec![], 0, 1.0, &settings, 1.0,
+        );
+        assert_eq!(result, CelestialBodyCoreHeat::FrozenCore);
+
+        // ProtoWorld always returns IntenseCore
+        let result = WorldGenerator::generate_core_heat(
+            coord, 0, 0, 5.0, 1, &orbit,
+            CelestialBodySize::Standard, 4.0,
+            TelluricBodyComposition::Rocky,
+            CelestialBodyWorldType::ProtoWorld,
+            &vec![], 0, 1.0, &settings, 1.0,
+        );
+        assert_eq!(result, CelestialBodyCoreHeat::IntenseCore);
+
+        // Determinism: same inputs produce same output
+        let result_a = WorldGenerator::generate_core_heat(
+            coord, 1, 2, 3.0, 10, &orbit,
+            CelestialBodySize::Standard, 5.5,
+            TelluricBodyComposition::Metallic,
+            CelestialBodyWorldType::Terrestrial,
+            &vec![], 2, 0.8, &settings, 1.0,
+        );
+        let result_b = WorldGenerator::generate_core_heat(
+            coord, 1, 2, 3.0, 10, &orbit,
+            CelestialBodySize::Standard, 5.5,
+            TelluricBodyComposition::Metallic,
+            CelestialBodyWorldType::Terrestrial,
+            &vec![], 2, 0.8, &settings, 1.0,
+        );
+        assert_eq!(result_a, result_b);
+    }
+}
