@@ -1,12 +1,12 @@
 use crate::internal::generator::get_major_moons;
 use crate::internal::*;
 use crate::prelude::*;
-use crate::system::celestial_body::world::utils::{
+use crate::celestial_body::world::utils::{
     get_category_from_temperature, has_element_in_normal_amount_or_more,
 };
-use crate::system::contents::elements::ALL_ELEMENTS;
-use crate::system::contents::elements::MOST_COMMON_ELEMENTS;
-use crate::system::contents::zones::get_orbit_with_updated_zone;
+use crate::contents::elements::ALL_ELEMENTS;
+use crate::contents::elements::MOST_COMMON_ELEMENTS;
+use crate::contents::zones::get_orbit_with_updated_zone;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -1837,7 +1837,7 @@ impl WorldGenerator {
 
         // Generate and attach planetary detail
         let is_locked = detail_special_traits.iter().any(|t| matches!(t, CelestialBodySpecialTrait::TideLocked(_)));
-        let detail = crate::system::celestial_body::telluric::detail::generate_planetary_detail(
+        let detail = crate::celestial_body::telluric::detail::generate_planetary_detail(
             atmospheric_pressure, &detail_atmo_comp, blackbody_temperature,
             gravity, radius, hydrosphere, ice_over_water, ice_over_land,
             volcanism, tectonics, magnetic_field, body_type, world_type,

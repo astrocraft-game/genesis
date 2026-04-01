@@ -2,19 +2,19 @@
 #![allow(dead_code, unused_imports, unused)]
 mod galaxy;
 mod generator;
-mod system;
 mod universe;
-mod utils;
 
 #[macro_use]
 extern crate lazy_static;
 extern crate log;
 extern crate simple_logger;
+extern crate system;
 
 use log::LevelFilter;
 use std::sync::Once;
 
 pub mod prelude {
+    // Galaxy
     pub use crate::galaxy::map::division::GalacticMapDivision;
     pub use crate::galaxy::map::division_level::GalacticMapDivisionLevel;
     pub use crate::galaxy::map::hex::types::*;
@@ -24,56 +24,46 @@ pub mod prelude {
     pub use crate::galaxy::neighborhood::GalacticNeighborhood;
     pub use crate::galaxy::types::*;
     pub use crate::galaxy::Galaxy;
+    // Generator
     pub use crate::generator::types::*;
     pub use crate::generator::Generator;
-    pub use crate::system::celestial_body::gaseous::types::*;
-    pub use crate::system::celestial_body::gaseous::GaseousBodyDetails;
-    pub use crate::system::celestial_body::icy::types::*;
-    pub use crate::system::celestial_body::icy::IcyBodyDetails;
-    pub use crate::system::celestial_body::telluric::types::*;
-    pub use crate::system::celestial_body::telluric::TelluricBodyDetails;
-    pub use crate::system::celestial_body::traits::types::*;
-    pub use crate::system::celestial_body::traits::*;
-    pub use crate::system::celestial_body::types::*;
-    pub use crate::system::celestial_body::world::types::*;
-    pub use crate::system::celestial_body::world::WorldGenerator;
-    pub use crate::system::celestial_body::CelestialBody;
-    pub use crate::system::celestial_disk::belt::types::*;
-    pub use crate::system::celestial_disk::belt::CelestialBeltDetails;
-    pub use crate::system::celestial_disk::ring::types::*;
-    pub use crate::system::celestial_disk::ring::CelestialRingDetails;
-    pub use crate::system::celestial_disk::types::*;
-    pub use crate::system::celestial_disk::CelestialDisk;
-    pub use crate::system::contents::elements::*;
-    pub use crate::system::contents::types::*;
-    pub use crate::system::neighborhood::types::*;
-    pub use crate::system::neighborhood::StellarNeighborhood;
-    pub use crate::system::orbital_point::types::*;
-    pub use crate::system::orbital_point::OrbitalPoint;
-    pub use crate::system::star::types::*;
-    pub use crate::system::star::Star;
-    pub use crate::system::types::*;
-    pub use crate::system::StarSystem;
+    // Universe
     pub use crate::universe::types::*;
     pub use crate::universe::Universe;
+    // System (from system crate) - only re-export system-specific types, not galaxy stubs
+    pub use system::celestial_body::gaseous::types::*;
+    pub use system::celestial_body::gaseous::GaseousBodyDetails;
+    pub use system::celestial_body::icy::types::*;
+    pub use system::celestial_body::icy::IcyBodyDetails;
+    pub use system::celestial_body::telluric::types::*;
+    pub use system::celestial_body::telluric::TelluricBodyDetails;
+    pub use system::celestial_body::traits::types::*;
+    pub use system::celestial_body::traits::*;
+    pub use system::celestial_body::types::*;
+    pub use system::celestial_body::world::types::*;
+    pub use system::celestial_body::world::WorldGenerator;
+    pub use system::celestial_body::CelestialBody;
+    pub use system::celestial_disk::belt::types::*;
+    pub use system::celestial_disk::belt::CelestialBeltDetails;
+    pub use system::celestial_disk::ring::types::*;
+    pub use system::celestial_disk::ring::CelestialRingDetails;
+    pub use system::celestial_disk::types::*;
+    pub use system::celestial_disk::CelestialDisk;
+    pub use system::contents::elements::*;
+    pub use system::contents::types::*;
+    pub use system::neighborhood::types::*;
+    pub use system::neighborhood::StellarNeighborhood;
+    pub use system::orbital_point::types::*;
+    pub use system::orbital_point::OrbitalPoint;
+    pub use system::star::types::*;
+    pub use system::star::Star;
+    pub use system::types::*;
 }
 
 mod internal {
-    pub use crate::system::celestial_body::moon::*;
-    pub use crate::utils::conversion::ConversionUtils;
-    pub use crate::utils::harmonics::OrbitalHarmonicsUtils;
-    pub use crate::utils::math::MathUtils;
-    pub use crate::utils::string::StringUtils;
-    pub use log::*;
-    pub use ordered_float::OrderedFloat;
-    pub use seeded_dice_roller::*;
-    pub use serde::{Deserialize, Serialize};
-    pub use smart_default::SmartDefault;
-    pub use std::fmt::Display;
-    pub use std::mem::discriminant;
-    pub use std::rc::Rc;
-    pub use strum::IntoEnumIterator;
-    pub use strum_macros::EnumIter;
+    pub use system::internal::*;
+    // Re-export galaxy-specific types that galaxy module needs
+    pub use crate::galaxy::map::hex::types::SpaceCoordinates;
 }
 
 lazy_static! {
@@ -95,7 +85,7 @@ mod tests {
     use super::internal::*;
     use super::prelude::*;
     use super::*;
-    use crate::system::star::get_star_color_code;
+    use system::star::get_star_color_code;
     use std::collections::HashSet;
 
     // #[test]
@@ -105,7 +95,6 @@ mod tests {
 
     #[test]
     fn generate_example_systems() {
-        // init_logger(LevelFilter::Debug);
         for i in 0..50 {
             let settings = &GenerationSettings {
                 seed: Rc::from(i.to_string()),
@@ -127,41 +116,7 @@ mod tests {
                 .get_division_at_level(coord, 1)
                 .expect("Should have returned a sub-sector.");
             let hex = galaxy.get_hex(coord).expect("Should have returned an hex.");
-            let system = StarSystem::generate(i as u16, coord, &hex, &sub_sector, &mut galaxy);
-            let main_star = system
-                .clone()
-                .all_objects
-                .iter()
-                .find(|o| o.id == system.main_star_id)
-                .cloned()
-                .unwrap()
-                .object;
-
-            print_system_bodies(i, system);
-        }
-    }
-
-    // #[test]
-    fn generate_interesting_example_systems() {
-        // init_logger(LevelFilter::Debug);
-        for i in 0..50 {
-            let settings = &GenerationSettings {
-                seed: Rc::from(i.to_string()),
-                system: SystemSettings {
-                    only_interesting: true,
-                    ..Default::default()
-                },
-                ..Default::default()
-            };
-            let universe = Universe::generate(&settings);
-            let neighborhood = GalacticNeighborhood::generate(universe, &settings);
-            let mut galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, &settings);
-            let coord = SpaceCoordinates::new(0, 0, 0);
-            let sub_sector = galaxy
-                .get_division_at_level(coord, 1)
-                .expect("Should have returned a sub-sector.");
-            let hex = galaxy.get_hex(coord).expect("Should have returned an hex.");
-            let system = StarSystem::generate(i as u16, coord, &hex, &sub_sector, &mut galaxy);
+            let sys_coord = system::galaxy_stubs::SpaceCoordinates::new(coord.x, coord.y, coord.z); let sys_hex = system::galaxy_stubs::GalacticHex::default(); let sys_div = system::galaxy_stubs::GalacticMapDivision::default(); let mut sys_gal = system::galaxy_stubs::Galaxy::default(); sys_gal.settings.seed = galaxy.settings.seed.clone(); sys_gal.settings.star = galaxy.settings.star.clone(); sys_gal.neighborhood.universe.age = galaxy.neighborhood.universe.age; let system = system::generator::generate_star_system(i as u16, sys_coord, &sys_hex, &sys_div, &mut sys_gal);
             let main_star = system
                 .clone()
                 .all_objects
@@ -190,11 +145,8 @@ mod tests {
 
         let mut sorted_objects = Vec::new();
         let mut visited = HashSet::new();
-
-        // Sort the collected objects at each depth level by their orbital distance
         sort_by_orbital_distance(&mut sorted_objects);
 
-        // Start the sort with the object that orbits nothing (i.e., the central object)
         if let Some(central_object) = system.all_objects.iter().find(|o| o.own_orbit.is_none()) {
             orbits_depth_first_sort(
                 central_object.id,
@@ -233,28 +185,14 @@ mod tests {
         visited: &mut HashSet<u32>,
         current_depth: usize,
     ) {
-        if visited.contains(&point_id) {
-            return;
-        }
-
+        if visited.contains(&point_id) { return; }
         visited.insert(point_id);
-
         if let Some(point) = points.iter().find(|p| p.id == point_id) {
             sorted_points.push((point.clone(), current_depth));
-
-            // Iterate over all orbital points to find direct satellites of 'point'
             for satellite in points.iter().filter(|p| {
-                p.own_orbit
-                    .as_ref()
-                    .map_or(false, |o| o.primary_body_id == point_id)
+                p.own_orbit.as_ref().map_or(false, |o| o.primary_body_id == point_id)
             }) {
-                orbits_depth_first_sort(
-                    satellite.id,
-                    points,
-                    sorted_points,
-                    visited,
-                    current_depth + 1,
-                );
+                orbits_depth_first_sort(satellite.id, points, sorted_points, visited, current_depth + 1);
             }
         }
     }
@@ -265,11 +203,8 @@ mod tests {
             let depth_b = b.1;
             let distance_a = a.0.own_orbit.clone().unwrap_or_default().average_distance;
             let distance_b = b.0.own_orbit.clone().unwrap_or_default().average_distance;
-
             if depth_a == depth_b {
-                distance_a
-                    .partial_cmp(&distance_b)
-                    .unwrap_or(std::cmp::Ordering::Equal)
+                distance_a.partial_cmp(&distance_b).unwrap_or(std::cmp::Ordering::Equal)
             } else {
                 depth_a.cmp(&depth_b)
             }

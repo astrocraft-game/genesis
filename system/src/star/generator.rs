@@ -2,12 +2,12 @@ use crate::internal::*;
 use crate::prelude::*;
 #[path = "./constants.rs"]
 mod constants;
-use crate::system::contents::elements::generate_random_common_element;
-use crate::system::contents::elements::generate_random_element;
-use crate::system::contents::elements::generate_random_non_metal_element;
-use crate::system::contents::elements::ChemicalComponent;
-use crate::system::contents::elements::ALL_ELEMENTS;
-use crate::system::contents::elements::MOST_COMMON_ELEMENTS;
+use crate::contents::elements::generate_random_common_element;
+use crate::contents::elements::generate_random_element;
+use crate::contents::elements::generate_random_non_metal_element;
+use crate::contents::elements::ChemicalComponent;
+use crate::contents::elements::ALL_ELEMENTS;
+use crate::contents::elements::MOST_COMMON_ELEMENTS;
 use constants::*;
 
 impl Star {
@@ -321,10 +321,10 @@ impl Star {
         });
 
         let absolute_magnitude =
-            crate::system::star::absolute_magnitude_from_luminosity(luminosity);
-        let color_bv = crate::system::star::temperature_to_bv(temperature);
+            crate::star::absolute_magnitude_from_luminosity(luminosity);
+        let color_bv = crate::star::temperature_to_bv(temperature);
         let flare_activity =
-            crate::system::star::compute_flare_activity(&spectral_type, age / 1000.0);
+            crate::star::compute_flare_activity(&spectral_type, age / 1000.0);
 
         Self {
             name,
@@ -1725,7 +1725,7 @@ mod tests {
 
     #[test]
     fn magnitude_from_luminosity_sun() {
-        let mag = crate::system::star::absolute_magnitude_from_luminosity(1.0);
+        let mag = crate::star::absolute_magnitude_from_luminosity(1.0);
         assert!(
             (mag - 4.83).abs() < 0.01,
             "Sun abs mag should be ~4.83, got {}",
@@ -1736,9 +1736,9 @@ mod tests {
     #[test]
     fn bv_color_ordering() {
         // Hot stars should have lower B-V than cool stars
-        let bv_hot = crate::system::star::temperature_to_bv(10000);
-        let bv_sun = crate::system::star::temperature_to_bv(5772);
-        let bv_cool = crate::system::star::temperature_to_bv(3500);
+        let bv_hot = crate::star::temperature_to_bv(10000);
+        let bv_sun = crate::star::temperature_to_bv(5772);
+        let bv_cool = crate::star::temperature_to_bv(3500);
         assert!(
             bv_hot < bv_sun && bv_sun < bv_cool,
             "B-V should increase with decreasing temperature: hot={}, sun={}, cool={}",
@@ -1748,7 +1748,7 @@ mod tests {
 
     #[test]
     fn bv_to_rgb_produces_valid_colors() {
-        let (r, g, b) = crate::system::star::bv_to_rgb(0.63);
+        let (r, g, b) = crate::star::bv_to_rgb(0.63);
         assert!(r > 200, "Sun should be warm-colored, r={}", r);
         assert!(g > 150, "Sun should have green component, g={}", g);
         assert!(b > 100, "Sun should have blue component, b={}", b);
@@ -1757,8 +1757,8 @@ mod tests {
     #[test]
     fn magnitude_luminosity_roundtrip() {
         let lum_original = 100.0_f32;
-        let mag = crate::system::star::absolute_magnitude_from_luminosity(lum_original);
-        let lum_back = crate::system::star::luminosity_from_absolute_magnitude(mag);
+        let mag = crate::star::absolute_magnitude_from_luminosity(lum_original);
+        let lum_back = crate::star::luminosity_from_absolute_magnitude(mag);
         assert!(
             (lum_back - lum_original).abs() / lum_original < 0.01,
             "roundtrip: {} -> mag {} -> {}",

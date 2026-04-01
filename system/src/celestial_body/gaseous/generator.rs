@@ -2,12 +2,12 @@ use crate::internal::types::MoonDistance;
 use crate::internal::*;
 use crate::prelude::types::{TelluricRotationDifference, TideLockTarget};
 use crate::prelude::*;
-use crate::system::celestial_body::gaseous::constants::MASS_TO_DENSITY_DATASET;
-use crate::system::contents::utils::{
+use crate::celestial_body::gaseous::constants::MASS_TO_DENSITY_DATASET;
+use crate::contents::utils::{
     calculate_blackbody_temperature, calculate_radius, calculate_surface_gravity,
 };
-use crate::system::contents::zones::get_orbit_with_updated_zone;
-use crate::system::orbital_point::generator::{
+use crate::contents::zones::get_orbit_with_updated_zone;
+use crate::orbital_point::generator::{
     complete_orbit_with_orbital_period, complete_orbit_with_rotation_and_axis,
 };
 

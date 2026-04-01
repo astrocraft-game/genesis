@@ -6,6 +6,7 @@ description = "[WIP] Generates data for galaxies, sectors, solar systems, planet
 license = "MIT"
 
 [dependencies]
+system = { path = "system" }
 seeded_dice_roller = "1.0.2"
 log = "0.4.27"
 simple_logger = "5.0.0"

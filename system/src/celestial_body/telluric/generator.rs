@@ -1,12 +1,12 @@
 use crate::internal::types::MoonDistance;
 use crate::internal::*;
 use crate::prelude::*;
-use crate::system::celestial_body::generator::{
+use crate::celestial_body::generator::{
     generate_acceptable_telluric_parameters, get_world_type,
 };
-use crate::system::contents::utils::{calculate_blackbody_temperature, calculate_surface_gravity};
-use crate::system::contents::zones::get_orbit_with_updated_zone;
-use crate::system::orbital_point::generator::{
+use crate::contents::utils::{calculate_blackbody_temperature, calculate_surface_gravity};
+use crate::contents::zones::get_orbit_with_updated_zone;
+use crate::orbital_point::generator::{
     complete_orbit_with_orbital_period, complete_orbit_with_rotation_and_axis,
 };
 

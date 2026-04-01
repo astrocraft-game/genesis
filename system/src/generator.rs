@@ -1,23 +1,23 @@
-use super::StarSystem;
+use crate::types::StarSystem;
 use crate::internal::*;
 use crate::prelude::*;
 use std::collections::HashSet;
 
 #[path = "./constants.rs"]
 mod constants;
-use crate::system::contents::generator::generate_stars_systems;
-use crate::system::contents::zones::generate_star_zones;
+use crate::contents::generator::generate_stars_systems;
+use crate::contents::zones::generate_star_zones;
 use constants::*;
 
-impl StarSystem {
+// StarSystem generation (free function since type is in system crate)
     /// Generates a brand new star system at the given coordinates
-    pub fn generate(
+pub fn generate_star_system(
         system_index: u16,
         coord: SpaceCoordinates,
         hex: &GalacticHex,
         sub_sector: &GalacticMapDivision,
         galaxy: &mut Galaxy,
-    ) -> Self {
+    ) -> StarSystem {
         let mut center_id: u32 = 0;
         let mut main_star_id: u32 = 0;
         let mut all_objects: Vec<OrbitalPoint> = Vec::new();
@@ -113,9 +113,8 @@ impl StarSystem {
                 panic!("There should be at least one interesting system in every 5000 tries!");
             }
         }
-        Self::new(name, center_id, main_star_id, all_objects, special_traits)
+        StarSystem::new(name, center_id, main_star_id, all_objects, special_traits)
     }
-}
 
 /// Temporary name generation
 fn get_system_name(system_index: u16, coord: SpaceCoordinates, galaxy: &Galaxy) -> Rc<str> {

@@ -1,8 +1,8 @@
 use crate::internal::*;
 use crate::prelude::*;
-use crate::system::contents::get_next_id;
-use crate::system::contents::zones::collect_all_zones;
-use crate::system::orbital_point::utils::sort_orbital_points_by_average_distance;
+use crate::contents::get_next_id;
+use crate::contents::zones::collect_all_zones;
+use crate::orbital_point::utils::sort_orbital_points_by_average_distance;
 
 pub fn generate_stars_systems(
     system_gen_try: u32,

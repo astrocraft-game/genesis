@@ -236,7 +236,7 @@ pub fn bv_to_rgb(bv: f32) -> (u8, u8, u8) {
     (r as u8, g as u8, b as u8)
 }
 
-pub(crate) fn get_star_color_code(star: &Star) -> &'static str {
+pub fn get_star_color_code(star: &Star) -> &'static str {
     match star.spectral_type {
         StarSpectralType::WR(_) | StarSpectralType::O(_) => "\x1b[34m", // Blue
         StarSpectralType::B(_) => "\x1b[1;34m",                         // Bright Blue

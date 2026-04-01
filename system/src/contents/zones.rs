@@ -1,7 +1,7 @@
 use crate::internal::*;
 use crate::prelude::*;
-use crate::system::celestial_body::world::utils::get_category_from_temperature;
-use crate::system::contents::utils::{calculate_distance_for_temperature, calculate_habitable_zone};
+use crate::celestial_body::world::utils::get_category_from_temperature;
+use crate::contents::utils::{calculate_distance_for_temperature, calculate_habitable_zone};
 use std::cmp::Ordering;
 
 pub fn generate_star_zones(all_objects: &mut Vec<OrbitalPoint>) {

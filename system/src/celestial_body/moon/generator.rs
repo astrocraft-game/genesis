@@ -1,14 +1,14 @@
 use crate::internal::types::MoonDistance;
 use crate::internal::*;
 use crate::prelude::*;
-use crate::system::contents::generator::{
+use crate::contents::generator::{
     generate_body_from_type, generate_inner_body_type, generate_outer_body_type,
 };
-use crate::system::contents::utils::{calculate_hill_sphere_radius, calculate_roche_limit};
-use crate::system::orbital_point::generator::{
+use crate::contents::utils::{calculate_hill_sphere_radius, calculate_roche_limit};
+use crate::orbital_point::generator::{
     complete_orbit_with_orbital_period, complete_orbit_with_rotation_and_axis,
 };
-use crate::system::orbital_point::utils::sort_orbital_points_by_average_distance;
+use crate::orbital_point::utils::sort_orbital_points_by_average_distance;
 use std::iter::Filter;
 use std::slice::Iter;
 

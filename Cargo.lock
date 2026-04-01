@@ -119,6 +119,7 @@ dependencies = [
  "smart-default",
  "strum",
  "strum_macros",
+ "system",
  "time",
 ]
 
@@ -297,6 +298,20 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-ident",
+]
+
+[[package]]
+name = "system"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "log",
+ "ordered-float",
+ "seeded_dice_roller",
+ "serde",
+ "smart-default",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
