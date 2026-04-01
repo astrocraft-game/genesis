@@ -1,0 +1,902 @@
+use crate::internal::*;
+use crate::prelude::*;
+
+/// Generate comprehensive planetary detail from base world parameters.
+pub fn generate_planetary_detail(
+    atmospheric_pressure: f32,
+    atmospheric_composition: &[(f32, ChemicalComponent)],
+    blackbody_temperature: u32,
+    gravity: f32,
+    radius: f64,
+    hydrosphere: f32,
+    ice_over_water: f32,
+    ice_over_land: f32,
+    volcanism: f32,
+    tectonic_activity: f32,
+    magnetic_field: MagneticFieldStrength,
+    body_type: TelluricBodyComposition,
+    world_type: CelestialBodyWorldType,
+    life_level: LifeLevel,
+    axial_tilt: f32,
+    eccentricity: f32,
+    rotation_days: f32,
+    is_tidally_locked: bool,
+    tidal_heating: u32,
+    seed: &str,
+    coord: SpaceCoordinates,
+    system_index: u16,
+    star_id: u32,
+    orbital_point_id: u32,
+) -> PlanetaryDetail {
+    let mut rng = SeededDiceRoller::new(
+        seed,
+        &format!("sys_{}_{}_str_{}_bdy{}_detail", coord, system_index, star_id, orbital_point_id),
+    );
+
+    let g_ms2 = gravity * 9.81;
+    let has_atmosphere = atmospheric_pressure > 0.01;
+    let has_liquid = hydrosphere > 0.5;
+    let land_fraction = (100.0 - hydrosphere).max(0.0) / 100.0;
+
+    // Pre-compute gas presence flags (used by multiple features)
+    let has_oxygen = atmospheric_composition.iter().any(|(f, c)| *c == ChemicalComponent::Oxygen && *f > 0.1);
+    let has_co2_high = atmospheric_composition.iter().any(|(f, c)| *c == ChemicalComponent::CarbonDioxide && *f > 0.05);
+    let has_h2s = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::HydrogenSulfide);
+    let has_so2 = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::SulfurDioxide);
+    let has_hcl = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Chlorine);
+    let has_methane = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Methane);
+    let has_nitrogen = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Nitrogen);
+    let has_ammonia = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Ammonia);
+
+    // 1. Atmospheric layers
+    let atmospheric_layers = if has_atmosphere {
+        // Mean molecular mass from composition (weighted average)
+        let mean_molecular_mass: f64 = atmospheric_composition.iter().map(|(f, c)| {
+            let m = match c {
+                ChemicalComponent::Hydrogen => 0.002,
+                ChemicalComponent::Helium => 0.004,
+                ChemicalComponent::Nitrogen => 0.028,
+                ChemicalComponent::Oxygen => 0.032,
+                ChemicalComponent::CarbonDioxide => 0.044,
+                ChemicalComponent::Methane => 0.016,
+                ChemicalComponent::Ammonia => 0.017,
+                ChemicalComponent::Water => 0.018,
+                ChemicalComponent::Argon => 0.040,
+                ChemicalComponent::SulfurDioxide => 0.064,
+                _ => 0.029,
+            };
+            *f as f64 * m
+        }).sum::<f64>().max(0.002);
+
+        // Scale height: H = RT / (Mg)
+        let scale_height_m = 8.314 * blackbody_temperature as f64 / (mean_molecular_mass * g_ms2 as f64);
+        let scale_height_km = (scale_height_m / 1000.0) as f32;
+
+        // Lapse rate: dT/dz = -g*M/R (dry adiabatic) in K/km
+        let lapse_rate = (g_ms2 as f64 * mean_molecular_mass / 8.314 * 1000.0) as f32;
+
+        // Tropopause: where convection stops, scales with optical depth
+        // Venus: 65km, Earth: 12km, Mars: 40km (thin but high due to low gravity)
+        let tropopause_km = (scale_height_km * 1.5 * atmospheric_pressure.powf(0.3)).clamp(1.0, 100.0);
+
+        // Stratosphere: only exists with UV absorber (O3 from O2+life, or organic haze)
+        let has_strat = has_oxygen && life_level.as_u8() >= LifeLevel::PlantLike.as_u8()
+            || (has_methane && has_nitrogen); // tholin haze absorbs UV too
+        let stratopause_km = if has_strat { tropopause_km * 3.5 } else { 0.0 };
+
+        // Exobase: where mean free path > scale height
+        let exobase_km = scale_height_km * (atmospheric_pressure.max(0.001).ln() + 15.0).max(5.0);
+
+        Some(AtmosphericLayers { scale_height_km, tropopause_km, has_stratosphere: has_strat, exobase_km })
+    } else { None };
+
+    // 2. Breathability & Toxicity
+    let breathability = match atmospheric_pressure {
+        p if p < 0.001 => AtmosphereBreathability::Vacuum,
+        p if p < 0.1 => AtmosphereBreathability::Trace,
+        p if p < 0.43 => AtmosphereBreathability::VeryThin,
+        p if p < 0.71 => AtmosphereBreathability::ThinBreathable,
+        p if p < 1.5 => AtmosphereBreathability::Standard,
+        p if p < 2.5 => AtmosphereBreathability::Dense,
+        p if p < 10.0 => AtmosphereBreathability::VeryDense,
+        _ => AtmosphereBreathability::Superdense,
+    };
+
+    // Partial pressures for toxicity thresholds
+    let pp = |comp: ChemicalComponent| -> f32 {
+        atmospheric_composition.iter()
+            .filter(|(_, c)| *c == comp).map(|(f, _)| f * atmospheric_pressure).sum::<f32>()
+    };
+    let pp_co2 = pp(ChemicalComponent::CarbonDioxide);
+    let pp_co = pp(ChemicalComponent::CarbonMonoxide);
+
+    let toxicity = if !has_atmosphere { AtmosphereToxicity::Benign }
+    else if has_hcl { AtmosphereToxicity::Insidious } // Cl2 penetrates seals
+    else if has_so2 && atmospheric_pressure > 1.0 { AtmosphereToxicity::Corrosive } // H2SO4 attacks materials
+    else if has_h2s && pp(ChemicalComponent::HydrogenSulfide) > 0.01 { AtmosphereToxicity::LethallyToxic } // H2S >100ppm kills fast
+    else if pp_co > 0.01 { AtmosphereToxicity::HighlyToxic } // CO >100ppm lethal in hours
+    else if has_h2s { AtmosphereToxicity::HighlyToxic } // any H2S is dangerous
+    else if pp_co2 > 0.1 { AtmosphereToxicity::MildlyToxic } // CO2 >10% narcotic
+    else if pp_co2 > 0.05 { AtmosphereToxicity::Filterable } // CO2 5-10% manageable with filter
+    else if !has_oxygen && atmospheric_pressure > 0.1 { AtmosphereToxicity::Suffocating } // no O2
+    else if has_oxygen && atmospheric_pressure > 0.4 && atmospheric_pressure < 2.0 {
+        // Check O2 fraction
+        let o2_frac: f32 = atmospheric_composition.iter()
+            .filter(|(_, c)| *c == ChemicalComponent::Oxygen).map(|(f, _)| *f).sum();
+        if o2_frac > 0.16 && o2_frac < 0.50 { AtmosphereToxicity::Benign }
+        else if o2_frac > 0.50 { AtmosphereToxicity::MildlyToxic } // O2 toxicity
+        else { AtmosphereToxicity::Suffocating } // too little O2
+    }
+    else { AtmosphereToxicity::Marginal };
+
+    // 3. Cloud decks
+    let mut cloud_decks = Vec::new();
+    if has_atmosphere {
+        let scale_h = atmospheric_layers.as_ref().map_or(8.5, |l| l.scale_height_km);
+        // Water clouds
+        if has_liquid && blackbody_temperature > 200 && blackbody_temperature < 400 {
+            cloud_decks.push(CloudDeck {
+                composition: if blackbody_temperature > 273 { CloudComposition::Water } else { CloudComposition::WaterIce },
+                base_altitude_km: scale_h * 0.5,
+                top_altitude_km: scale_h * 1.5,
+                optical_depth: (hydrosphere / 30.0).clamp(1.0, 50.0),
+                coverage_fraction: (hydrosphere / 150.0 + 0.2).clamp(0.1, 1.0),
+            });
+        }
+        // CO2/H2SO4 clouds for Venus-like
+        if has_co2_high && atmospheric_pressure > 10.0 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::SulfuricAcid,
+                base_altitude_km: scale_h * 3.0,
+                top_altitude_km: scale_h * 5.0,
+                optical_depth: 30.0,
+                coverage_fraction: 1.0,
+            });
+        }
+        // Ammonia clouds (Jupiter upper deck)
+        if has_ammonia && blackbody_temperature < 200 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::Ammonia,
+                base_altitude_km: scale_h * 1.0,
+                top_altitude_km: scale_h * 2.0,
+                optical_depth: 5.0,
+                coverage_fraction: 0.6,
+            });
+        }
+        // Ammonium hydrosulfide (Jupiter middle deck) - NH3 + H2S
+        if has_ammonia && has_h2s && blackbody_temperature < 250 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::AmmoniumHydrosulfide,
+                base_altitude_km: scale_h * 0.5,
+                top_altitude_km: scale_h * 1.0,
+                optical_depth: 8.0,
+                coverage_fraction: 0.7,
+            });
+        }
+        // Methane clouds (Titan, Uranus, Neptune)
+        if has_methane && blackbody_temperature < 150 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::Methane,
+                base_altitude_km: scale_h * 0.3,
+                top_altitude_km: scale_h * 1.0,
+                optical_depth: 3.0,
+                coverage_fraction: 0.4,
+            });
+        }
+        // Organic tholin haze (Titan - CH4 + N2 + UV)
+        if has_methane && has_nitrogen && blackbody_temperature < 200 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::OrganicHaze,
+                base_altitude_km: scale_h * 5.0,
+                top_altitude_km: scale_h * 20.0,
+                optical_depth: 4.0,
+                coverage_fraction: 1.0,
+            });
+        }
+        // Silicon dust clouds (lava worlds T>1500K)
+        if blackbody_temperature > 1500 && atmospheric_pressure > 0.01 {
+            cloud_decks.push(CloudDeck {
+                composition: CloudComposition::SiliconDust,
+                base_altitude_km: scale_h * 0.2,
+                top_altitude_km: scale_h * 1.0,
+                optical_depth: 10.0,
+                coverage_fraction: 0.8,
+            });
+        }
+    }
+
+    // 4. Greenhouse effect
+    let greenhouse = if has_atmosphere {
+        let equilibrium_temp = (278.0 * 1.0_f32.powf(0.25)) / 1.0; // simplified, using blackbody as proxy
+        let co2_fraction: f32 = atmospheric_composition.iter()
+            .filter(|(_, c)| *c == ChemicalComponent::CarbonDioxide).map(|(f, _)| f).sum();
+        let co2_pp = co2_fraction * atmospheric_pressure;
+        let ch4_fraction: f32 = atmospheric_composition.iter()
+            .filter(|(_, c)| *c == ChemicalComponent::Methane).map(|(f, _)| f).sum();
+        // CO2 greenhouse: deltaT ~ 10 * ln(pCO2 / 0.0004)
+        let delta_co2 = if co2_pp > 0.0004 { (10.0 * (co2_pp / 0.0004).ln()).max(0.0) } else { 0.0 };
+        // CH4 greenhouse: ~0.5K per ppm above 2ppm background (30x CO2 per molecule)
+        let ch4_ppm = ch4_fraction * 1_000_000.0;
+        let delta_ch4 = if ch4_ppm > 2.0 { (0.5 * (ch4_ppm - 2.0).ln().max(0.0)).min(20.0) } else { 0.0 };
+        // H2O feedback: above 300K, each +1K surface temp increases H2O vapor -> +0.5K
+        let base_delta = delta_co2 + delta_ch4;
+        let surface_temp_base = blackbody_temperature as f32 + base_delta;
+        let h2o_feedback = if surface_temp_base > 300.0 && hydrosphere > 10.0 {
+            ((surface_temp_base - 300.0) * 0.5).min(200.0)
+        } else { 0.0 };
+        let delta = base_delta + h2o_feedback;
+        let is_runaway = (blackbody_temperature as f32 + delta > 500.0 && hydrosphere > 0.0)
+            || h2o_feedback > 150.0;
+        let albedo = if cloud_decks.iter().any(|c| c.coverage_fraction > 0.8) { 0.7 }
+            else if hydrosphere > 50.0 { 0.3 }
+            else if ice_over_land > 50.0 { 0.6 }
+            else { 0.25 };
+        Some(GreenhouseEffect {
+            equilibrium_temp_k: blackbody_temperature as f32,
+            surface_temp_k: blackbody_temperature as f32 + delta,
+            greenhouse_delta_k: delta,
+            bond_albedo: albedo,
+            is_runaway,
+        })
+    } else { None };
+
+    // 5. Sky appearance
+    let sky = if atmospheric_pressure > 0.001 {
+        let has_dust = body_type == TelluricBodyComposition::Rocky && atmospheric_pressure < 0.05;
+        let has_tholin = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Methane)
+            && atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Nitrogen);
+        let has_ch4_thick = has_methane && atmospheric_pressure > 5.0; // Uranus/Neptune CH4 absorption
+        let has_cl2 = atmospheric_composition.iter().any(|(_, c)| *c == ChemicalComponent::Chlorine);
+        let very_thin_dust = has_dust && atmospheric_pressure < 0.003;
+        let daytime_color = if atmospheric_pressure < 0.001 { SkyColor::Black }
+            else if has_ch4_thick { SkyColor::DeepBlue } // CH4 absorbs red (Uranus/Neptune)
+            else if has_tholin { SkyColor::Orange } // tholin haze (Titan)
+            else if has_dust && volcanism > 50.0 { SkyColor::Red } // heavy iron oxide loading
+            else if has_dust { SkyColor::Butterscotch } // Mars-like
+            else if very_thin_dust { SkyColor::Pink } // fine silicate + very thin
+            else if has_cl2 { SkyColor::Green } // chlorine atmosphere (exotic)
+            else if has_co2_high && atmospheric_pressure > 10.0 { SkyColor::Amber } // Venus surface
+            else if has_so2 { SkyColor::Yellow } // sulfur aerosol
+            else if has_oxygen && atmospheric_pressure > 0.3 { SkyColor::Blue } // Earth-like Rayleigh
+            else if atmospheric_pressure < 0.2 { SkyColor::PaleBlue } // thin atmosphere
+            else if atmospheric_pressure > 5.0 { SkyColor::White } // very thick, Mie dominant
+            else { SkyColor::PaleBlue };
+        let sunset_color = if has_dust { SkyColor::Blue } // Mars blue sunsets
+            else if daytime_color == SkyColor::Blue { SkyColor::Red }
+            else if daytime_color == SkyColor::DeepBlue { SkyColor::Blue }
+            else if daytime_color == SkyColor::Orange { SkyColor::Yellow }
+            else { SkyColor::Yellow };
+        Some(SkyAppearance { daytime_color, sunset_color, daytime_stars_visible: atmospheric_pressure < 0.05 })
+    } else { Some(SkyAppearance { daytime_color: SkyColor::Black, sunset_color: SkyColor::Black, daytime_stars_visible: true }) };
+
+    // 6. Wind profile - derived from Rossby number and Hadley cell physics
+    let wind = if has_atmosphere {
+        let omega = if rotation_days.abs() > 0.01 {
+            2.0 * std::f32::consts::PI / (rotation_days * 86400.0)
+        } else { 0.0 };
+        let r_planet_m = radius as f32 * 6.371e6;
+        let scale_height_m = atmospheric_layers.as_ref().map_or(8500.0, |l| l.scale_height_km * 1000.0);
+        let delta_t = 50.0_f32; // equator-pole temp diff
+
+        // Thermal Rossby number determines circulation regime
+        let rossby = if omega > 1e-8 && r_planet_m > 1000.0 {
+            (gravity * scale_height_m * delta_t) / (omega * omega * r_planet_m * r_planet_m)
+        } else { 100.0 }; // very slow rotation = large Rossby
+
+        // Hadley cell count from Rossby number
+        let cells = if rossby > 10.0 { 1_u8 } // slow: Venus (1 cell, superrotation)
+            else if rossby > 1.0 { 2 }
+            else if rossby > 0.1 { 3 } // Earth-like
+            else if rossby > 0.01 { 5 }
+            else { 8 }; // fast: Jupiter
+
+        let is_slow = rossby > 5.0;
+        // Wind speed scales with cells and pressure
+        let base_wind = (cells as f32 * 3.0 + atmospheric_pressure.sqrt() * 5.0 + gravity * 2.0).min(200.0);
+        // Internal heat boost for gas-giant-type thick atmospheres
+        let internal_boost = if atmospheric_pressure > 10.0 && tidal_heating > 0 { 50.0 } else { 0.0 };
+        let max_wind = (base_wind * (2.0 + if is_slow { 3.0 } else { 1.0 }) + internal_boost).min(600.0);
+        let superrotation = is_slow && atmospheric_pressure > 0.5;
+
+        Some(WindProfile {
+            mean_surface_wind_ms: base_wind,
+            max_wind_ms: max_wind,
+            superrotation,
+        })
+    } else { None };
+
+    // 7. Hydrography (rivers)
+    let hydrography = if has_liquid && land_fraction > 0.05 && atmospheric_pressure > 0.01 {
+        let precip = (hydrosphere * 15.0 * atmospheric_pressure.sqrt()).clamp(0.0, 3000.0);
+        let land_area_km2 = 4.0 * std::f64::consts::PI * (radius * 6371.0).powi(2) * land_fraction as f64;
+        let basin_area = 600_000.0_f64;
+        let river_count = (land_area_km2 / basin_area).max(1.0) as u32;
+        let longest = (1.4 * (land_area_km2 / river_count as f64).powf(0.57)) as f32;
+        let delta = if precip > 1000.0 && tectonic_activity > 20.0 { DeltaType::Estuarine } // tidal + high sediment
+            else if precip > 1000.0 { DeltaType::BirdFoot }
+            else if precip > 500.0 { DeltaType::Arcuate }
+            else { DeltaType::Cuspate };
+        Some(Hydrography { major_river_count: river_count, longest_river_km: longest.min(20000.0), mean_precipitation_mm: precip, dominant_delta_type: delta })
+    } else { None };
+
+    // 8. Lake distribution
+    let lakes = if has_liquid && land_fraction > 0.02 {
+        let is_glaciated = ice_over_land > 10.0;
+        let lake_density = if is_glaciated { 0.3 } else { 0.01 };
+        let land_area_km2 = 4.0 * std::f64::consts::PI * (radius * 6371.0).powi(2) * land_fraction as f64;
+        let count = (land_area_km2 * lake_density as f64 / 10000.0).max(1.0) as u32;
+        let largest = (land_area_km2 * 0.005).min(500000.0) as f32;
+        let precip_mm = hydrography.as_ref().map_or(500.0, |h| h.mean_precipitation_mm);
+        let dom_type = if is_glaciated { LakeFormationType::Glacial }
+            else if tectonic_activity > 30.0 { LakeFormationType::Tectonic }
+            else if volcanism > 30.0 { LakeFormationType::Volcanic }
+            else if !is_glaciated && hydrosphere < 10.0 && blackbody_temperature > 280 { LakeFormationType::Endorheic } // arid + warm = salt lakes
+            else if volcanism < 5.0 && tectonic_activity < 5.0 && hydrosphere > 20.0 { LakeFormationType::Impact } // dead surface + water = crater lakes
+            else { LakeFormationType::Fluvial };
+        let liquid = match world_type {
+            CelestialBodyWorldType::Ammonia => LiquidType::Ammonia,
+            CelestialBodyWorldType::LavaWorld => LiquidType::Magma,
+            _ if blackbody_temperature < 150 => LiquidType::MethaneEthane,
+            _ if dom_type == LakeFormationType::Endorheic => LiquidType::Brine,
+            _ => LiquidType::Water,
+        };
+        Some(LakeDistribution { lake_count: count, dominant_type: dom_type, largest_lake_km2: largest, liquid_type: liquid })
+    } else { None };
+
+    // 9. Glaciation state
+    let glaciation = {
+        let ice_fraction = (ice_over_water * hydrosphere / 100.0 + ice_over_land * (100.0 - hydrosphere) / 100.0) / 100.0;
+        let snowball = ice_fraction > 0.9;
+        let cap_loc = if is_tidally_locked { IceCapLocation::DarkSide }
+            else if snowball { IceCapLocation::Global }
+            else if axial_tilt > 40.0 { IceCapLocation::Equatorial }
+            else if ice_fraction > 0.01 { IceCapLocation::Polar }
+            else { IceCapLocation::None };
+        if ice_fraction > 0.01 || snowball {
+            Some(GlaciationState { ice_coverage_fraction: ice_fraction, in_glacial_period: ice_fraction > 0.2, snowball_state: snowball, ice_cap_location: cap_loc })
+        } else { None }
+    };
+
+    // 10. Ocean chemistry
+    let ocean_chemistry = if hydrosphere > 5.0 {
+        let liquid = match world_type {
+            CelestialBodyWorldType::Ammonia => LiquidType::Ammonia,
+            CelestialBodyWorldType::LavaWorld => LiquidType::Magma,
+            _ if blackbody_temperature < 150 => LiquidType::MethaneEthane,
+            _ if hydrosphere < 15.0 && blackbody_temperature > 310 => LiquidType::Brine, // evaporating = hypersaline
+            _ => LiquidType::Water,
+        };
+        let salinity = if liquid == LiquidType::Brine { 100.0 + rng.roll(1, 200, 0) as f32 }
+            else { rng.roll(1, 60, 10) as f32 };
+        // pH from CO2 partial pressure: pH ~ 8.1 - 0.8 * log10(pCO2/0.0004)
+        let ph = if liquid == LiquidType::Water {
+            let co2_pp = atmospheric_composition.iter()
+                .filter(|(_, c)| *c == ChemicalComponent::CarbonDioxide)
+                .map(|(f, _)| f * atmospheric_pressure).sum::<f32>().max(0.0001);
+            (8.1 - 0.8 * (co2_pp / 0.0004).log10()).clamp(4.0, 10.0)
+        } else { 0.0 };
+        let anoxic = !has_oxygen || life_level.as_u8() < LifeLevel::PlantLike.as_u8();
+        let iron = if !anoxic { OceanIronContent::Negligible } // oxygenated: iron precipitates out
+            else if life_level.as_u8() >= LifeLevel::UniCellular.as_u8() { OceanIronContent::Moderate } // early life, some reduction
+            else if volcanism > 20.0 { OceanIronContent::High } // Archean-style iron ocean
+            else { OceanIronContent::Low }; // reducing but low volcanic input
+        let vents = volcanism > 10.0 && hydrosphere > 20.0;
+        Some(OceanChemistry { liquid_type: liquid, salinity_g_per_kg: salinity, ph, anoxic, iron_content: iron, hydrothermal_vents: vents })
+    } else { None };
+
+    // 11. Volcanic profile
+    let volcanic_profile = if volcanism > 1.0 {
+        let has_tectonics = tectonic_activity > 10.0;
+        let dom_type = if tidal_heating > 10 { VolcanoType::Fissure }
+            else if body_type == TelluricBodyComposition::Icy { VolcanoType::Cryovolcano }
+            else if volcanism > 70.0 && tectonic_activity < 10.0 { VolcanoType::FloodBasalt } // mantle plume, no tectonics
+            else if volcanism > 60.0 && has_tectonics { VolcanoType::Caldera } // high viscosity + tectonics
+            else if has_tectonics { VolcanoType::Stratovolcano }
+            else { VolcanoType::Shield };
+        let count = (volcanism * 15.0 + if has_tectonics { 500.0 } else { 50.0 }) as u32;
+        let tallest = if has_tectonics { volcanism * 0.2 } else { volcanism * 0.5 / gravity.max(0.1) };
+        let super_v = volcanism > 50.0 && rng.roll(1, 4, 0) == 1;
+        let flood = volcanism > 40.0 && rng.roll(1, 6, 0) <= 2;
+        Some(VolcanicProfile { active_count: count, dominant_type: dom_type, flood_basalt_history: flood, tallest_volcano_km: tallest.min(25.0), supervolcano_present: super_v })
+    } else { None };
+
+    // 12. Mineral diversity - Hazen et al. 2008 staged evolution with real deposits
+    let mineral_diversity = {
+        let is_carbon_world = matches!(world_type, CelestialBodyWorldType::CarbonWorld);
+        let is_icy = body_type == TelluricBodyComposition::Icy;
+        let is_metallic = body_type == TelluricBodyComposition::Metallic;
+
+        // Determine evolution stage
+        let stage = if life_level.as_u8() >= LifeLevel::PlantLike.as_u8() && has_oxygen {
+            MineralEvolutionStage::Biogenic
+        } else if has_oxygen {
+            MineralEvolutionStage::Oxidized
+        } else if tectonic_activity > 10.0 {
+            MineralEvolutionStage::TectonicallyActive
+        } else if hydrosphere > 5.0 {
+            MineralEvolutionStage::Hydrated
+        } else if volcanism > 5.0 {
+            MineralEvolutionStage::Differentiated
+        } else {
+            MineralEvolutionStage::Primordial
+        };
+
+        // Stage 0: Presolar minerals (~12) - always present on any rocky body
+        let mut deposits = vec![
+            Mineral::Diamond, Mineral::Graphite, Mineral::NativeIron,
+            Mineral::Moissanite, Mineral::Cohenite, Mineral::Osbornite,
+            Mineral::Troilite, Mineral::Corundum, Mineral::Rutile,
+            Mineral::Spinel, Mineral::Olivine, Mineral::Enstatite,
+        ];
+
+        // Stage 1: Solar nebula (~60)
+        if stage >= MineralEvolutionStage::Primordial {
+            deposits.extend_from_slice(&[
+                Mineral::Augite, Mineral::Plagioclase, Mineral::Magnetite,
+                Mineral::Pyrrhotite, Mineral::Pentlandite, Mineral::NativeSulfur,
+                Mineral::Chromite,
+            ]);
+        }
+
+        // Stage 2: Aqueous alteration (~250)
+        if stage >= MineralEvolutionStage::Hydrated {
+            deposits.extend_from_slice(&[
+                Mineral::Serpentine, Mineral::Kaolinite, Mineral::Montmorillonite,
+                Mineral::Talc, Mineral::Calcite, Mineral::Dolomite,
+                Mineral::Magnesite, Mineral::Siderite, Mineral::Gypsum,
+                Mineral::Quartz, Mineral::Epsomite, Mineral::Anhydrite,
+                Mineral::Halite,
+            ]);
+        }
+
+        // Stage 3: Igneous differentiation (~420)
+        if stage >= MineralEvolutionStage::Differentiated {
+            deposits.extend_from_slice(&[
+                Mineral::Orthoclase, Mineral::Muscovite, Mineral::Biotite,
+                Mineral::Hornblende, Mineral::Garnet, Mineral::Ilmenite,
+                Mineral::NativeCopper, Mineral::Pyrite, Mineral::Chalcopyrite,
+            ]);
+        }
+
+        // Stage 4-5: Granites + Plate tectonics (~1500)
+        if stage >= MineralEvolutionStage::TectonicallyActive {
+            deposits.extend_from_slice(&[
+                Mineral::Beryl, Mineral::Tourmaline, Mineral::Topaz,
+                Mineral::Zircon, Mineral::Cassiterite, Mineral::Uraninite,
+                Mineral::Fluorite, Mineral::Monazite, Mineral::Apatite,
+                Mineral::Kyanite, Mineral::Galena, Mineral::Sphalerite,
+                Mineral::Cinnabar, Mineral::Molybdenite, Mineral::Cobaltite,
+                Mineral::Stibnite, Mineral::Barite, Mineral::Sylvite,
+                Mineral::Nepheline, Mineral::Sodalite, Mineral::Analcime,
+            ]);
+        }
+
+        // Stage 7: Great Oxidation Event (~4000+)
+        if stage >= MineralEvolutionStage::Oxidized {
+            deposits.extend_from_slice(&[
+                Mineral::Hematite, Mineral::Goethite, Mineral::Malachite,
+                Mineral::Cuprite, Mineral::Pyrolusite, Mineral::Jarosite,
+                Mineral::Turquoise, Mineral::Gold, Mineral::Silver,
+                Mineral::Platinum, Mineral::Chalcocite,
+            ]);
+        }
+
+        // Stage 10: Biomineralization (~5700+)
+        if stage >= MineralEvolutionStage::Biogenic {
+            deposits.extend_from_slice(&[
+                Mineral::BiogenicCalcite, Mineral::Aragonite,
+                Mineral::HydrocarbonDeposit, Mineral::Opal,
+            ]);
+        }
+
+        // Icy worlds: volatile ices + hydrated salts
+        if is_icy {
+            deposits.extend_from_slice(&[Mineral::WaterIce]);
+            if blackbody_temperature < 195 {
+                deposits.push(Mineral::CarbonDioxideIce);
+            }
+            if blackbody_temperature < 91 {
+                deposits.push(Mineral::MethaneIce);
+            }
+            if blackbody_temperature < 195 {
+                deposits.push(Mineral::AmmoniaIce);
+            }
+            if blackbody_temperature < 63 {
+                deposits.push(Mineral::NitrogenIce);
+            }
+            // Europa/Enceladus-type hydrated salts
+            if tidal_heating > 0 {
+                deposits.extend_from_slice(&[
+                    Mineral::Mirabilite, Mineral::Hydrohalite,
+                    Mineral::Kieserite, Mineral::Hexahydrite,
+                ]);
+            }
+            // Titan-type tholins
+            if blackbody_temperature < 150 {
+                deposits.push(Mineral::Tholin);
+            }
+        }
+
+        // Carbon worlds: replace silicates with carbides
+        if is_carbon_world {
+            deposits.retain(|m| !matches!(m,
+                Mineral::Quartz | Mineral::Plagioclase | Mineral::Orthoclase |
+                Mineral::Olivine | Mineral::Enstatite | Mineral::Augite
+            ));
+            // Extra carbon minerals
+            if !deposits.contains(&Mineral::Diamond) { deposits.push(Mineral::Diamond); }
+            if !deposits.contains(&Mineral::Graphite) { deposits.push(Mineral::Graphite); }
+            if !deposits.contains(&Mineral::Moissanite) { deposits.push(Mineral::Moissanite); }
+        }
+
+        // Metallic worlds: concentrate metals and sulfides
+        if is_metallic {
+            if !deposits.contains(&Mineral::NativeIron) { deposits.push(Mineral::NativeIron); }
+            if !deposits.contains(&Mineral::NativeCopper) { deposits.push(Mineral::NativeCopper); }
+            if !deposits.contains(&Mineral::Gold) { deposits.push(Mineral::Gold); }
+            if !deposits.contains(&Mineral::Platinum) { deposits.push(Mineral::Platinum); }
+            if !deposits.contains(&Mineral::Pentlandite) { deposits.push(Mineral::Pentlandite); }
+        }
+
+        // Deduplicate
+        deposits.sort();
+        deposits.dedup();
+
+        // Assign abundances
+        let mineral_deposits: Vec<MineralDeposit> = deposits.iter().map(|m| {
+            let abundance = match m {
+                // Common rock-formers
+                Mineral::Olivine | Mineral::Augite | Mineral::Plagioclase |
+                Mineral::Quartz | Mineral::Orthoclase | Mineral::Enstatite =>
+                    ResourceAbundance::Rich,
+                // Common but not dominant
+                Mineral::Magnetite | Mineral::Pyrite | Mineral::Calcite |
+                Mineral::Muscovite | Mineral::Biotite | Mineral::Hornblende |
+                Mineral::Garnet | Mineral::Hematite | Mineral::Gypsum =>
+                    ResourceAbundance::Average,
+                // Ices are abundant on icy worlds
+                Mineral::WaterIce | Mineral::CarbonDioxideIce | Mineral::MethaneIce |
+                Mineral::AmmoniaIce | Mineral::NitrogenIce if is_icy =>
+                    ResourceAbundance::Motherlode,
+                // Precious/rare
+                Mineral::Gold | Mineral::Silver | Mineral::Platinum |
+                Mineral::Diamond | Mineral::Beryl | Mineral::Uraninite |
+                Mineral::Monazite | Mineral::Cobaltite =>
+                    if rng.roll(1, 4, 0) == 1 { ResourceAbundance::Trace } else { ResourceAbundance::Poor },
+                // Default
+                _ => ResourceAbundance::Average,
+            };
+            MineralDeposit { mineral: *m, abundance }
+        }).collect();
+
+        let count = mineral_deposits.len() as u32;
+        Some(MineralDiversity { mineral_count: count, evolution_stage: stage, deposits: mineral_deposits })
+    };
+
+    // 13. Surface material
+    let surface_material = {
+        let primary = if has_so2 && volcanism > 40.0 { SurfaceMaterialType::SulfurDeposits } // Io-like
+            else if body_type == TelluricBodyComposition::Icy { SurfaceMaterialType::IceCrust }
+            else if life_level.as_u8() >= LifeLevel::PluriCellular.as_u8() && hydrosphere > 20.0 { SurfaceMaterialType::OrganicSediment } // dead organic matter
+            else if hydrosphere < 5.0 && blackbody_temperature > 300 && land_fraction > 0.8 { SurfaceMaterialType::EvaporiteDeposits } // evaporated seas
+            else if !has_atmosphere { SurfaceMaterialType::Regolith }
+            else if has_oxygen && life_level.as_u8() >= LifeLevel::PlantLike.as_u8() { SurfaceMaterialType::Soil }
+            else if hydrosphere < 20.0 && atmospheric_pressure > 0.001 && land_fraction > 0.5 { SurfaceMaterialType::SandDunes } // arid + wind
+            else if blackbody_temperature > 200 && atmospheric_pressure < 0.05 { SurfaceMaterialType::IronOxideFines }
+            else if hydrosphere < 5.0 && atmospheric_pressure < 0.1 { SurfaceMaterialType::BarrenRock }
+            else { SurfaceMaterialType::BarrenRock };
+        let depth = if !has_atmosphere { rng.roll(1, 15, 2) as f32 }
+            else { rng.roll(1, 20, 5) as f32 };
+        let perchlorate = !has_atmosphere && body_type == TelluricBodyComposition::Rocky && rng.roll(1, 3, 0) == 1;
+        let oxidized = has_atmosphere || primary == SurfaceMaterialType::IronOxideFines;
+        Some(SurfaceMaterial { primary_type: primary, depth_m: depth, perchlorates: perchlorate, oxidized })
+    };
+
+    // 14. Radiation environment - with distance and shielding physics
+    let radiation = {
+        // Magnetic shielding: continuous from field strength ratio
+        let mag_shielding = match magnetic_field {
+            MagneticFieldStrength::None => 1.0_f32,
+            MagneticFieldStrength::Weak => 0.5,
+            MagneticFieldStrength::Moderate => 0.1, // Earth-like
+            MagneticFieldStrength::Strong => 0.05,
+            MagneticFieldStrength::VeryStrong => 0.02,
+            MagneticFieldStrength::Extreme => 0.01,
+        };
+        // Atmospheric shielding: exponential with column density
+        // Earth 1 atm blocks ~90% of cosmic rays
+        let atmo_shielding = (-atmospheric_pressure * 2.3).exp(); // e^(-P*2.3): 1atm -> ~0.1
+        let combined = (mag_shielding * atmo_shielding).clamp(0.001, 1.0);
+
+        // Base dose: 600 mSv/yr in free space at 1 AU, scales as 1/d^2
+        // Use blackbody_temp as proxy for distance (closer = hotter = more radiation)
+        let distance_factor = (blackbody_temperature as f32 / 278.0).powi(2).max(0.1); // Earth=278K -> factor 1.0
+        let base_dose = 600.0 * distance_factor;
+        let dose = base_dose * combined;
+
+        // Radiation belt boost for tidally heated moons (Jupiter system analog)
+        let belt_boost = if tidal_heating > 5 { 100.0 } else { 1.0 };
+        let final_dose = dose * belt_boost;
+
+        // UV: depends on ozone (O2 + life), atmosphere thickness, stellar distance
+        let has_ozone = has_oxygen && life_level.as_u8() >= LifeLevel::PlantLike.as_u8();
+        let uv = if has_ozone && atmospheric_pressure > 0.3 { 8.0 * distance_factor.sqrt() } // Earth-like ozone
+            else if atmospheric_pressure > 0.1 { 25.0 * distance_factor.sqrt() } // atmosphere but no ozone
+            else { 50.0 * distance_factor.sqrt() }; // minimal atmosphere
+
+        let hazard = if final_dose < 5.0 { RadiationHazard::Negligible }
+            else if final_dose < 50.0 { RadiationHazard::Low }
+            else if final_dose < 500.0 { RadiationHazard::Moderate }
+            else if final_dose < 10000.0 { RadiationHazard::High }
+            else { RadiationHazard::Extreme };
+        Some(RadiationEnvironment { surface_dose_msv_yr: final_dose, uv_index_peak: uv.min(100.0), radiation_hazard: hazard })
+    };
+
+    // 15. Seismic profile - Gutenberg-Richter: log10(N) = a - b*M
+    let seismic = {
+        let source = if tidal_heating > 15 { SeismicitySource::TidalExtreme }
+            else if tidal_heating > 3 { SeismicitySource::TidalOnly }
+            else if tectonic_activity > 50.0 { SeismicitySource::TectonicExtreme }
+            else if tectonic_activity > 10.0 { SeismicitySource::TectonicModerate }
+            else if volcanism > 5.0 { SeismicitySource::Residual }
+            else { SeismicitySource::None };
+
+        // b-value: ~1.0 for tectonic, ~1.5 for volcanic, ~0.8 for tidal
+        let b_value: f32 = match source {
+            SeismicitySource::None => 1.0,
+            SeismicitySource::Residual => 1.5,
+            SeismicitySource::TidalOnly => 0.8,
+            SeismicitySource::TectonicModerate => 1.0,
+            SeismicitySource::TectonicExtreme => 1.0,
+            SeismicitySource::TidalExtreme => 0.7,
+        };
+
+        // Max magnitude from source
+        let max_mag = match source {
+            SeismicitySource::None => 0.0,
+            SeismicitySource::Residual => 3.0 + rng.roll(1, 20, 0) as f32 / 10.0,
+            SeismicitySource::TidalOnly => 3.5 + rng.roll(1, 20, 0) as f32 / 10.0,
+            SeismicitySource::TectonicModerate => 7.0 + rng.roll(1, 15, 0) as f32 / 10.0, // up to M8.5
+            SeismicitySource::TectonicExtreme => 8.5 + rng.roll(1, 10, 0) as f32 / 10.0, // subduction M9+
+            SeismicitySource::TidalExtreme => 5.0 + rng.roll(1, 20, 0) as f32 / 10.0,
+        };
+
+        // Gutenberg-Richter: log10(N_m4) = a - b*(4.0)
+        // Solve for a from max_mag: a = b * max_mag + log10(1) = b * max_mag
+        // Then N(>=4) = 10^(b * (max_mag - 4.0))
+        let quakes_m4 = if max_mag > 4.0 {
+            (10.0_f32.powf(b_value * (max_mag - 4.0))).min(100000.0) as u32
+        } else { 0 };
+
+        Some(SeismicProfile { max_magnitude: max_mag, quakes_per_year_m4: quakes_m4, seismicity_source: source })
+    };
+
+    // 16. Dust storms
+    let dust_storms = if atmospheric_pressure > 0.001 && atmospheric_pressure < 0.1 && land_fraction > 0.3 {
+        let global = atmospheric_pressure < 0.02 && land_fraction > 0.5;
+        let interval = if global { 2.0 + rng.roll(1, 6, 0) as f32 } else { 0.0 };
+        let peak = (15.0 + rng.roll(1, 30, 0) as f32).min(50.0);
+        Some(DustStormProfile { global_storms_possible: global, global_storm_interval_years: interval, peak_wind_ms: peak, dust_devils_active: true })
+    } else { None };
+
+    // 17. Lightning - all 5 mechanisms
+    let lightning = {
+        let has_water_clouds = cloud_decks.iter().any(|c| c.composition == CloudComposition::Water);
+        let has_acid_clouds = cloud_decks.iter().any(|c| c.composition == CloudComposition::SulfuricAcid);
+        let has_volc = volcanism > 20.0;
+        let has_dust = dust_storms.is_some();
+        if has_water_clouds || has_acid_clouds || has_volc || has_dust {
+            let mechanism = if has_water_clouds { LightningMechanism::WaterCloud }
+                else if has_acid_clouds { LightningMechanism::AcidCloud } // Venus-type
+                else if has_volc { LightningMechanism::VolcanicPlume }
+                else { LightningMechanism::DustTriboelectric };
+            let rate = match mechanism {
+                LightningMechanism::WaterCloud => (hydrosphere / 70.0).clamp(0.1, 5.0),
+                LightningMechanism::AcidCloud => 0.3, // Venus debated but probable
+                LightningMechanism::VolcanicPlume => 0.1,
+                LightningMechanism::DustTriboelectric => 0.1, // Mars: confirmed by Perseverance
+                _ => 0.0,
+            };
+            Some(LightningProfile { present: true, flash_rate_relative: rate, mechanism })
+        } else { None }
+    };
+
+    PlanetaryDetail {
+        atmospheric_layers,
+        breathability,
+        toxicity,
+        cloud_decks,
+        greenhouse,
+        sky,
+        wind,
+        hydrography,
+        lakes,
+        glaciation,
+        ocean_chemistry,
+        volcanic_profile,
+        mineral_diversity,
+        surface_material,
+        radiation,
+        seismic,
+        dust_storms,
+        lightning,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn earth_like_detail() -> PlanetaryDetail {
+        let comp = vec![
+            (0.78, ChemicalComponent::Nitrogen),
+            (0.21, ChemicalComponent::Oxygen),
+            (0.01, ChemicalComponent::Argon),
+        ];
+        generate_planetary_detail(
+            1.0, &comp, 288, 1.0, 1.0, 71.0, 5.0, 10.0,
+            30.0, 35.0, MagneticFieldStrength::Moderate,
+            TelluricBodyComposition::Rocky, CelestialBodyWorldType::Terrestrial,
+            LifeLevel::Sentient, 23.4, 0.017, 1.0, false, 0,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 0,
+        )
+    }
+
+    #[test]
+    fn earth_like_has_blue_sky() {
+        let d = earth_like_detail();
+        assert_eq!(d.sky.unwrap().daytime_color, SkyColor::Blue);
+    }
+
+    #[test]
+    fn earth_like_is_breathable() {
+        let d = earth_like_detail();
+        assert_eq!(d.breathability, AtmosphereBreathability::Standard);
+        assert_eq!(d.toxicity, AtmosphereToxicity::Benign);
+    }
+
+    #[test]
+    fn earth_like_has_rivers_and_lakes() {
+        let d = earth_like_detail();
+        assert!(d.hydrography.is_some());
+        assert!(d.hydrography.unwrap().major_river_count > 0);
+        assert!(d.lakes.is_some());
+    }
+
+    #[test]
+    fn earth_like_has_water_clouds() {
+        let d = earth_like_detail();
+        assert!(!d.cloud_decks.is_empty());
+        assert_eq!(d.cloud_decks[0].composition, CloudComposition::Water);
+    }
+
+    #[test]
+    fn earth_like_has_lightning() {
+        let d = earth_like_detail();
+        assert!(d.lightning.is_some());
+        assert_eq!(d.lightning.unwrap().mechanism, LightningMechanism::WaterCloud);
+    }
+
+    #[test]
+    fn earth_like_mineral_diversity() {
+        let d = earth_like_detail();
+        let m = d.mineral_diversity.unwrap();
+        assert_eq!(m.evolution_stage, MineralEvolutionStage::Biogenic);
+        // Biogenic stage should have most mineral deposits (all stages unlocked)
+        assert!(m.deposits.len() > 60, "Earth-like should have >60 mineral species, got {}", m.deposits.len());
+        // Check specific minerals that must exist on Earth-like
+        let has = |mineral: Mineral| m.deposits.iter().any(|d| d.mineral == mineral);
+        assert!(has(Mineral::Quartz), "missing Quartz");
+        assert!(has(Mineral::Calcite), "missing Calcite");
+        assert!(has(Mineral::Hematite), "missing Hematite");
+        assert!(has(Mineral::Gold), "missing Gold");
+        assert!(has(Mineral::HydrocarbonDeposit), "missing HydrocarbonDeposit");
+        assert!(has(Mineral::BiogenicCalcite), "missing BiogenicCalcite");
+        assert!(has(Mineral::Pyrite), "missing Pyrite");
+        assert!(has(Mineral::NativeCopper), "missing NativeCopper");
+    }
+
+    #[test]
+    fn earth_like_radiation_low() {
+        let d = earth_like_detail();
+        let r = d.radiation.unwrap();
+        assert!(matches!(r.radiation_hazard, RadiationHazard::Negligible | RadiationHazard::Low));
+    }
+
+    #[test]
+    fn primordial_body_has_few_minerals() {
+        let comp = vec![];
+        let d = generate_planetary_detail(
+            0.0, &comp, 150, 0.05, 0.1, 0.0, 0.0, 0.0,
+            0.0, 0.0, MagneticFieldStrength::None,
+            TelluricBodyComposition::Rocky, CelestialBodyWorldType::Rock,
+            LifeLevel::None, 0.0, 0.0, 10.0, false, 0,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 10,
+        );
+        let m = d.mineral_diversity.unwrap();
+        assert_eq!(m.evolution_stage, MineralEvolutionStage::Primordial);
+        assert!(m.deposits.len() < 25, "Primordial should have <25 minerals, got {}", m.deposits.len());
+        let has = |mineral: Mineral| m.deposits.iter().any(|d| d.mineral == mineral);
+        assert!(has(Mineral::Olivine), "Primordial must have Olivine");
+        assert!(has(Mineral::NativeIron), "Primordial must have Iron");
+        assert!(!has(Mineral::Quartz), "Primordial should NOT have Quartz");
+        assert!(!has(Mineral::Gold), "Primordial should NOT have Gold");
+    }
+
+    #[test]
+    fn icy_moon_has_ices_and_salts() {
+        let d = generate_planetary_detail(
+            0.0, &[], 100, 0.01, 0.04, 0.0, 0.0, 0.0,
+            0.0, 0.0, MagneticFieldStrength::None,
+            TelluricBodyComposition::Icy, CelestialBodyWorldType::Ice,
+            LifeLevel::None, 0.0, 0.01, 3.5, false, 5,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 11,
+        );
+        let m = d.mineral_diversity.unwrap();
+        let has = |mineral: Mineral| m.deposits.iter().any(|d| d.mineral == mineral);
+        assert!(has(Mineral::WaterIce), "Icy moon must have WaterIce");
+        assert!(has(Mineral::CarbonDioxideIce), "Should have CO2 ice at 100K");
+        assert!(has(Mineral::Mirabilite), "Tidally heated icy moon should have hydrated salts");
+    }
+
+    #[test]
+    fn metallic_body_rich_in_metals() {
+        let d = generate_planetary_detail(
+            0.0, &[], 400, 0.8, 0.5, 0.0, 0.0, 0.0,
+            20.0, 5.0, MagneticFieldStrength::Strong,
+            TelluricBodyComposition::Metallic, CelestialBodyWorldType::IronWorld,
+            LifeLevel::None, 5.0, 0.1, 0.5, false, 0,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 12,
+        );
+        let m = d.mineral_diversity.unwrap();
+        let has = |mineral: Mineral| m.deposits.iter().any(|d| d.mineral == mineral);
+        assert!(has(Mineral::NativeIron), "Metallic body must have Iron");
+        assert!(has(Mineral::NativeCopper), "Metallic body must have Copper");
+        assert!(has(Mineral::Platinum), "Metallic body must have Platinum");
+        assert!(has(Mineral::Pentlandite), "Metallic body must have Pentlandite");
+    }
+
+    #[test]
+    fn airless_body_has_black_sky() {
+        let d = generate_planetary_detail(
+            0.0, &[], 200, 0.16, 0.27, 0.0, 0.0, 0.0,
+            0.0, 0.0, MagneticFieldStrength::None,
+            TelluricBodyComposition::Rocky, CelestialBodyWorldType::Rock,
+            LifeLevel::None, 1.5, 0.05, 27.3, false, 0,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 1,
+        );
+        let sky = d.sky.unwrap();
+        assert_eq!(sky.daytime_color, SkyColor::Black);
+        assert!(sky.daytime_stars_visible);
+        assert!(d.cloud_decks.is_empty());
+        assert_eq!(d.breathability, AtmosphereBreathability::Vacuum);
+    }
+
+    #[test]
+    fn mars_like_has_dust_storms() {
+        let comp = vec![(0.95, ChemicalComponent::CarbonDioxide), (0.03, ChemicalComponent::Nitrogen)];
+        let d = generate_planetary_detail(
+            0.006, &comp, 210, 0.38, 0.53, 0.0, 0.0, 0.0,
+            5.0, 2.0, MagneticFieldStrength::None,
+            TelluricBodyComposition::Rocky, CelestialBodyWorldType::Rock,
+            LifeLevel::None, 25.2, 0.093, 1.03, false, 0,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 2,
+        );
+        assert!(d.dust_storms.is_some());
+        assert_eq!(d.sky.unwrap().daytime_color, SkyColor::Butterscotch);
+    }
+
+    #[test]
+    fn venus_like_is_corrosive() {
+        let comp = vec![(0.965, ChemicalComponent::CarbonDioxide), (0.035, ChemicalComponent::Nitrogen)];
+        let d = generate_planetary_detail(
+            92.0, &comp, 737, 0.91, 0.95, 0.0, 0.0, 0.0,
+            30.0, 20.0, MagneticFieldStrength::None,
+            TelluricBodyComposition::Rocky, CelestialBodyWorldType::Greenhouse,
+            LifeLevel::None, 177.0, 0.007, 243.0, false, 0,
+            "test", SpaceCoordinates::new(0, 0, 0), 0, 0, 3,
+        );
+        assert!(matches!(d.toxicity, AtmosphereToxicity::MildlyToxic | AtmosphereToxicity::Suffocating));
+        assert_eq!(d.breathability, AtmosphereBreathability::Superdense);
+    }
+}
