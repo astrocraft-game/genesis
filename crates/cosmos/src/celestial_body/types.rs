@@ -27,7 +27,6 @@ pub struct CelestialBodySettings {
 
 #[derive(Clone, PartialEq, PartialOrd, Debug, SmartDefault, Serialize, Deserialize)]
 pub enum CelestialBodyDetails {
-    // Exotic(ExoticBodyDetails),
     #[default]
     Telluric(TelluricBodyDetails),
     Gaseous(GaseousBodyDetails),
@@ -37,7 +36,6 @@ pub enum CelestialBodyDetails {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub enum CelestialBodyComposition {
-    // Exotic,
     Metallic,
     Rocky,
     Gaseous,

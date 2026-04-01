@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn total_recipe_count() {
         let all = all_recipes();
-        assert!(all.len() >= 100, "Should have at least 100 recipes, got {}", all.len());
+        assert!(all.len() >= 600, "Should have at least 600 recipes, got {}", all.len());
         println!("Total recipes: {}", all.len());
     }
 

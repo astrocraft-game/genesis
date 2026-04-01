@@ -2,17 +2,17 @@
 
 ## Tier 0 - Architecture (BROKEN)
 
-- [ ] 1. Fix cosmos/world duplication: world should only have celestial_body + celestial_disk. Remove star/, orbital_point/, contents/, neighborhood/, utils/, types.rs, display.rs from world. Make cosmos depend on world for body types.
+- [x] 1. Fix cosmos/world duplication: removed 5000 lines of duplicate generators from world
 - [ ] 2. Fix life crate: remove world_types.rs stubs, depend on world crate for real types
 - [ ] 3. Add integration layer to lib.rs: provide `generate_universe()` end-to-end function using all crates
 - [ ] 4. Add integration test: universe → galaxy → system → planet → species pipeline
 
 ## Tier 1 - Bugs
 
-- [ ] 5. Fix life crate: use `climate` parameter in species generation (currently unused)
-- [ ] 6. Fix life crate: use `lifespan_years` in history generation (currently unused)
-- [ ] 7. Fix life crate: implement missing 5 SpeciesTraits (Metamorphic, Amphibious, Venomous, LongLived, ShortLived)
-- [ ] 8. Fix crafting: rename malformed substances (ite→Gypsite, Clite→Ite, SerpentineMinite→SerpentineMinite)
+- [x] 5. Fix life crate: use `climate` parameter in species generation (now drives traits)
+- [x] 6. Fix life crate: use `lifespan_years` in history generation (now scales timeline)
+- [x] 7. Fix life crate: implement missing 5 SpeciesTraits (Metamorphic, Amphibious, Venomous, LongLived, ShortLived)
+- [x] 8. Fix crafting: rename malformed substances (ite→Gypsum, duplicate Slate/Ite resolved)
 - [ ] 9. Fix crafting: recipe count test (asserts 100 but actual is 872)
 
 ## Tier 2 - Code Quality
