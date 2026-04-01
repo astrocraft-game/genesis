@@ -1030,7 +1030,7 @@ impl MoonGenerator {
         );
         let rings: CelestialDisk = if moonlets < 4 {
             CelestialDisk::new(
-                None, // TODO
+                None, // Ring orbits set during update_existing_orbits
                 ring_id,
                 ring_name.into(),
                 CelestialDiskType::Ring(CelestialRingDetails::new(

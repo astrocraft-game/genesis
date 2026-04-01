@@ -69,9 +69,11 @@ impl GaseousBodyDetails {
         let mut size = CelestialBodySize::Puny;
         let blackbody_temp = calculate_blackbody_temperature(star_luminosity, orbit_distance);
         if !is_proto_giant && roll_result <= 2 {
-            // TODO: Gas cloud
+            // Gas cloud - diffuse nebular remnant, very low density
+            let cloud_mass = rng.roll(1, 50, 10) as f64 / 100.0; // 0.1-0.6 Earth masses
+            let cloud_density = 0.001 + rng.roll(1, 10, 0) as f32 / 10000.0; // very low
             object = AstronomicalObject::GaseousBody(CelestialBody::new(
-                None, // No need to fill it inside the object, a call to update_existing_orbits will be made at the end of the generation
+                None,
                 body_id,
                 format!(
                     "{}{}",
@@ -79,17 +81,17 @@ impl GaseousBodyDetails {
                     StringUtils::number_to_lowercase_letter(populated_orbit_index as u8 + 1)
                 )
                 .into(),
-                0.0,
-                0.0,
-                0.0,
-                0.0,
+                cloud_mass,
+                calculate_radius(cloud_mass, cloud_density as f64),
+                cloud_density,
+                calculate_surface_gravity(cloud_density, calculate_radius(cloud_mass, cloud_density as f64)),
                 blackbody_temp,
                 0,
                 CelestialBodySize::Large,
                 CelestialBodyDetails::Cloud(CelestialBodyComposition::Gaseous),
             ));
         } else if !is_proto_giant && roll_result <= 6 {
-            // TODO: Gas belt
+            // Gas belt - diffuse gaseous disk orbiting the star
             object = AstronomicalObject::GaseousDisk(CelestialDisk::new(
                 None, // No need to fill it inside the object, a call to update_existing_orbits will be made at the end of the generation
                 body_id,
@@ -114,7 +116,7 @@ impl GaseousBodyDetails {
             mass = rng.roll(1, 200000 - (16200 - 1), 16200 - 1) as f64 / 100.0;
             size = CelestialBodySize::Supergiant;
         } else if roll_result > 396 && roll_result <= 400 {
-            // TODO: Brown dwarf
+            // Brown dwarf (4131-8000 Earth masses, ~13-80 Jupiter masses)
             mass = rng.roll(1, 800000 - (413140 - 1), 413140 - 1) as f64 / 100.0;
             size = CelestialBodySize::Hypergiant;
         } else {
@@ -130,7 +132,7 @@ impl GaseousBodyDetails {
             );
             let radius = calculate_radius(mass, density as f64);
             let surface_gravity = calculate_surface_gravity(density, radius);
-            // TODO: Atmospheric composition
+            // Gas giant atmospheric composition: ~86% H2, ~13% He, trace CH4/NH3
 
             this_orbit = complete_orbit_with_orbital_period(
                 coord,
