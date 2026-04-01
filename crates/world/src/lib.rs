@@ -373,19 +373,6 @@ pub mod galaxy_stubs {
             }
         }
 
-        /// Simplified generate for use in tests.
-        pub fn generate(
-            _coord: SpaceCoordinates,
-            index: SpaceCoordinates,
-            galaxy: &mut Galaxy,
-        ) -> Self {
-            let neighborhood = StellarNeighborhood::generate(index, galaxy);
-            Self {
-                index,
-                neighborhood,
-                contents: vec![],
-            }
-        }
     }
 
     impl Display for GalacticHex {

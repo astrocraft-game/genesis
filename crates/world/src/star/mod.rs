@@ -1,6 +1,5 @@
 use crate::internal::*;
 use crate::prelude::*;
-pub mod generator;
 pub mod types;
 
 #[derive(Clone, PartialEq, PartialOrd, Debug, SmartDefault, Serialize, Deserialize)]

@@ -1,6 +1,5 @@
 use crate::internal::*;
 use crate::prelude::*;
-pub mod generator;
 pub mod types;
 
 /// A more or less coherent neighborhood of stars.
