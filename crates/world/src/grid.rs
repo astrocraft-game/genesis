@@ -291,6 +291,103 @@ impl SurfaceGrid {
     }
 
     // -----------------------------------------------------------------------
+    // Query helpers
+    //
+    // Area-weighted statistics and spatial lookups over an already-populated
+    // grid. These are derived values — compute once and cache if you plan
+    // to query repeatedly.
+    // -----------------------------------------------------------------------
+
+    /// Area-weighted biome fractions (summing to 1.0) across the whole grid.
+    /// Weights each tile by `cos(lat)` so polar pinching in the
+    /// equirectangular projection doesn't skew the result.
+    pub fn biome_distribution(&self) -> std::collections::HashMap<crate::types::BiomeType, f32> {
+        let mut totals: std::collections::HashMap<crate::types::BiomeType, f32> =
+            std::collections::HashMap::new();
+        let mut grand_total = 0.0f32;
+        for r in 0..self.height {
+            let lat = self.row_latitude(r);
+            let weight = lat.to_radians().cos().abs();
+            for c in 0..self.width {
+                let idx = self.idx(c, r);
+                *totals.entry(self.layers.biome[idx]).or_insert(0.0) += weight;
+                grand_total += weight;
+            }
+        }
+        if grand_total > 0.0 {
+            for v in totals.values_mut() {
+                *v /= grand_total;
+            }
+        }
+        totals
+    }
+
+    /// Total land area in km² for a body with the given radius.
+    pub fn total_land_area_km2(&self, planet_radius_km: f32) -> f32 {
+        let mut total = 0.0f32;
+        for r in 0..self.height {
+            let tile_area = self.tile_area_km2(r, planet_radius_km);
+            for c in 0..self.width {
+                let idx = self.idx(c, r);
+                if !self.layers.is_ocean[idx] {
+                    total += tile_area;
+                }
+            }
+        }
+        total
+    }
+
+    /// `(col, row)` of the ocean tile closest to `(lat_deg, lon_deg)` by
+    /// great-circle distance. Returns `None` if the world has no ocean.
+    pub fn nearest_ocean_tile(&self, lat_deg: f32, lon_deg: f32) -> Option<(u16, u16)> {
+        let lat1 = lat_deg.to_radians();
+        let lon1 = lon_deg.to_radians();
+        let mut best: Option<(u16, u16, f32)> = None;
+        for r in 0..self.height {
+            for c in 0..self.width {
+                let idx = self.idx(c, r);
+                if !self.layers.is_ocean[idx] {
+                    continue;
+                }
+                let lat2 = self.row_latitude(r).to_radians();
+                let lon2 = self.col_longitude(c).to_radians();
+                let dlon = lon2 - lon1;
+                let d = (lat1.sin() * lat2.sin() + lat1.cos() * lat2.cos() * dlon.cos())
+                    .clamp(-1.0, 1.0)
+                    .acos();
+                match best {
+                    None => best = Some((c, r, d)),
+                    Some((_, _, bd)) if d < bd => best = Some((c, r, d)),
+                    _ => {}
+                }
+            }
+        }
+        best.map(|(c, r, _)| (c, r))
+    }
+
+    /// The river with the highest mouth-discharge: its tiles (source
+    /// first) and discharge in m³/s. `None` if no rivers exist.
+    pub fn longest_river(&self) -> Option<(Vec<usize>, f32)> {
+        let rivers = crate::features::detect_rivers(self);
+        rivers
+            .into_iter()
+            .max_by(|a, b| {
+                a.max_discharge_m3s
+                    .partial_cmp(&b.max_discharge_m3s)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .map(|r| (r.tiles, r.max_discharge_m3s))
+    }
+
+    /// Tiles of the largest contiguous mountain range, by tile count.
+    pub fn largest_mountain_range(&self) -> Option<Vec<usize>> {
+        crate::features::detect_mountain_ranges(self)
+            .into_iter()
+            .max_by_key(|r| r.tiles.len())
+            .map(|r| r.tiles)
+    }
+
+    // -----------------------------------------------------------------------
     // Texture export helpers
     //
     // Produce raw byte buffers suitable for feeding directly to game engine
@@ -645,6 +742,130 @@ mod sampling_tests {
             let len = (x * x + y * y + z * z).sqrt();
             assert!(len > 0.9);
         }
+    }
+}
+
+#[cfg(test)]
+mod query_tests {
+    use super::*;
+    use crate::types::{OrbitContext, PlanetSimulationInput, StarContext};
+
+    fn earth_grid() -> SurfaceGrid {
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        generate_surface_grid(&input, 33.0, 1.0, 71.0, GridResolution::Fast, "query")
+    }
+
+    #[test]
+    fn biome_distribution_sums_to_one() {
+        let g = earth_grid();
+        let dist = g.biome_distribution();
+        let sum: f32 = dist.values().sum();
+        assert!((sum - 1.0).abs() < 1e-3, "sum = {}", sum);
+    }
+
+    #[test]
+    fn biome_distribution_ocean_matches_hydrosphere() {
+        let g = earth_grid();
+        let dist = g.biome_distribution();
+        let ocean = dist
+            .get(&crate::types::BiomeType::Ocean)
+            .copied()
+            .unwrap_or(0.0);
+        // Target was 71% ocean; allow ±15% slop from simplex noise.
+        assert!(
+            (0.55..=0.85).contains(&ocean),
+            "ocean fraction {} out of plausible range",
+            ocean
+        );
+    }
+
+    #[test]
+    fn total_land_area_reasonable() {
+        let g = earth_grid();
+        let land = g.total_land_area_km2(6371.0);
+        // Earth total 510M km² × 29% land ≈ 148M km².
+        // Our Earth-like should be 15%-45% (~80-230M km²).
+        assert!(
+            (80e6..=230e6).contains(&land),
+            "land area {} km² out of range",
+            land
+        );
+    }
+
+    #[test]
+    fn land_and_ocean_sum_to_total_surface() {
+        let g = earth_grid();
+        let land = g.total_land_area_km2(6371.0);
+        let total = g.surface_area_km2(6371.0);
+        assert!(land < total);
+        // land + ocean = total. Ocean area = total - land.
+        let ocean_frac = 1.0 - land / total;
+        assert!((0.5..=0.9).contains(&ocean_frac));
+    }
+
+    #[test]
+    fn nearest_ocean_tile_is_ocean() {
+        let g = earth_grid();
+        let (c, r) = g.nearest_ocean_tile(0.0, 0.0).expect("earth has ocean");
+        let idx = g.idx(c, r);
+        assert!(g.layers.is_ocean[idx]);
+    }
+
+    #[test]
+    fn nearest_ocean_from_ocean_is_itself_or_same_basin() {
+        let g = earth_grid();
+        // Find any ocean tile.
+        let oceanic = g
+            .layers
+            .is_ocean
+            .iter()
+            .position(|&o| o)
+            .expect("has ocean");
+        let r = (oceanic / g.width as usize) as u16;
+        let c = (oceanic % g.width as usize) as u16;
+        let lat = g.row_latitude(r);
+        let lon = g.col_longitude(c);
+        let (nc, nr) = g.nearest_ocean_tile(lat, lon).unwrap();
+        let ni = g.idx(nc, nr);
+        // Could be this tile or any neighbour; just check it's ocean.
+        assert!(g.layers.is_ocean[ni]);
+    }
+
+    #[test]
+    fn longest_river_has_positive_discharge() {
+        let g = earth_grid();
+        if let Some((tiles, discharge)) = g.longest_river() {
+            assert!(!tiles.is_empty());
+            assert!(discharge > 0.0);
+        }
+    }
+
+    #[test]
+    fn largest_mountain_range_has_tiles() {
+        let g = earth_grid();
+        if let Some(tiles) = g.largest_mountain_range() {
+            assert!(!tiles.is_empty());
+        }
+    }
+
+    #[test]
+    fn dry_world_has_no_nearest_ocean() {
+        // An empty grid has is_ocean all false — nearest_ocean_tile must return None.
+        let g = SurfaceGrid::empty(GridResolution::Fast);
+        assert!(g.nearest_ocean_tile(0.0, 0.0).is_none());
     }
 }
 

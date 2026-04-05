@@ -304,14 +304,14 @@ Goal: make grids trivially consumable by game engines.
 - [ ] Uses noise from the original seed, deterministic.
 - [ ] Tests: zoom region preserves climate continuity with parent grid.
 
-### C5 — Query helpers
+### C5 — Query helpers ✅
 
-- [ ] `grid.biome_distribution() -> HashMap<BiomeType, f32>` — land frac.
-- [ ] `grid.nearest_ocean_tile(lat, lon) -> (u16, u16)`.
-- [ ] `grid.longest_river() -> (Vec<(u16,u16)>, f32_discharge)`.
-- [ ] `grid.largest_mountain_range() -> Vec<(u16,u16)>`.
-- [ ] `grid.total_land_area_km2(planet_radius_km) -> f32`.
-- [ ] Tests: Earth-like distribution roughly 29% land, match human
+- [x] `grid.biome_distribution() -> HashMap<BiomeType, f32>` — land frac.
+- [x] `grid.nearest_ocean_tile(lat, lon) -> (u16, u16)`.
+- [x] `grid.longest_river() -> (Vec<(u16,u16)>, f32_discharge)`.
+- [x] `grid.largest_mountain_range() -> Vec<(u16,u16)>`.
+- [x] `grid.total_land_area_km2(planet_radius_km) -> f32`.
+- [x] Tests: Earth-like distribution roughly 29% land, match human
       geography intuitions.
 
 ---
