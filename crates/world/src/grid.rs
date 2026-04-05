@@ -38,6 +38,48 @@ impl GridResolution {
     }
 }
 
+/// One of the six faces of a unit cube, used by engines that render
+/// planets via cube-sphere projection.
+///
+/// The `(u, v)` range is `[-1, 1]` on each face. The mapping to 3D
+/// matches the standard GPU cubemap convention: `PosX` is the right
+/// face (`+x`), `PosY` is the top (`+y`, north cap), and so on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum CubeFace {
+    PosX,
+    NegX,
+    PosY,
+    NegY,
+    PosZ,
+    NegZ,
+}
+
+impl CubeFace {
+    /// Project a cube-face `(u, v)` coordinate onto the 3D direction
+    /// that inflates to a unit sphere.
+    pub fn to_xyz(self, u: f32, v: f32) -> (f32, f32, f32) {
+        match self {
+            CubeFace::PosX => (1.0, v, u),
+            CubeFace::NegX => (-1.0, v, -u),
+            CubeFace::PosY => (u, 1.0, v),
+            CubeFace::NegY => (u, -1.0, -v),
+            CubeFace::PosZ => (-u, v, 1.0),
+            CubeFace::NegZ => (u, v, -1.0),
+        }
+    }
+
+    /// All six cube faces.
+    pub const ALL: [CubeFace; 6] = [
+        CubeFace::PosX,
+        CubeFace::NegX,
+        CubeFace::PosY,
+        CubeFace::NegY,
+        CubeFace::PosZ,
+        CubeFace::NegZ,
+    ];
+}
+
 /// Classification of a tectonic plate boundary between two adjacent plates.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -198,6 +240,54 @@ impl SurfaceGrid {
     #[inline]
     pub fn dimensions(&self) -> (u16, u16) {
         (self.width, self.height)
+    }
+
+    // -----------------------------------------------------------------------
+    // Sphere sampling API
+    //
+    // Let engines look up tile data from 3D positions or cube-face (u, v)
+    // coords without having to convert to lat/lon themselves.
+    // -----------------------------------------------------------------------
+
+    /// Sample the grid at a normalized 3D point on the unit sphere.
+    ///
+    /// Convention: `+y` is north pole, `-y` south pole, `+x` is longitude
+    /// 0°, and longitude runs counter-clockwise looking down from +y. The
+    /// input is automatically normalized.
+    pub fn sample_xyz(&self, x: f32, y: f32, z: f32) -> usize {
+        let len = (x * x + y * y + z * z).sqrt().max(1e-6);
+        let (nx, ny, nz) = (x / len, y / len, z / len);
+        let lat_deg = ny.clamp(-1.0, 1.0).asin().to_degrees();
+        let lon_deg = nz.atan2(nx).to_degrees();
+        self.idx_latlon(lat_deg, lon_deg)
+    }
+
+    /// Sample at a cube-face `(u, v)` position where `u, v ∈ [-1, 1]`.
+    ///
+    /// Projects the face point onto the sphere and samples there. Six
+    /// faces cover the sphere with nearly-uniform area per face cell,
+    /// which is why engines prefer this layout over equirectangular.
+    pub fn sample_cube_face(&self, face: CubeFace, u: f32, v: f32) -> usize {
+        let (x, y, z) = face.to_xyz(u, v);
+        self.sample_xyz(x, y, z)
+    }
+
+    /// Physical area of one tile at latitude row `row` in km².
+    ///
+    /// Assumes a spherical body of radius `planet_radius_km`. Tile area
+    /// drops with `cos(latitude)` on the equirectangular projection.
+    pub fn tile_area_km2(&self, row: u16, planet_radius_km: f32) -> f32 {
+        let lat_rad = self.row_latitude(row).to_radians();
+        let dlat_rad = std::f32::consts::PI / self.height as f32;
+        let dlon_rad = 2.0 * std::f32::consts::PI / self.width as f32;
+        planet_radius_km * planet_radius_km * lat_rad.cos().abs() * dlat_rad * dlon_rad
+    }
+
+    /// Total surface area of the body in km², summed over all tiles.
+    pub fn surface_area_km2(&self, planet_radius_km: f32) -> f32 {
+        (0..self.height)
+            .map(|r| self.tile_area_km2(r, planet_radius_km) * self.width as f32)
+            .sum()
     }
 
     // -----------------------------------------------------------------------
@@ -438,6 +528,124 @@ pub fn generate_surface_grid(
     crate::hydrology::generate_hydrology(context.body_radius_earth as f32, &mut grid);
     crate::climate::generate_biomes(&mut grid);
     grid
+}
+
+#[cfg(test)]
+mod sampling_tests {
+    use super::*;
+
+    fn empty_grid() -> SurfaceGrid {
+        SurfaceGrid::empty(GridResolution::Custom(72, 36))
+    }
+
+    #[test]
+    fn sample_xyz_equator_positive_x() {
+        let g = empty_grid();
+        // +x direction at equator → longitude 0°, latitude 0°.
+        let idx = g.sample_xyz(1.0, 0.0, 0.0);
+        let row = idx / g.width as usize;
+        let lat = g.row_latitude(row as u16);
+        assert!(lat.abs() < 5.0, "got lat {}", lat);
+    }
+
+    #[test]
+    fn sample_xyz_north_pole() {
+        let g = empty_grid();
+        // +y direction → north pole.
+        let idx = g.sample_xyz(0.0, 1.0, 0.0);
+        let row = idx / g.width as usize;
+        assert!(row <= 1, "north pole should be row 0 or 1, got {}", row);
+    }
+
+    #[test]
+    fn sample_xyz_south_pole() {
+        let g = empty_grid();
+        // -y direction → south pole.
+        let idx = g.sample_xyz(0.0, -1.0, 0.0);
+        let row = idx / g.width as usize;
+        assert!(row >= 34, "south pole should be near last row, got {}", row);
+    }
+
+    #[test]
+    fn sample_xyz_normalizes_input() {
+        let g = empty_grid();
+        // Unnormalized input should give the same tile as normalized.
+        let a = g.sample_xyz(5.0, 0.0, 0.0);
+        let b = g.sample_xyz(1.0, 0.0, 0.0);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn all_cube_faces_map_to_valid_tiles() {
+        let g = empty_grid();
+        for &face in &CubeFace::ALL {
+            for u in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+                for v in [-1.0, -0.5, 0.0, 0.5, 1.0] {
+                    let idx = g.sample_cube_face(face, u, v);
+                    assert!(idx < g.tile_count());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn cube_face_centres_match_face_axis() {
+        let g = empty_grid();
+        // PosY face centre → north pole.
+        let posy = g.sample_cube_face(CubeFace::PosY, 0.0, 0.0);
+        let row = posy / g.width as usize;
+        assert!(row <= 1);
+        // NegY face centre → south pole.
+        let negy = g.sample_cube_face(CubeFace::NegY, 0.0, 0.0);
+        let row = negy / g.width as usize;
+        assert!(row >= 34);
+    }
+
+    #[test]
+    fn tile_area_decreases_toward_poles() {
+        let g = empty_grid();
+        let equator = g.tile_area_km2(18, 6371.0);
+        let pole = g.tile_area_km2(0, 6371.0);
+        assert!(
+            equator > pole * 2.0,
+            "equator area {} should be ≫ pole area {}",
+            equator,
+            pole
+        );
+    }
+
+    #[test]
+    fn surface_area_sums_to_earth_value() {
+        let g = empty_grid();
+        // Earth's surface area is ~510.1 million km².
+        let total = g.surface_area_km2(6371.0);
+        let expected = 4.0 * std::f32::consts::PI * 6371.0 * 6371.0;
+        let error = ((total - expected) / expected).abs();
+        assert!(
+            error < 0.01,
+            "total {} differs from expected {} by {}%",
+            total,
+            expected,
+            error * 100.0
+        );
+    }
+
+    #[test]
+    fn sampling_is_stable_for_identical_inputs() {
+        let g = empty_grid();
+        for (x, y, z) in [(1.0, 0.0, 0.0), (0.5, 0.5, 0.5), (-0.3, 0.7, 0.2)] {
+            assert_eq!(g.sample_xyz(x, y, z), g.sample_xyz(x, y, z));
+        }
+    }
+
+    #[test]
+    fn cube_face_xyz_produces_normalizable_vectors() {
+        for &face in &CubeFace::ALL {
+            let (x, y, z) = face.to_xyz(0.0, 0.0);
+            let len = (x * x + y * y + z * z).sqrt();
+            assert!(len > 0.9);
+        }
+    }
 }
 
 #[cfg(test)]

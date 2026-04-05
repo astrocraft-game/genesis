@@ -280,14 +280,20 @@ Goal: make grids trivially consumable by game engines.
 - [x] 11 tests covering buffer sizes, colour invariants, and palette coverage
       of all biome variants.
 
-### C3 — Sphere sampling API
+### C3 — Sphere sampling API ✅
 
-- [ ] `SurfaceGrid::sample_xyz(x, y, z) -> usize` — normalized 3D → tile.
-- [ ] `SurfaceGrid::sample_cube_face(face: CubeFace, u: f32, v: f32) -> usize`.
-- [ ] `SurfaceGrid::tile_area_km2(row, planet_radius_km) -> f32`
-      (already used internally, expose publicly).
-- [ ] Tests: sample at known XYZ returns the expected tile; area sum
-      equals planet surface area to ±1%.
+- [x] `SurfaceGrid::sample_xyz(x, y, z) -> usize` — normalized 3D point
+      to tile index. Automatically normalizes the input vector.
+- [x] `CubeFace` enum (PosX/NegX/PosY/NegY/PosZ/NegZ) with `to_xyz(u, v)`
+      mapping and `ALL` constant.
+- [x] `SurfaceGrid::sample_cube_face(face, u, v) -> usize` — bridges
+      cube-sphere engines to the equirectangular grid.
+- [x] `SurfaceGrid::tile_area_km2(row, planet_radius_km) -> f32` and
+      `surface_area_km2(radius) -> f32` — physical area helpers using
+      cos-latitude scaling.
+- [x] 10 tests: +x equator, +y/-y poles, normalization, all-face
+      validity, face-centre axes, polar area shrinkage, **4πR² sum
+      agreement within 1%**, stability, cube-face XYZ magnitudes.
 
 ### C4 — LOD system
 
