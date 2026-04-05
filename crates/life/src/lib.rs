@@ -6,6 +6,7 @@ pub mod generator;
 pub mod habitat;
 pub mod history;
 pub mod input;
+pub mod naming;
 pub mod settlement;
 pub mod species;
 pub mod types;
@@ -18,6 +19,7 @@ pub use habitat::{
 };
 pub use history::HistoricalEra;
 pub use input::SpeciesGenerationInput;
+pub use naming::{MarkovNameGen, NameStyle};
 pub use settlement::{compute_settlement_suitability, place_settlements, Settlement};
 pub use species::Species;
 pub use types::{Biome, Climate, Habitat, LifeLevel, Temperature};

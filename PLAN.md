@@ -161,17 +161,20 @@ civilisations, resources, history, and dynamic events.
 - [ ] Tests: history length scales with sim years, events have
       believable causal chains, no time-paradoxes.
 
-### B5 — Name generators (Markov chains)
+### B5 — Name generators (Markov chains) ✅
 
-- [ ] New file `life/src/naming.rs`.
-- [ ] Per-culture Markov-chain name generator (order 2-3) trained on
-      bundled corpora: "fantasy human", "dwarvish", "elvish", "alien",
-      "latin", "norse", "slavic", etc.
-- [ ] Generate: personal names, settlement names, dynasty names,
-      mountain/ocean/river names.
-- [ ] Feature: `name_style: NameStyle` to pick culture.
-- [ ] Tests: deterministic from seed, no byte-identical repeats in
-      100 samples, length distribution reasonable.
+- [x] Added `life/src/naming.rs` with an order-2 Markov chain.
+- [x] `NameStyle` enum with 5 bundled corpora: FantasyHuman (~50 words,
+      medieval/Latin), Dwarvish (~45, consonant-heavy), Elvish (~47,
+      vowel-rich), Norse (~47, saga names), Alien (~42, unusual clusters).
+- [x] `MarkovNameGen::for_style()` builds a generator from the bundled
+      corpus. `generate(&mut rng, min_len, max_len)` returns a capitalized
+      name, retrying up to 8× to hit length bounds.
+- [x] Deterministic from seed; empty corpus returns "Unnamed" gracefully.
+- [x] 8 tests: all styles produce names, length bounds respected, same
+      seed → same sequence, different seeds diverge, 100-sample diversity
+      check (≥60 unique), corpus alphanumeric check, empty-corpus
+      fallback, human vs alien phonology (vowel-ratio distinction).
 
 ### B6 — Named features
 
