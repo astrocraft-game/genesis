@@ -50,7 +50,7 @@ checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
 
 [[package]]
 name = "genesis"
-version = "0.0.7-pre-alpha"
+version = "0.1.0"
 dependencies = [
  "cosmos",
  "crafting",
@@ -105,7 +105,7 @@ checksum = "2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976"
 
 [[package]]
 name = "life"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "seeded_dice_roller",
  "serde",
@@ -319,7 +319,10 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "world"
-version = "0.1.0"
+version = "0.2.0"
+dependencies = [
+ "seeded_dice_roller",
+]
 
 [[package]]
 name = "zerocopy"

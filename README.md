@@ -10,6 +10,56 @@ I've tried my best to use realistic formulas and up-to-date data when possible f
 
 An example of how to use this library can be found in [this project, a simple Actix server that serves generated results](https://github.com/lmagitem/galactic-scanner). A web app that displays the generation results using the previous project [is available here](https://galactic-explorer.n42c.dev/) - please note that it is also a work in progress, and not all library features are available in the web app yet.
 
+## Surface maps (v0.2)
+
+Genesis produces tile-level climate, biome, and life distribution maps
+for terrestrial bodies. Grids use an equirectangular projection in one of
+three resolutions (72×36, 144×72, 360×180) and carry 20+ physical layers:
+elevation, tectonic plates, temperature, wind, precipitation, humidity,
+ocean currents, SST, rivers, drainage basins, biome, and Köppen class.
+
+```rust
+use genesis::{generate_world_with_surface, generate_life_on_surface};
+use world::grid::GridResolution;
+use life::{generate_ecosystem_from_world, LifeLevel, SpeciesGenerationInput};
+
+// 1. Generate a full world from a cosmos body (interior + detail + surface grid)
+let world = generate_world_with_surface(
+    &cosmos_body,
+    4.6,                          // star age (Gyr)
+    1,                            // moon count
+    false,                        // has rings
+    world::prelude::LifeLevel::Sentient,
+    GridResolution::Fast,         // 72×36 tiles
+    "my_seed",
+).expect("terrestrial body");
+
+// world.surface has elevation_m, temperature_c, biome, river_discharge_m3s,
+// ocean_current_direction_deg, precipitation_mm, koppen_class, …
+
+// 2. Distribute an ecosystem onto the surface
+let ecosystem = generate_ecosystem_from_world(&species_input);
+let distribution = generate_life_on_surface(
+    &world.surface,
+    &ecosystem,
+    1.0,                          // gravity in Earth g
+    LifeLevel::AnimalLike,
+);
+
+// distribution.ranges[i] has per-tile habitability, territory, population
+// distribution.vegetation_density and .primary_productivity are per-tile
+```
+
+**Scale**: each tile is a large region, not a location — a Fast-resolution
+tile on an Earth-sized body covers ~200,000 km². Grids answer climate and
+biome queries at planetary scale; per-meter surface detail belongs in the
+game engine.
+
+**Architecture**: `world` crate owns all physical maps (climate, geology,
+hydrology). `life` crate owns biological overlays (vegetation, species
+ranges). They never depend on each other; the root `genesis` crate bridges
+them through an adapter layer.
+
 ## Roadmap
 
 This is the current roadmap of the library:
@@ -49,23 +99,23 @@ This is the current roadmap of the library:
 - [x] Planet generation
   - [x] Orbit parameters
   - [x] Moons
-  - [ ] World parameters and climate
+  - [x] World parameters and climate (atmosphere, ocean, photochemistry)
   - [ ] Resources
     - [ ] Accessibility
     - [ ] Rarity
     - [ ] Quantity
-  - [ ] Life presence
+  - [x] Life presence
   - [ ] Points of interest
-  - [ ] Map generation
+  - [x] Map generation (tile-level surface grid, v0.2)
   - [x] Proto planets
   - [ ] Exotic planets
-- [ ] Species generation
-  - [ ] Add species using the given settings
-  - [ ] Spawn species using conditions found in specific systems
-  - [ ] Writing the species' history
-  - [ ] Filling the various systems with appropriate life
-- [ ] Populated sectors/systems/planets
-  - [ ] Add methods to generate populated objects "directly"
+- [x] Species generation
+  - [x] Add species using the given settings
+  - [x] Spawn species using conditions found in specific systems
+  - [x] Writing the species' history
+  - [x] Filling the various systems with appropriate life
+- [x] Populated sectors/systems/planets
+  - [x] Add methods to generate populated objects "directly"
 
 ## Contribute
 

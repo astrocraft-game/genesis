@@ -96,6 +96,29 @@ pub enum Temperature {
     Infernal,
 }
 
+/// Biome classifications derived from per-tile climate (mirrors the
+/// world crate's BiomeType, but life-owned to keep the crate independent).
+#[derive(
+    Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize,
+)]
+#[non_exhaustive]
+pub enum Biome {
+    Tundra,
+    Taiga,
+    TemperateForest,
+    TropicalForest,
+    #[default]
+    Grassland,
+    Desert,
+    Savanna,
+    Wetland,
+    Alpine,
+    Volcanic,
+    IceCap,
+    Ocean,
+    Barren,
+}
+
 /// High-level classification of a homeworld. Only the broad class matters for
 /// species generation — detailed geology/atmosphere live in the `world` crate.
 #[derive(

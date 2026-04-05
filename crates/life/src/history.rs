@@ -6,6 +6,7 @@ use std::fmt::{self, Display};
 #[derive(
     Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, SmartDefault, Serialize, Deserialize,
 )]
+#[non_exhaustive]
 pub enum HistoricalEra {
     #[default]
     Origin,

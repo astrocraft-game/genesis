@@ -179,7 +179,8 @@ pub enum ChemicalComponent {
     Chlorine,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Default)]
+#[non_exhaustive]
 pub enum BiomeType {
     Tundra,
     Taiga,
@@ -195,6 +196,54 @@ pub enum BiomeType {
     IceCap,
     Ocean,
     Barren,
+}
+
+/// Köppen-Geiger climate classification. A simplified subset using the
+/// yearly summer/winter temperature means and annual precipitation that
+/// the grid computes; fine seasonal subtypes (e.g. Cfa vs Cwa) are not
+/// distinguished since we lack per-month rainfall.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+#[non_exhaustive]
+pub enum KoppenClass {
+    #[default]
+    Ocean,
+    // Group A — Tropical (coldest month ≥ 18 °C)
+    /// Tropical rainforest
+    Af,
+    /// Tropical monsoon
+    Am,
+    /// Tropical savanna (wet-dry)
+    Aw,
+    // Group B — Arid
+    /// Hot desert
+    BWh,
+    /// Cold desert
+    BWk,
+    /// Hot steppe
+    BSh,
+    /// Cold steppe
+    BSk,
+    // Group C — Temperate (coldest month 0-18 °C)
+    /// Humid subtropical
+    Cfa,
+    /// Oceanic / marine west coast
+    Cfb,
+    /// Subpolar oceanic
+    Cfc,
+    // Group D — Continental (coldest month < 0 °C, warmest > 10 °C)
+    /// Hot-summer humid continental
+    Dfa,
+    /// Warm-summer humid continental
+    Dfb,
+    /// Subarctic
+    Dfc,
+    /// Extremely cold subarctic
+    Dfd,
+    // Group E — Polar (all months < 10 °C)
+    /// Tundra
+    ET,
+    /// Ice cap
+    EF,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]

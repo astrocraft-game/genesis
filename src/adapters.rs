@@ -1,7 +1,8 @@
 use cosmos::prelude::ExternalBodyFacts;
-use life::{Climate, Habitat, SpeciesGenerationInput, Temperature};
+use life::{Biome, Climate, Habitat, SpeciesGenerationInput, Temperature};
+use world::grid::SurfaceGrid;
 use world::prelude::{
-    CelestialBodyWorldType, LifeLevel, MagneticFieldStrength, OrbitContext,
+    BiomeType, CelestialBodyWorldType, LifeLevel, MagneticFieldStrength, OrbitContext,
     PlanetGenerationProfile, PlanetInterior, PlanetSimulationInput, PlanetaryDetail, StarContext,
     TelluricBodyComposition, WorldClimateType, WorldTemperatureCategory,
 };
@@ -207,6 +208,43 @@ fn map_life_level(value: LifeLevel) -> life::LifeLevel {
     }
 }
 
+/// Convert a world `SurfaceGrid` into a life `HabitatGrid`.
+///
+/// Copies only the fields life needs (temperature, humidity, biome,
+/// is_ocean, elevation) so life stays independent of world's full grid
+/// type. The resulting HabitatGrid is owned by the caller.
+pub fn surface_grid_to_habitat_grid(grid: &SurfaceGrid) -> life::HabitatGrid {
+    life::HabitatGrid {
+        width: grid.width,
+        height: grid.height,
+        temperature_c: grid.layers.temperature_c.clone(),
+        humidity_relative: grid.layers.humidity_relative.clone(),
+        biome: grid.layers.biome.iter().copied().map(map_biome).collect(),
+        is_ocean: grid.layers.is_ocean.clone(),
+        elevation_m: grid.layers.elevation_m.clone(),
+    }
+}
+
+fn map_biome(b: BiomeType) -> Biome {
+    match b {
+        BiomeType::Tundra => Biome::Tundra,
+        BiomeType::Taiga => Biome::Taiga,
+        BiomeType::TemperateForest => Biome::TemperateForest,
+        BiomeType::TropicalForest => Biome::TropicalForest,
+        BiomeType::Grassland => Biome::Grassland,
+        BiomeType::Desert => Biome::Desert,
+        BiomeType::Savanna => Biome::Savanna,
+        BiomeType::Wetland => Biome::Wetland,
+        BiomeType::Alpine => Biome::Alpine,
+        BiomeType::Volcanic => Biome::Volcanic,
+        BiomeType::IceCap => Biome::IceCap,
+        BiomeType::Ocean => Biome::Ocean,
+        BiomeType::Barren => Biome::Barren,
+        // Future variants in BiomeType default to a safe fallback.
+        _ => Biome::Barren,
+    }
+}
+
 /// Build crafting planetary conditions from a species' tech level.
 ///
 /// Returns `None` for non-sapient species (tech_level unset). Substance
@@ -403,5 +441,113 @@ mod tests {
             modern_count,
             industrial_count
         );
+    }
+
+    #[test]
+    fn surface_grid_converts_to_habitat_grid() {
+        use world::climate::{generate_biomes, generate_temperature, generate_wind};
+        use world::geology::generate_geology;
+        use world::grid::GridResolution;
+        use world::hydrology::generate_precipitation;
+        use world::ocean::generate_ocean_dynamics;
+        use world::types::StarContext;
+
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut sg = generate_geology(&input, 71.0, GridResolution::Fast, "adapt");
+        generate_temperature(&input, 33.0, &mut sg);
+        generate_wind(&input, 1.0, &mut sg);
+        generate_precipitation(&input, 1.0, 71.0, &mut sg);
+        generate_ocean_dynamics(&mut sg);
+        generate_biomes(&mut sg);
+
+        let habitat = surface_grid_to_habitat_grid(&sg);
+        assert_eq!(habitat.width, sg.width);
+        assert_eq!(habitat.height, sg.height);
+        assert_eq!(habitat.tile_count(), sg.tile_count());
+        assert_eq!(habitat.temperature_c.len(), sg.tile_count());
+        assert_eq!(habitat.biome.len(), sg.tile_count());
+        // Ocean tiles should map through unchanged.
+        for idx in 0..sg.tile_count() {
+            assert_eq!(habitat.is_ocean[idx], sg.layers.is_ocean[idx]);
+        }
+    }
+
+    #[test]
+    fn life_distribution_produces_species_ranges() {
+        use life::types::{Climate, Habitat, Temperature};
+        use life::{distribute_ecosystem, generate_ecosystem_from_world, SpeciesGenerationInput};
+        use world::climate::{generate_biomes, generate_temperature, generate_wind};
+        use world::geology::generate_geology;
+        use world::grid::GridResolution;
+        use world::hydrology::generate_precipitation;
+        use world::ocean::generate_ocean_dynamics;
+        use world::types::StarContext;
+
+        // Build a world grid.
+        let wi = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut sg = generate_geology(&wi, 71.0, GridResolution::Fast, "combo");
+        generate_temperature(&wi, 33.0, &mut sg);
+        generate_wind(&wi, 1.0, &mut sg);
+        generate_precipitation(&wi, 1.0, 71.0, &mut sg);
+        generate_ocean_dynamics(&mut sg);
+        generate_biomes(&mut sg);
+        let habitat = surface_grid_to_habitat_grid(&sg);
+
+        // Generate an ecosystem for an Earth-like world.
+        let input = SpeciesGenerationInput {
+            habitat: Habitat::Terrestrial,
+            climate: Climate::Terrestrial,
+            temperature: Temperature::Temperate,
+            gravity: 1.0,
+            atmospheric_pressure: 1.0,
+            hydrosphere: 71.0,
+            life_level: life::LifeLevel::AnimalLike,
+            seed: "combo".into(),
+            scope_key: "earth".into(),
+        };
+        let ecosystem = generate_ecosystem_from_world(&input);
+        let distribution =
+            distribute_ecosystem(&ecosystem, 1.0, &habitat, life::LifeLevel::AnimalLike);
+
+        assert!(distribution.ranges.len() >= 3, "expect ≥3 species ranges");
+        // Every range has the correct number of tiles.
+        for range in &distribution.ranges {
+            assert_eq!(range.habitability.len(), habitat.tile_count());
+            assert_eq!(range.territory.len(), habitat.tile_count());
+            assert_eq!(range.population_density.len(), habitat.tile_count());
+        }
+        // Vegetation density should have at least a few tiles above 0.
+        let vege_count = distribution
+            .vegetation_density
+            .iter()
+            .filter(|&&d| d > 0.0)
+            .count();
+        assert!(vege_count > 0, "no vegetation anywhere");
     }
 }

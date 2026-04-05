@@ -1,6 +1,6 @@
 [package]
 name = "genesis"
-version = "0.0.7-pre-alpha"
+version = "0.1.0"
 edition = "2021"
 description = "[WIP] Generates data for galaxies, sectors, solar systems, planets and their inhabitants."
 license = "MIT"
