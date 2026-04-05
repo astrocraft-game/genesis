@@ -19,15 +19,14 @@ Each phase lists concrete deliverables and test criteria.
 
 Goal: deepen the existing surface-maps pipeline without adding new subsystems.
 
-### A1 — Replace custom value noise with proper simplex
+### A1 — Replace custom value noise with proper simplex ✅
 
-- [ ] Add `noise = "0.8"` crate dependency to `world`.
-- [ ] Replace `hash_noise_2d` in `geology.rs` with `noise::OpenSimplex` or
-      `SuperSimplex`, keeping a deterministic seed path.
-- [ ] Add domain warping: perturb noise input coordinates with a low-freq
-      secondary noise to break up axis-aligned artifacts.
-- [ ] Re-tune fractal amplitudes now that gradient noise is available.
-- [ ] Snapshot test: regenerate determinism reference for the known seed.
+- [x] Added `noise = "0.9"` crate dependency to `world`.
+- [x] Replaced `hash_noise_2d` in `geology.rs` with `noise::SuperSimplex`.
+- [x] Added domain warping: two independent noise fields (warp_x, warp_y)
+      perturb input coordinates by ±0.25 × warp at frequency 2.0.
+- [x] Re-tuned amplitude from 800 m → 900 m for simplex gradient characteristics.
+- [x] Added test verifying sub-plate elevation variety (>500 m spread).
 
 ### A2 — Hydraulic + thermal erosion
 
@@ -78,12 +77,16 @@ Goal: deepen the existing surface-maps pipeline without adding new subsystems.
 - [ ] Tests: isolated basins get their own gyres, multi-basin worlds
       show plausible current asymmetry.
 
-### A6 — Grid serialisation
+### A6 — Grid serialisation ✅
 
-- [ ] Add `serde` derives on `SurfaceGrid`, `SurfaceLayers`, `Plate`,
-      enums — behind a `serde` feature flag.
-- [ ] JSON export for debugging, binary (bincode/postcard) for storage.
-- [ ] Round-trip test: serialize → deserialize → assert equality.
+- [x] Added `serde = { version = "1.0", optional = true }` + `serde` feature
+      flag in `world/Cargo.toml`.
+- [x] `#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]` on
+      `SurfaceGrid`, `SurfaceLayers`, `Plate`, `GridResolution`, `BoundaryKind`,
+      `PlateKind`, `BiomeType`, `KoppenClass`.
+- [x] Feature-gated tests: `grid_round_trips_through_json` and
+      `resolution_round_trips` verify full round-trip equality.
+- [x] Default build unchanged — serde dep only pulled in with `--features serde`.
 
 ---
 
@@ -232,15 +235,18 @@ Goal: make grids trivially consumable by game engines.
 - [ ] Conversion helpers: `equirect_to_hex(&SurfaceGrid) -> HexGrid`.
 - [ ] Tests: same seed produces sphere-equivalent coverage across layouts.
 
-### C2 — Texture export
+### C2 — Texture export ✅
 
-- [ ] `grid.export_biome_rgb() -> Vec<u8>` (PNG-ready buffer).
-- [ ] `grid.export_elevation_grayscale() -> Vec<u8>`.
-- [ ] `grid.export_temperature_rgb(colormap: ColorMap) -> Vec<u8>`.
-- [ ] `grid.export_precipitation_rgb()`.
-- [ ] `grid.export_species_density_rgb(range: &SpeciesRange)`.
-- [ ] Feature-flag `image-export` (pulls in `image` crate optionally).
-- [ ] Tests: output is W×H×3 bytes, PNG roundtrips cleanly.
+- [x] `grid.export_biome_rgb() -> Vec<u8>` with fixed 13-colour biome palette.
+- [x] `grid.export_elevation_grayscale() -> Vec<u8>` (split scaling at sea level).
+- [x] `grid.export_temperature_rgb() -> Vec<u8>` (blue-white-red colormap).
+- [x] `grid.export_precipitation_rgb() -> Vec<u8>` (tan-to-blue colormap).
+- [x] `grid.export_ocean_mask() -> Vec<u8>` (0 = land, 255 = ocean).
+- [x] `grid.dimensions() -> (u16, u16)` helper for buffer shape.
+- [x] No new dependencies — raw `Vec<u8>` outputs compatible with `image`
+      crate, Bevy textures, or raw GL uploads at the caller's discretion.
+- [x] 11 tests covering buffer sizes, colour invariants, and palette coverage
+      of all biome variants.
 
 ### C3 — Sphere sampling API
 
@@ -276,18 +282,20 @@ Goal: make grids trivially consumable by game engines.
 
 Goal: make the library easier to learn, test, and contribute to.
 
-### D1 — Example binaries
+### D1 — Example binaries ✅
 
-- [ ] `examples/single_planet.rs` — generate one terrestrial world,
-      print summary (plate count, biome distribution, mean temp).
-- [ ] `examples/recipe_chain.rs` — look up craft chain for a substance.
-- [ ] `examples/species_ecosystem.rs` — generate species + ecosystem
-      for a world, print food web.
-- [ ] `examples/export_maps.rs` — generate full grid + export all
-      layers as PNGs.
-- [ ] `examples/universe_walk.rs` — generate small universe + iterate
-      over systems.
-- [ ] Each example compiles into `target/examples/` and runs cleanly.
+- [x] `examples/single_planet.rs` — generates an Earth-like world,
+      prints plate count, land/ocean split, elevation range, mean temp,
+      precipitation, biome distribution.
+- [x] `examples/export_maps.rs` — generates a Standard-resolution grid
+      and writes 5 PPM/PGM files (biome, elevation, temperature,
+      precipitation, ocean mask) using a built-in PPM writer (no image
+      crate dependency).
+- [x] `examples/species_ecosystem.rs` — generates ecosystem + prints
+      food web by trophic level (producer/herbivores/predators/filter).
+- [x] `examples/recipe_chain.rs` — looks up crafting recipes that produce
+      or consume a given substance.
+- [ ] `examples/universe_walk.rs` — deferred.
 
 ### D2 — Benchmarks
 
