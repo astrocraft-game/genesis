@@ -28,6 +28,7 @@ pub mod impacts;
 pub mod interior;
 pub mod ocean;
 pub mod photochemistry;
+pub mod resources;
 pub mod subsurface;
 pub mod surface;
 pub mod types;

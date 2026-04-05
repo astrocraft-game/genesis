@@ -245,6 +245,53 @@ fn map_biome(b: BiomeType) -> Biome {
     }
 }
 
+/// Map a single world `Resource` to the nearest matching
+/// `crafting::Substance` values (may produce multiple substances for broad
+/// resource categories like "IronOre" → Hematite + Magnetite).
+pub fn resource_to_substances(resource: world::resources::Resource) -> Vec<crafting::Substance> {
+    use crafting::Substance as S;
+    use world::resources::Resource as R;
+    match resource {
+        R::IronOre => vec![S::Hematite, S::Magnetite],
+        R::CopperOre => vec![S::Copper],
+        R::GoldOre => vec![S::Gold],
+        R::TinOre => vec![S::Tin],
+        R::AluminumOre => vec![S::Aluminum],
+        R::Gemstones => vec![],
+        R::Limestone => vec![S::Limestone],
+        R::Obsidian => vec![],
+        R::Coal => vec![],
+        R::Oil => vec![S::CrudeOil],
+        R::NaturalGas => vec![S::NaturalGas],
+        R::Sulfur => vec![S::Sulfur],
+        R::Salt => vec![S::Salt],
+        R::Timber => vec![S::WoodLogs],
+        R::Herbs => vec![],
+        R::Spices => vec![],
+        R::Fish => vec![],
+        R::Livestock => vec![],
+        R::Grain => vec![],
+        R::FreshWater => vec![S::Water],
+        _ => vec![],
+    }
+}
+
+/// Collect all crafting substances harvestable across a world's tiles
+/// given its resource map. The returned set is the union over all tiles.
+pub fn resource_map_to_substance_set(
+    map: &world::resources::ResourceMap,
+) -> std::collections::HashSet<crafting::Substance> {
+    let mut out = std::collections::HashSet::new();
+    for tile in &map.per_tile {
+        for &resource in tile {
+            for sub in resource_to_substances(resource) {
+                out.insert(sub);
+            }
+        }
+    }
+    out
+}
+
 /// Build crafting planetary conditions from a species' tech level.
 ///
 /// Returns `None` for non-sapient species (tech_level unset). Substance
@@ -549,5 +596,47 @@ mod tests {
             .filter(|&&d| d > 0.0)
             .count();
         assert!(vege_count > 0, "no vegetation anywhere");
+    }
+
+    #[test]
+    fn resource_map_bridges_to_crafting_substances() {
+        use world::climate::{generate_biomes, generate_temperature, generate_wind};
+        use world::geology::generate_geology;
+        use world::grid::GridResolution;
+        use world::hydrology::{generate_hydrology, generate_precipitation};
+        use world::ocean::generate_ocean_dynamics;
+        use world::resources::generate_resources;
+        use world::types::StarContext;
+
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut g = generate_geology(&input, 71.0, GridResolution::Fast, "resources");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_precipitation(&input, 1.0, 71.0, &mut g);
+        generate_ocean_dynamics(&mut g);
+        generate_hydrology(1.0, &mut g);
+        generate_biomes(&mut g);
+        let rm = generate_resources(&g);
+
+        let substances = resource_map_to_substance_set(&rm);
+        assert!(
+            !substances.is_empty(),
+            "Earth-like world should yield substances"
+        );
+        // Ocean tiles always produce Salt.
+        assert!(substances.contains(&crafting::Substance::Salt));
     }
 }

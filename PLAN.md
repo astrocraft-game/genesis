@@ -95,21 +95,27 @@ Goal: deepen the existing surface-maps pipeline without adding new subsystems.
 Goal: build on the existing physical/life grids to model
 civilisations, resources, history, and dynamic events.
 
-### B1 — Resource layer
+### B1 — Resource layer ✅
 
-- [ ] New file `world/src/resources.rs` (or `geology.rs` addition).
-- [ ] Per-tile resource availability derived from plate_id +
-      tectonic_boundary + biome + elevation:
-      - Metallic plates → iron/copper/gold deposits
-      - Volcanic boundaries → sulfur, obsidian, gemstones
-      - Sedimentary basins (old oceanic plates) → coal, oil, limestone
-      - Forest biomes → timber, resins, spices
+- [x] Added `world/src/resources.rs` with `Resource` enum (20 variants:
+      ores, minerals, fossil fuels, chemicals, biological, fresh water)
+      and `ResourceMap` struct.
+- [x] Per-tile resource derivation from plate kind + tectonic boundary +
+      biome + river discharge:
+      - Continental convergent → iron/copper/gold ore
+      - Divergent → iron/tin ore
+      - Volcanic biomes + convergent boundaries → sulfur/obsidian/gemstones
+      - Continental sedimentary basins → coal (forests) / oil+gas (arid)
+      - Forest biomes → timber, spices, herbs
       - Savanna/grassland → livestock, grain
-- [ ] Bridge to `crafting::Substance` — which substances are harvestable
-      on each tile.
-- [ ] Root adapter: `surface_to_substance_map(&SurfaceGrid) -> Map<Tile, Vec<Substance>>`.
-- [ ] Tests: metallic plates have iron, volcanic zones have sulfur,
-      forests have timber, ocean tiles have fish/salt.
+      - Ocean tiles → fish + salt + limestone
+      - Arid land → evaporite salt
+      - High-discharge river tiles → fresh water
+- [x] Root adapters: `resource_to_substances()` maps each Resource to one or
+      more `crafting::Substance`s; `resource_map_to_substance_set()`
+      returns the union of craftable substances for a whole world.
+- [x] `ResourceMap` supports `count(resource)` and `distinct_resources()`.
+- [x] 9 world tests + 1 adapter test covering all major rules.
 
 ### B2 — Settlement placement
 
