@@ -1,253 +1,803 @@
-use crate::internal::*;
-use crate::prelude::*;
-
-/// A list of settings used to configure the [StarSystem] generation.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
-pub struct SystemSettings {
-    /// Skip the system generation and just uses a copy of ours.
-    pub use_ours: bool,
-    /// Makes sure that only interesting systems are generated.
-    pub only_interesting: bool,
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct StarContext {
+    pub age_gyr: f32,
+    pub habitable_zone_inner_au: f64,
+    pub habitable_zone_outer_au: f64,
 }
 
-/// The population of stars in this system.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
-pub enum StellarEvolution {
-    /// Population III: The first generation of stars, formed from primordial gas with virtually no
-    /// metals, likely massive and short-lived. Given the near absence of metals, Population III
-    /// stars couldn't probably host rocky planets, if planets they have, they would only be gas
-    /// giants or unusual compositions not seen in today's universe. Any protoplanetary disks around
-    /// these stars would be primarily composed of hydrogen and helium, with very few heavier elements.
-    Paleodwarf,
-    /// Population II: Older stars with low metallicity, typically found in globular clusters and
-    /// the halo of galaxies. Their planetary systems, if they exist, might have fewer rocky planets
-    /// and more gas giants. The terrestrial planets that do form might be smaller and less diverse
-    /// in composition. Asteroid belts and Kuiper belt-like structures might be less dense and less
-    /// varied in composition due to the scarcity of heavier elements.
-    Subdwarf,
-    /// Early Population I: Younger, metal-rich stars found in the spiral arms and disks of
-    /// galaxies, associated with ongoing star formation. Sol is a Early Population I star.
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct OrbitContext {
+    pub orbital_distance_au: f64,
+    pub eccentricity: f32,
+    pub axial_tilt_deg: f32,
+    pub rotation_period_days: f32,
+    pub day_length_days: f32,
+    pub tidally_locked: bool,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct PlanetSimulationInput {
+    pub body_id: u32,
+    pub body_mass_earth: f64,
+    pub body_radius_earth: f64,
+    pub density_g_cm3: f32,
+    pub gravity_g: f32,
+    pub blackbody_temp_k: u32,
+    pub tidal_heating: u32,
+    pub moon_count: u32,
+    pub has_rings: bool,
+    pub in_habitable_zone: bool,
+    pub star: StarContext,
+    pub orbit: OrbitContext,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct PlanetGenerationProfile {
+    pub body_type: TelluricBodyComposition,
+    pub world_type: CelestialBodyWorldType,
+    pub magnetic_field: MagneticFieldStrength,
+    pub life_level: LifeLevel,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct PlanetInterior {
+    pub body_type: TelluricBodyComposition,
+    pub world_type: CelestialBodyWorldType,
+    pub magnetic_field: MagneticFieldStrength,
+    pub atmospheric_pressure: f32,
+    pub atmospheric_composition: Vec<(f32, ChemicalComponent)>,
+    pub hydrosphere: f32,
+    pub ice_over_water: f32,
+    pub land_area_percentage: f32,
+    pub ice_over_land: f32,
+    pub volcanism: f32,
+    pub tectonic_activity: f32,
+    pub humidity: f32,
+    pub temperature_category: WorldTemperatureCategory,
+    pub climate: WorldClimateType,
+    pub life_level: LifeLevel,
+    pub surface_map: Option<PlanetSurfaceMap>,
+    pub atmospheric_circulation: Option<AtmosphericCirculation>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum TelluricBodyComposition {
+    Metallic,
     #[default]
-    Dwarf,
-    /// Late Population I: Stars that are metal-rich and found in galactic disks, but older than
-    /// early Population I stars, representing a more mature phase of galactic evolution. Could have
-    /// increased chances of finding life on habitable planets.
-    Superdwarf,
-    /// Population 0: Extremely old stars from a universe nearing its end, having witnessed multiple
-    /// generations of stellar evolution and potentially having very high metallicity due to the
-    /// cumulative effects of countless supernovae and stellar processes over time. They might host
-    /// planets with exotic compositions, enriched with heavy elements.
-    Hyperdwarf,
+    Rocky,
+    Icy,
 }
 
-impl Display for StellarEvolution {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                StellarEvolution::Paleodwarf => "Population III",
-                StellarEvolution::Subdwarf => "Population II",
-                StellarEvolution::Dwarf => "Early Population I",
-                StellarEvolution::Superdwarf => "Late Population I",
-                StellarEvolution::Hyperdwarf => "Population 0",
-            }
-        )
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default, Serialize, Deserialize)]
-pub enum SystemPeculiarity {
-    /// Carbon-rich systems are ones where the protoplanetary disk was made with a higher
-    /// carbon/oxygen ratio during formation, producing carbon planets instead of rocky ones, and
-    /// where ice planets would be more likely to be made with ammonia, methane or carbon monoxide
-    /// than water.
-    CarbonRich,
-    /// A very unusual and destructive event drastically affected the system in its past.
-    Cataclysm(CataclysmSeverity),
-    /// In this system is found an unusual mass level of ice, dust and planetesimals.
-    UnusualDebrisDensity(DebrisDensity),
-    /// This system is located within or in close proximity to a nebula, a vast region of
-    /// interstellar gas and dust. Nebulae can be remnants of dead stars, birthplaces of new stars,
-    /// or simply cold, dark clouds in space. The system might experience a diffuse glow from the
-    /// illuminated gas and dust, creating a visually stunning backdrop. If the nebula is a region
-    /// of active star formation, the system could be exposed to higher levels of radiation from
-    /// nearby young, massive stars.
-    Nebulae(NebulaeApparentSize),
-    /// The system seems perfectly standard.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum CelestialBodyWorldType {
+    ProtoWorld,
+    Ice,
+    DirtySnowball,
+    GeoActive,
     #[default]
-    NoPeculiarity,
+    Rock,
+    Hadean,
+    Ammonia,
+    Ocean,
+    Terrestrial,
+    Greenhouse,
+    Chthonian,
+    VolatilesGiant,
+    CarbonWorld,
+    LavaWorld,
+    EyeballWorld,
+    RoguePlanet,
+    IronWorld,
+    MiniNeptune,
 }
 
-impl Display for SystemPeculiarity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SystemPeculiarity::CarbonRich => write!(f, "Carbon Rich"),
-            SystemPeculiarity::Cataclysm(severity) => write!(f, "{} Cataclysm", severity),
-            SystemPeculiarity::UnusualDebrisDensity(density) => {
-                write!(f, "{} Debris Density", density)
-            }
-            SystemPeculiarity::Nebulae(size) => write!(f, "{} Nebula Visible", size),
-            SystemPeculiarity::NoPeculiarity => write!(f, "No Peculiarity"),
-        }
-    }
-}
-
-#[derive(
-    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, SmartDefault, Serialize, Deserialize,
-)]
-pub enum CataclysmSeverity {
-    Minor,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum MagneticFieldStrength {
     #[default]
-    Major,
+    None,
+    Weak,
+    Moderate,
+    Strong,
+    VeryStrong,
     Extreme,
-    Ultimate,
 }
 
-impl Display for CataclysmSeverity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CataclysmSeverity::Minor => write!(f, "Minor"),
-            CataclysmSeverity::Major => write!(f, "Major"),
-            CataclysmSeverity::Extreme => write!(f, "Extreme"),
-            CataclysmSeverity::Ultimate => write!(f, "Ultimate"),
-        }
-    }
-}
-
-#[derive(
-    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, SmartDefault, Serialize, Deserialize,
-)]
-pub enum DebrisDensity {
-    MuchLower,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum WorldTemperatureCategory {
     #[default]
-    Lower,
-    Higher,
-    MuchHigher,
+    Frozen,
+    VeryCold,
+    Cold,
+    Chilly,
+    Cool,
+    Temperate,
+    Warm,
+    Hot,
+    VeryHot,
+    Scorching,
+    Infernal,
 }
 
-impl Display for DebrisDensity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DebrisDensity::MuchLower => write!(f, "Much Lower"),
-            DebrisDensity::Lower => write!(f, "Lower"),
-            DebrisDensity::Higher => write!(f, "Higher"),
-            DebrisDensity::MuchHigher => write!(f, "Much Higher"),
-        }
-    }
-}
-
-#[derive(
-    Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, SmartDefault, Serialize, Deserialize,
-)]
-pub enum NebulaeApparentSize {
-    Tiny,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum WorldClimateType {
     #[default]
-    Small,
-    Large,
-    Dominant,
+    Terrestrial,
+    MudBall,
+    Ocean,
+    Arctic,
+    Rainforest,
+    Tropical,
+    Jungle,
+    Tundra,
+    Taiga,
+    Savanna,
+    Steppe,
+    Desert,
+    Ribbon,
+    Dead,
 }
 
-impl Display for NebulaeApparentSize {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum LifeLevel {
+    #[default]
+    None,
+    UniCellular,
+    PluriCellular,
+    PlantLike,
+    AnimalLike,
+    Sentient,
+}
+
+impl LifeLevel {
+    pub fn as_u8(&self) -> u8 {
         match self {
-            NebulaeApparentSize::Tiny => write!(f, "Tiny"),
-            NebulaeApparentSize::Small => write!(f, "Small"),
-            NebulaeApparentSize::Large => write!(f, "Large"),
-            NebulaeApparentSize::Dominant => write!(f, "Dominant"),
+            Self::None => 0,
+            Self::UniCellular => 1,
+            Self::PluriCellular => 2,
+            Self::PlantLike => 3,
+            Self::AnimalLike => 4,
+            Self::Sentient => 5,
         }
     }
 }
 
-// ── StarSystem ────────────────────────────────────────────────────────
-
-#[derive(Clone, PartialEq, PartialOrd, Debug, SmartDefault, Serialize, Deserialize)]
-pub struct StarSystem {
-    /// That star's name.
-    #[default("default")]
-    pub name: Rc<str>,
-    /// The id of the [OrbitalPoint] at the center of the system.
-    pub center_id: u32,
-    /// The id of the [OrbitalPoint] containing the main star of the system.
-    pub main_star_id: u32,
-    /// The list of [OrbitalPoint]s that can be found in the system.
-    pub all_objects: Vec<OrbitalPoint>,
-    /// What are the pecularities of this system.
-    pub special_traits: Vec<SystemPeculiarity>,
-    /// Estimated Oort cloud mass in Earth masses (0 if no gas giants to scatter material).
-    pub oort_cloud_mass: f32,
-    /// Estimated Kuiper belt analog mass in Earth masses.
-    pub kuiper_belt_mass: f32,
-    /// Estimated long-period comet injection rate (new comets per century).
-    pub comet_injection_rate: f32,
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum ChemicalComponent {
+    Hydrogen,
+    Helium,
+    #[default]
+    Nitrogen,
+    Oxygen,
+    CarbonDioxide,
+    CarbonMonoxide,
+    Methane,
+    Ammonia,
+    Water,
+    Argon,
+    SulfurDioxide,
+    HydrogenSulfide,
+    Chlorine,
 }
 
-impl StarSystem {
-    /// Creates a new star system with the given array of [OrbitalPoint], and the id of the system's main star.
-    pub fn new(
-        name: Rc<str>,
-        center_id: u32,
-        main_star_id: u32,
-        all_objects: Vec<OrbitalPoint>,
-        special_traits: Vec<SystemPeculiarity>,
-    ) -> Self {
-        let gas_giant_mass_sum: f64 = all_objects.iter().map(|o| {
-            if let AstronomicalObject::TelluricBody(body) = &o.object {
-                if body.mass > 10.0 { body.mass } else { 0.0 }
-            } else { 0.0 }
-        }).sum();
-        let has_gas_giants = gas_giant_mass_sum > 10.0;
-        let oort_cloud_mass = if has_gas_giants {
-            (gas_giant_mass_sum as f32 / 300.0 * 10.0).clamp(1.0, 100.0)
-        } else { 0.0 };
-        let kuiper_belt_mass = if has_gas_giants {
-            (gas_giant_mass_sum as f32 / 300.0 * 0.1).clamp(0.001, 0.5)
-        } else { 0.0 };
-        let comet_injection_rate = oort_cloud_mass * 0.5;
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum BiomeType {
+    Tundra,
+    Taiga,
+    TemperateForest,
+    TropicalForest,
+    #[default]
+    Grassland,
+    Desert,
+    Savanna,
+    Wetland,
+    Alpine,
+    Volcanic,
+    IceCap,
+    Ocean,
+    Barren,
+}
 
-        Self {
-            name,
-            center_id,
-            main_star_id,
-            all_objects,
-            special_traits,
-            oort_cloud_mass,
-            kuiper_belt_mass,
-            comet_injection_rate,
-        }
-    }
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum CraterDensity {
+    Pristine,
+    Light,
+    #[default]
+    Moderate,
+    Heavy,
+    Saturated,
+}
 
-    /// Returns a reference to the [OrbitalPoint] at the center of the system.
-    pub fn get_center(&self) -> &OrbitalPoint {
-        self.get_point(self.center_id)
-            .expect("There should always be a center point.")
-    }
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct AtmosphericCirculation {
+    pub cells_per_hemisphere: u8,
+    pub jet_stream_count: u8,
+    pub wind_intensity: WindIntensity,
+}
 
-    /// Returns a mutable reference to the [OrbitalPoint] at the center of the system.
-    pub fn get_center_mut(&mut self) -> &mut OrbitalPoint {
-        self.get_point_mut(self.center_id)
-            .expect("There should always be a center point.")
-    }
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum WindIntensity {
+    Calm,
+    #[default]
+    Light,
+    Moderate,
+    Strong,
+    Extreme,
+}
 
-    /// Returns a reference to the [OrbitalPoint] containing the main [Star] of the system.
-    pub fn get_main_star(&self) -> &OrbitalPoint {
-        self.get_point(self.main_star_id)
-            .expect("There should always be a main star.")
-    }
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct PlanetSurfaceMap {
+    pub continent_count: u8,
+    pub biome_distribution: Vec<(BiomeType, f32)>,
+    pub highest_elevation_km: f32,
+    pub deepest_ocean_km: f32,
+    pub tectonic_plate_count: u8,
+    pub temperature_range_k: f32,
+    pub seasonal_frost: bool,
+    pub crater_density: CraterDensity,
+    pub largest_crater_km: f32,
+}
 
-    /// Returns a mutable reference to the [OrbitalPoint] containing the main [Star] of the system.
-    pub fn get_main_star_mut(&mut self) -> &mut OrbitalPoint {
-        self.get_point_mut(self.main_star_id)
-            .expect("There should always be a main star.")
-    }
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct PlanetaryDetail {
+    pub atmospheric_layers: Option<AtmosphericLayers>,
+    pub atmospheric_escape: Option<AtmosphericEscape>,
+    pub breathability: AtmosphereBreathability,
+    pub toxicity: AtmosphereToxicity,
+    pub cloud_decks: Vec<CloudDeck>,
+    pub greenhouse: Option<GreenhouseEffect>,
+    pub climate_regulation: Option<ClimateRegulation>,
+    pub tidally_locked_climate: Option<TidallyLockedClimate>,
+    pub photochemistry: Option<Photochemistry>,
+    pub sky: Option<SkyAppearance>,
+    pub wind: Option<WindProfile>,
+    pub hydrography: Option<Hydrography>,
+    pub lakes: Option<LakeDistribution>,
+    pub glaciation: Option<GlaciationState>,
+    pub impact_history: Option<ImpactHistory>,
+    pub subsurface_ocean: Option<SubsurfaceOcean>,
+    pub ocean_chemistry: Option<OceanChemistry>,
+    pub volcanic_profile: Option<VolcanicProfile>,
+    pub mineral_diversity: Option<MineralDiversity>,
+    pub surface_material: Option<SurfaceMaterial>,
+    pub radiation: Option<RadiationEnvironment>,
+    pub seismic: Option<SeismicProfile>,
+    pub dust_storms: Option<DustStormProfile>,
+    pub lightning: Option<LightningProfile>,
+}
 
-    /// Returns an [Option] that might contain a reference to the object with the given id.
-    pub fn get_point(&self, id: u32) -> Option<&OrbitalPoint> {
-        self.all_objects.iter().find(|p| p.id == id)
-    }
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct AtmosphericLayers {
+    pub scale_height_km: f32,
+    pub tropopause_km: f32,
+    pub has_stratosphere: bool,
+    pub exobase_km: f32,
+}
 
-    /// Returns an [Option] that might contain a mutable reference to the object with the given id.
-    pub fn get_point_mut(&mut self, id: u32) -> Option<&mut OrbitalPoint> {
-        self.all_objects.iter_mut().find(|p| p.id == id)
-    }
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct AtmosphericEscape {
+    pub dominant_driver: AtmosphericEscapeDriver,
+    pub loss_intensity: AtmosphericLossIntensity,
+    pub xuv_flux_relative: f32,
+    pub escape_velocity_km_s: f32,
+    pub retention_score: f32,
+    pub atmosphere_retained: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum AtmosphericEscapeDriver {
+    #[default]
+    Minimal,
+    JeansEscape,
+    HydrodynamicEscape,
+    StellarWindSputtering,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum AtmosphericLossIntensity {
+    #[default]
+    Negligible,
+    Low,
+    Moderate,
+    High,
+    Extreme,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum AtmosphereBreathability {
+    #[default]
+    Vacuum,
+    Trace,
+    VeryThin,
+    ThinBreathable,
+    Standard,
+    Dense,
+    VeryDense,
+    Superdense,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum AtmosphereToxicity {
+    #[default]
+    Benign,
+    Marginal,
+    Filterable,
+    Suffocating,
+    MildlyToxic,
+    HighlyToxic,
+    LethallyToxic,
+    Corrosive,
+    Insidious,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum CloudComposition {
+    #[default]
+    Water,
+    WaterIce,
+    SulfuricAcid,
+    Ammonia,
+    AmmoniumHydrosulfide,
+    Methane,
+    OrganicHaze,
+    SiliconDust,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct CloudDeck {
+    pub composition: CloudComposition,
+    pub base_altitude_km: f32,
+    pub top_altitude_km: f32,
+    pub optical_depth: f32,
+    pub coverage_fraction: f32,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct GreenhouseEffect {
+    pub equilibrium_temp_k: f32,
+    pub surface_temp_k: f32,
+    pub greenhouse_delta_k: f32,
+    pub bond_albedo: f32,
+    pub is_runaway: bool,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct ClimateRegulation {
+    pub regime: ClimateRegime,
+    pub volcanic_outgassing_index: f32,
+    pub weathering_drawdown_index: f32,
+    pub regulation_strength: f32,
+    pub estimated_feedback_k: f32,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum ClimateRegime {
+    #[default]
+    Unbuffered,
+    WeatheringBalanced,
+    CarbonateSilicate,
+    TidallyModerated,
+    SnowballLocked,
+    RunawayGreenhouse,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct TidallyLockedClimate {
+    pub regime: TidallyLockedClimateRegime,
+    pub heat_redistribution_efficiency: f32,
+    pub day_night_temperature_delta_k: f32,
+    pub terminator_habitability: TerminatorHabitability,
+    pub nightside_cold_traps: bool,
+    pub substellar_cloud_fraction: f32,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct Photochemistry {
+    pub haze_regime: HazeRegime,
+    pub activity: PhotochemicalActivity,
+    pub ozone_column_relative: f32,
+    pub uv_shielding_fraction: f32,
+    pub smog_level: SmogLevel,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum HazeRegime {
+    #[default]
+    Clear,
+    OzoneShielded,
+    OrganicHaze,
+    SulfurHaze,
+    DustLoaded,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum PhotochemicalActivity {
+    #[default]
+    Quiescent,
+    Active,
+    Intense,
+    Extreme,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum SmogLevel {
+    #[default]
+    None,
+    Light,
+    Moderate,
+    Severe,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum TidallyLockedClimateRegime {
+    #[default]
+    AtmosphereCollapsed,
+    NightsideColdTrap,
+    TerminatorBelt,
+    EyeballWorld,
+    UniformSuperrotating,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum TerminatorHabitability {
+    #[default]
+    None,
+    Marginal,
+    Local,
+    Broad,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum SkyColor {
+    #[default]
+    Black,
+    DeepBlue,
+    Blue,
+    PaleBlue,
+    White,
+    Yellow,
+    Amber,
+    Orange,
+    Butterscotch,
+    Red,
+    Green,
+    Pink,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct SkyAppearance {
+    pub daytime_color: SkyColor,
+    pub sunset_color: SkyColor,
+    pub daytime_stars_visible: bool,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct WindProfile {
+    pub mean_surface_wind_ms: f32,
+    pub max_wind_ms: f32,
+    pub superrotation: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum DeltaType {
+    #[default]
+    None,
+    Arcuate,
+    BirdFoot,
+    Cuspate,
+    Estuarine,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct Hydrography {
+    pub major_river_count: u32,
+    pub longest_river_km: f32,
+    pub mean_precipitation_mm: f32,
+    pub dominant_delta_type: DeltaType,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum LakeFormationType {
+    #[default]
+    None,
+    Glacial,
+    Tectonic,
+    Volcanic,
+    Impact,
+    Fluvial,
+    Endorheic,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum LiquidType {
+    #[default]
+    Water,
+    Brine,
+    MethaneEthane,
+    Ammonia,
+    Magma,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct LakeDistribution {
+    pub lake_count: u32,
+    pub dominant_type: LakeFormationType,
+    pub largest_lake_km2: f32,
+    pub liquid_type: LiquidType,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum IceCapLocation {
+    #[default]
+    None,
+    Polar,
+    Equatorial,
+    DarkSide,
+    Global,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct GlaciationState {
+    pub ice_coverage_fraction: f32,
+    pub in_glacial_period: bool,
+    pub snowball_state: bool,
+    pub ice_cap_location: IceCapLocation,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct ImpactHistory {
+    pub surface_age_class: SurfaceAgeClass,
+    pub resurfacing_driver: ResurfacingDriver,
+    pub major_basin_count: u8,
+    pub largest_basin_class: ImpactBasinClass,
+    pub ejecta_blanket_fraction: f32,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct SubsurfaceOcean {
+    pub present: bool,
+    pub ice_shell_thickness_km: f32,
+    pub ocean_depth_km: f32,
+    pub plume_activity: PlumeActivity,
+    pub transport_efficiency: CryovolcanicTransport,
+    pub habitability: EnclosedOceanHabitability,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum PlumeActivity {
+    #[default]
+    None,
+    Occasional,
+    Persistent,
+    Extreme,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum CryovolcanicTransport {
+    #[default]
+    Trapped,
+    Fractured,
+    EpisodicExchange,
+    EfficientExchange,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum EnclosedOceanHabitability {
+    #[default]
+    Sterile,
+    Marginal,
+    Chemotrophic,
+    HighPotential,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum SurfaceAgeClass {
+    #[default]
+    VeryYoung,
+    Young,
+    Mature,
+    Ancient,
+    Primordial,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum ResurfacingDriver {
+    #[default]
+    None,
+    Tectonic,
+    Volcanic,
+    Cryovolcanic,
+    Glacial,
+    Aeolian,
+    ImpactOnly,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum ImpactBasinClass {
+    #[default]
+    None,
+    Crater,
+    Basin,
+    MegaBasin,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct OceanChemistry {
+    pub liquid_type: LiquidType,
+    pub salinity_g_per_kg: f32,
+    pub ph: f32,
+    pub alkalinity_meq_l: f32,
+    pub anoxic: bool,
+    pub redox_state: OceanRedoxState,
+    pub iron_content: OceanIronContent,
+    pub nutrient_richness: NutrientRichness,
+    pub stratification: OceanStratification,
+    pub dissolved_volatile_load: f32,
+    pub hydrothermal_vents: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum OceanRedoxState {
+    #[default]
+    Oxic,
+    Dysoxic,
+    Reducing,
+    Euxinic,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum OceanIronContent {
+    #[default]
+    Negligible,
+    Low,
+    Moderate,
+    High,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum NutrientRichness {
+    #[default]
+    Starved,
+    Limited,
+    Moderate,
+    Fertile,
+    BloomProne,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum OceanStratification {
+    #[default]
+    WellMixed,
+    Seasonal,
+    Layered,
+    StronglyStratified,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum ResourceAbundance {
+    Absent,
+    Trace,
+    Poor,
+    #[default]
+    Average,
+    Rich,
+    Motherlode,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum Mineral {
+    #[default]
+    Silicates,
+    Carbonates,
+    Sulfides,
+    Organics,
+    Ices,
+    Metals,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct MineralDeposit {
+    pub mineral: Mineral,
+    pub abundance: ResourceAbundance,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum MineralEvolutionStage {
+    #[default]
+    Primitive,
+    Aqueous,
+    Igneous,
+    Metamorphic,
+    Biogenic,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct MineralDiversity {
+    pub stage: MineralEvolutionStage,
+    pub distinct_mineral_count: u16,
+    pub deposits: Vec<MineralDeposit>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum VolcanoType {
+    #[default]
+    Shield,
+    Stratovolcano,
+    Caldera,
+    FloodBasalt,
+    Cryovolcano,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct VolcanicProfile {
+    pub volcano_type: VolcanoType,
+    pub active_volcano_count: u32,
+    pub tallest_volcano_km: f32,
+    pub has_supervolcano: bool,
+    pub flood_basalt_province: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum SeismicitySource {
+    #[default]
+    None,
+    TectonicModerate,
+    TectonicExtreme,
+    Tidal,
+    Volcanic,
+    Residual,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct SeismicProfile {
+    pub mean_quake_magnitude: f32,
+    pub max_quake_magnitude: f32,
+    pub dominant_source: SeismicitySource,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum SurfaceMaterialType {
+    #[default]
+    BarrenRock,
+    SandDunes,
+    IceSheet,
+    Soil,
+    OrganicSediment,
+    SulfurDeposits,
+    EvaporiteDeposits,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct SurfaceMaterial {
+    pub primary: SurfaceMaterialType,
+    pub secondary: Vec<SurfaceMaterialType>,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct RadiationEnvironment {
+    pub surface_dose_relative: f32,
+    pub auroral_activity: f32,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct DustStormProfile {
+    pub global_storms_possible: bool,
+    pub global_storm_interval_years: f32,
+    pub peak_wind_ms: f32,
+    pub dust_devils_active: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+pub enum LightningMechanism {
+    #[default]
+    WaterCloud,
+    AcidCloud,
+    VolcanicPlume,
+    DustTriboelectric,
+}
+
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
+pub struct LightningProfile {
+    pub present: bool,
+    pub flash_rate_relative: f32,
+    pub mechanism: LightningMechanism,
 }

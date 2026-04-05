@@ -1,15 +1,18 @@
-/// Planet Generator - procedural universe generation library
+/// Genesis - procedural universe generation library
 ///
 /// Re-exports four crates:
 /// - `cosmos` - universe, galaxy, star system, and orbital mechanics
-/// - `world` - planets, moons, atmosphere, geology, and surfaces
+/// - `world` - planetary interior, atmosphere, climate, ocean, geology, and surfaces
 /// - `life` - species generation, history, and expansion
 /// - `crafting` - 750+ real-world material science recipes with dependency graph
 
 pub use cosmos;
-pub use world;
-pub use life;
 pub use crafting;
+pub use life;
+pub use world;
+
+pub mod adapters;
+pub use adapters::*;
 
 use cosmos::generator::Generator;
 use cosmos::generator::types::{GeneratedUniverse, GenerationSettings};

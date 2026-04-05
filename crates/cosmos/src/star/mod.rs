@@ -1,42 +1,27 @@
 use crate::internal::*;
 use crate::prelude::*;
+
 pub mod generator;
 pub mod types;
 
 #[derive(Clone, PartialEq, PartialOrd, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct Star {
-    /// That star's name.
     #[default("default")]
     pub name: Rc<str>,
-    /// In solar masses.
     pub mass: f64,
-    /// In solar luminosities.
     pub luminosity: f32,
-    /// In solar radii.
     pub radius: f64,
-    /// In billions of years.
     pub age: f32,
-    /// In kelvins.
     pub temperature: u32,
-    /// The population this star belongs to.
     pub population: StellarEvolution,
-    /// Spectral type.
     pub spectral_type: StarSpectralType,
-    /// Luminosity class.
     pub luminosity_class: StarLuminosityClass,
-    /// The id of the orbital point this star inhabits.
     pub orbital_point_id: u32,
-    /// The star's own orbit, along which it revolves.
     pub orbit: Option<Orbit>,
-    /// The various zones around this star. The zones give various informations about star orbits.
     pub zones: Vec<StarZone>,
-    /// What are the pecularities of this star.
     pub special_traits: Vec<StarPeculiarity>,
-    /// Absolute visual magnitude (derived from luminosity).
     pub absolute_magnitude: f32,
-    /// B-V color index (derived from temperature).
     pub color_bv: f32,
-    /// Stellar flare activity level.
     pub flare_activity: FlareActivity,
 }
 
@@ -53,6 +38,7 @@ pub enum FlareActivity {
 }
 
 impl Star {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         name: Rc<str>,
         mass: f64,
@@ -91,14 +77,12 @@ impl Star {
         }
     }
 
-    /// Returns true if the star is currently in the main sequence phase of its life.
     pub fn is_main_sequence_dwarf(&self) -> bool {
         (self.luminosity_class == StarLuminosityClass::V
             || self.luminosity_class == StarLuminosityClass::IV)
             && self.is_more_luminous_than_brown_dwarf()
     }
 
-    /// Returns true if the star is currently in the main sequence, subgiant or giant phase of its life.
     pub fn is_main_sequence_or_giant(&self) -> bool {
         (self.luminosity_class == StarLuminosityClass::O
             || self.luminosity_class == StarLuminosityClass::Ia
@@ -111,7 +95,6 @@ impl Star {
             && self.is_more_luminous_than_brown_dwarf()
     }
 
-    /// Returns true if the star is of a higher spectral type than a brown dwarf.
     pub fn is_more_luminous_than_brown_dwarf(&self) -> bool {
         discriminant(&self.spectral_type) == discriminant(&StarSpectralType::WR(0))
             || discriminant(&self.spectral_type) == discriminant(&StarSpectralType::O(0))
@@ -123,7 +106,6 @@ impl Star {
             || discriminant(&self.spectral_type) == discriminant(&StarSpectralType::M(0))
     }
 
-    /// Returns the beggining of the minimum orbital separation between this object and the one it orbits in AU.
     pub fn get_minimum_orbital_separation(&self) -> f64 {
         ((1.0
             - self
@@ -136,7 +118,6 @@ impl Star {
             * self.radius) as f64
     }
 
-    /// Returns the end of the minimum orbital separation between this object and the one it orbits in AU.
     pub fn get_maximum_orbital_separation(&self) -> f64 {
         ((1.0
             + self
@@ -150,7 +131,6 @@ impl Star {
     }
 }
 
-/// M_V = M_V_sun - 2.5 * log10(L/L_sun), where M_V_sun = 4.83
 pub fn absolute_magnitude_from_luminosity(luminosity_solar: f32) -> f32 {
     if luminosity_solar <= 0.0 {
         return 99.0;
@@ -158,35 +138,49 @@ pub fn absolute_magnitude_from_luminosity(luminosity_solar: f32) -> f32 {
     4.83 - 2.5 * (luminosity_solar as f64).log10() as f32
 }
 
-/// L/L_sun = 10^((M_V_sun - M_V) / 2.5)
 pub fn luminosity_from_absolute_magnitude(abs_mag: f32) -> f32 {
     10.0_f64.powf(((4.83 - abs_mag) / 2.5) as f64) as f32
 }
 
 impl Display for FlareActivity {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", match self {
-            FlareActivity::VeryQuiet => "Very Quiet",
-            FlareActivity::Quiet => "Quiet",
-            FlareActivity::Moderate => "Moderate",
-            FlareActivity::Active => "Active",
-            FlareActivity::Hyperactive => "Hyperactive",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                FlareActivity::VeryQuiet => "Very Quiet",
+                FlareActivity::Quiet => "Quiet",
+                FlareActivity::Moderate => "Moderate",
+                FlareActivity::Active => "Active",
+                FlareActivity::Hyperactive => "Hyperactive",
+            }
+        )
     }
 }
 
-/// Compute flare activity from spectral type and age.
 pub fn compute_flare_activity(spectral_type: &StarSpectralType, age_gyr: f32) -> FlareActivity {
     let is_young = age_gyr < 1.0;
     match spectral_type {
         StarSpectralType::M(_) => {
-            if is_young { FlareActivity::Hyperactive } else { FlareActivity::Active }
+            if is_young {
+                FlareActivity::Hyperactive
+            } else {
+                FlareActivity::Active
+            }
         }
         StarSpectralType::K(_) => {
-            if is_young { FlareActivity::Active } else { FlareActivity::Moderate }
+            if is_young {
+                FlareActivity::Active
+            } else {
+                FlareActivity::Moderate
+            }
         }
         StarSpectralType::G(_) => {
-            if is_young { FlareActivity::Moderate } else { FlareActivity::Quiet }
+            if is_young {
+                FlareActivity::Moderate
+            } else {
+                FlareActivity::Quiet
+            }
         }
         StarSpectralType::F(_) => FlareActivity::Quiet,
         StarSpectralType::A(_) | StarSpectralType::B(_) | StarSpectralType::O(_) => {
@@ -196,7 +190,6 @@ pub fn compute_flare_activity(spectral_type: &StarSpectralType, age_gyr: f32) ->
     }
 }
 
-/// Approximate B-V color index from temperature (Ballesteros 2012 inverse).
 pub fn temperature_to_bv(temperature: u32) -> f32 {
     let t = temperature as f64;
     if t < 3000.0 {
@@ -208,7 +201,6 @@ pub fn temperature_to_bv(temperature: u32) -> f32 {
     }
 }
 
-/// Convert B-V color index to approximate RGB (sRGB, 0-255).
 pub fn bv_to_rgb(bv: f32) -> (u8, u8, u8) {
     let bv = (bv as f64).clamp(-0.4, 2.0);
     let temp = 4600.0 * (1.0 / (0.92 * bv + 1.7) + 1.0 / (0.92 * bv + 0.62));
@@ -238,22 +230,22 @@ pub fn bv_to_rgb(bv: f32) -> (u8, u8, u8) {
 
 pub fn get_star_color_code(star: &Star) -> &'static str {
     match star.spectral_type {
-        StarSpectralType::WR(_) | StarSpectralType::O(_) => "\x1b[34m", // Blue
-        StarSpectralType::B(_) => "\x1b[1;34m",                         // Bright Blue
-        StarSpectralType::A(_) => "\x1b[1;37m",                         // Bright White
-        StarSpectralType::F(_) => "\x1b[1;33m",                         // Bright Yellow
-        StarSpectralType::G(_) => "\x1b[33m",                           // Yellow
-        StarSpectralType::K(_) => "\x1b[1;31m", // Bright Red (as a stand-in for orange)
-        StarSpectralType::M(_) => "\x1b[31m",   // Red
-        StarSpectralType::L(_) | StarSpectralType::T(_) | StarSpectralType::Y(_) => "\x1b[31m", // Red
+        StarSpectralType::WR(_) | StarSpectralType::O(_) => "\x1b[34m",
+        StarSpectralType::B(_) => "\x1b[1;34m",
+        StarSpectralType::A(_) => "\x1b[1;37m",
+        StarSpectralType::F(_) => "\x1b[1;33m",
+        StarSpectralType::G(_) => "\x1b[33m",
+        StarSpectralType::K(_) => "\x1b[1;31m",
+        StarSpectralType::M(_) => "\x1b[31m",
+        StarSpectralType::L(_) | StarSpectralType::T(_) | StarSpectralType::Y(_) => "\x1b[31m",
         StarSpectralType::DA
         | StarSpectralType::DB
         | StarSpectralType::DC
         | StarSpectralType::DO
         | StarSpectralType::DZ
         | StarSpectralType::DQ
-        | StarSpectralType::DX => "\x1b[1;37m", // Bright White
-        StarSpectralType::XNS => "\x1b[1;34m", // Bright Blue
+        | StarSpectralType::DX => "\x1b[1;37m",
+        StarSpectralType::XNS => "\x1b[1;34m",
         _ => "",
     }
 }

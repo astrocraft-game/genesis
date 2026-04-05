@@ -55,21 +55,8 @@ impl WorldGenerator {
                     special_traits,
                     CelestialBodyCoreHeat::ActiveCore,
                     MagneticFieldStrength::None,
-                    0.0,
-                    Vec::new(),
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    0.0,
-                    WorldTemperatureCategory::Frozen,
-                    WorldClimateType::Dead,
                     Vec::new(),
                     Vec::new(),
-                    None,
-                    None,
                     0.0,
                     false,
                     0.0,
@@ -1725,11 +1712,6 @@ impl WorldGenerator {
             is_moon,
             life_level,
         );
-
-        // Clone values needed for planetary detail before they're moved
-        let detail_atmo_comp = atmospheric_composition.clone();
-        let detail_special_traits = special_traits.clone();
-
         let mut result = OrbitalPoint::new(
             orbital_point_id,
             Some(get_orbit_with_updated_zone(
@@ -1757,45 +1739,8 @@ impl WorldGenerator {
                     special_traits,
                     core_heat,
                     magnetic_field,
-                    atmospheric_pressure,
-                    atmospheric_composition,
-                    hydrosphere,
-                    ice_over_water,
-                    land_area_percentage,
-                    ice_over_land,
-                    volcanism,
-                    tectonics,
-                    humidity,
-                    temperature_category,
-                    climate,
                     Self::generate_resources(body_type, volcanism, size, &seed, coord, system_index, star_id, orbital_point_id),
                     Self::generate_points_of_interest(volcanism, hydrosphere, atmospheric_pressure, life_level, size, &seed, coord, system_index, star_id, orbital_point_id),
-                    Self::generate_surface_map(climate, hydrosphere, ice_over_water, ice_over_land, volcanism, tectonics, gravity, radius, blackbody_temperature, own_orbit.axial_tilt, own_orbit.eccentricity, size, &seed, coord, system_index, star_id, orbital_point_id),
-                    {
-                        // Atmospheric circulation from thermal Rossby number
-                        if atmospheric_pressure > 0.01 {
-                            let rotation_days = own_orbit.rotation.abs();
-                            if rotation_days > 0.01 {
-                                let omega = 2.0 * std::f32::consts::PI / (rotation_days * 86400.0);
-                                let r_planet = radius as f32 * 6.371e6;
-                                let scale_height = 8500.0 * (blackbody_temperature as f32 / 288.0);
-                                let delta_t = 50.0_f32;
-                                let ro = (gravity * scale_height * delta_t) / (omega * omega * r_planet * r_planet);
-                                let cells: u8 = if ro > 10.0 { 1 }
-                                    else if ro > 1.0 { 2 }
-                                    else if ro > 0.1 { 3 }
-                                    else if ro > 0.01 { 5 }
-                                    else { 8 };
-                                let jets = (2 * cells).saturating_sub(1);
-                                let wind = if omega < 1e-6 { WindIntensity::Calm }
-                                    else if cells <= 2 { WindIntensity::Light }
-                                    else if cells <= 3 { WindIntensity::Moderate }
-                                    else if cells <= 5 { WindIntensity::Strong }
-                                    else { WindIntensity::Extreme };
-                                Some(AtmosphericCirculation { cells_per_hemisphere: cells, jet_stream_count: jets, wind_intensity: wind })
-                            } else { None }
-                        } else { None }
-                    },
                     {
                         // Magnetopause: R_mp ~ R * (B / B_earth)^(1/3) * (d_AU / d_earth)^(1/3)
                         let b_ratio: f32 = match magnetic_field {
@@ -1834,22 +1779,6 @@ impl WorldGenerator {
             )),
             orbits.clone(),
         );
-
-        // Generate and attach planetary detail
-        let is_locked = detail_special_traits.iter().any(|t| matches!(t, CelestialBodySpecialTrait::TideLocked(_)));
-        let detail = crate::celestial_body::telluric::detail::generate_planetary_detail(
-            atmospheric_pressure, &detail_atmo_comp, blackbody_temperature,
-            gravity, radius, hydrosphere, ice_over_water, ice_over_land,
-            volcanism, tectonics, magnetic_field, body_type, world_type,
-            life_level, own_orbit.axial_tilt, own_orbit.eccentricity,
-            own_orbit.rotation, is_locked, tidal_heating,
-            &seed, coord, system_index, star_id, orbital_point_id,
-        );
-        if let AstronomicalObject::TelluricBody(ref mut body) = result.object {
-            if let CelestialBodyDetails::Telluric(ref mut details) = body.details {
-                details.planetary_detail = Some(detail);
-            }
-        }
 
         result
     }

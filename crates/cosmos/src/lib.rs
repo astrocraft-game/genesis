@@ -31,6 +31,7 @@ pub mod prelude {
     pub use crate::celestial_body::traits::types::*;
     pub use crate::celestial_body::traits::*;
     pub use crate::celestial_body::types::*;
+    pub use crate::celestial_body::types::ExternalBodyFacts;
     pub use crate::celestial_body::world::types::*;
     pub use crate::celestial_body::world::WorldGenerator;
     pub use crate::celestial_body::CelestialBody;

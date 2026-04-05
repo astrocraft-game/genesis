@@ -25,8 +25,29 @@ pub struct CelestialBodySettings {
     pub do_not_generate_metallic: bool,
 }
 
+/// External astronomy/orbital facts produced by `cosmos`.
+#[derive(Clone, PartialEq, PartialOrd, Debug, Default, Serialize, Deserialize)]
+pub struct ExternalBodyFacts {
+    pub body_id: u32,
+    pub mass: f64,
+    pub radius: f64,
+    pub density: f32,
+    pub gravity: f32,
+    pub blackbody_temperature: u32,
+    pub star_age: f32,
+    pub distance_from_star: f64,
+    pub eccentricity: f32,
+    pub axial_tilt: f32,
+    pub rotation_days: f32,
+    pub is_tidally_locked: bool,
+    pub tidal_heating: u32,
+    pub moon_count: u32,
+    pub has_rings: bool,
+}
+
 #[derive(Clone, PartialEq, PartialOrd, Debug, SmartDefault, Serialize, Deserialize)]
 pub enum CelestialBodyDetails {
+    // Exotic(ExoticBodyDetails),
     #[default]
     Telluric(TelluricBodyDetails),
     Gaseous(GaseousBodyDetails),
@@ -36,6 +57,7 @@ pub enum CelestialBodyDetails {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub enum CelestialBodyComposition {
+    // Exotic,
     Metallic,
     Rocky,
     Gaseous,

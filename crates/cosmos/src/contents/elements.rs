@@ -1158,7 +1158,7 @@ pub(crate) fn generate_random_element(rng: &mut SeededDiceRoller) -> ChemicalCom
     ALL_ELEMENTS[rng.gen_range(0..ALL_ELEMENTS.len())]
 }
 
-pub(crate) fn liquid_majority_composition_likelihood(
+pub fn liquid_majority_composition_likelihood(
     component: ChemicalComponent,
     peculiarities: &[StarPeculiarity],
 ) -> f64 {

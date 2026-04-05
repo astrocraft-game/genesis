@@ -8,5 +8,5 @@ pub mod expansion;
 
 pub use types::LifeLevel;
 pub use species::Species;
+pub use cosmos::prelude::SpaceCoordinates;
 pub use world::prelude::{CelestialBodyWorldType, WorldClimateType, WorldTemperatureCategory};
-pub use world::galaxy_stubs::SpaceCoordinates;

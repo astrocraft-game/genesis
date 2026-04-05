@@ -1,4 +1,4 @@
-PROJECT_NAME := planet_generator
+PROJECT_NAME := genesis
 PROJECT_PACKAGE := $(PROJECT_NAME)
 PROJECT_CAP := $(shell echo $(PROJECT_NAME) | tr '[:lower:]' '[:upper:]')
 CURRENT_VERSION := $(shell grep '^version = ' Cargo.toml | sed -E 's/version = "(.*)"/\1/')

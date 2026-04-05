@@ -28,14 +28,9 @@ impl Display for AstronomicalObject {
                     &star.special_traits.iter().map(|&x| x.to_string()).collect::<Vec<_>>().join(", "),
                 ),
                 AstronomicalObject::TelluricBody(body) => format!(
-                    "[{}], {} {} {}, mass: {} M⊕, rds: {} R⊕ ({} km of diam.), dsity: {} g/cm³, grvty: {} g, temp: {} K ({}° C), tidal: {}, atm: {} atm{}, {}, {}, hydro: {}%, cryo: {}%, volcanism: {}, tectonics: {}, humidity: {}, traits: [{}]",
+                    "[{}], {} {}, mass: {} M⊕, rds: {} R⊕ ({} km of diam.), dsity: {} g/cm³, grvty: {} g, temp: {} K ({}° C), tidal: {}, core: {}, magnetic: {}, traits: [{}]",
                     body.name,
                     body.size,
-                    match &body.details {
-                        CelestialBodyDetails::Telluric(details) =>
-                            format!("{}", details.temperature_category),
-                        _ => "WRONG-TYPE".to_string(),
-                    },
                     match &body.details {
                         CelestialBodyDetails::Telluric(details) =>
                             format!("{} ({})", details.world_type, details.body_type),
@@ -51,55 +46,12 @@ impl Display for AstronomicalObject {
                     body.tidal_heating,
                     match &body.details {
                         CelestialBodyDetails::Telluric(details) =>
-                            StringUtils::to_significant_decimals(details.atmospheric_pressure as f64),
-                        _ => "WRONG-TYPE".to_string(),
-                    },
-                    match &body.details {
-                        CelestialBodyDetails::Telluric(details) => {
-                            if details.atmospheric_composition.len() > 0 {
-                                let composition_string = details.atmospheric_composition.iter().map(|(percentage, component)| {
-                                    format!("{} ({}%)", component, MathUtils::round_f32_to_precision(*percentage, 2))
-                                }).collect::<Vec<_>>().join(", ");
-                                format!(" (of {})", composition_string)
-                            } else {
-                                String::from("")
-                            }
-                        },
-                        _ => "WRONG-TYPE".to_string(),
-                    },
-                    match &body.details {
-                        CelestialBodyDetails::Telluric(details) =>
                             format!("{}", details.core_heat),
                         _ => "WRONG-TYPE".to_string(),
                     },
                     match &body.details {
                         CelestialBodyDetails::Telluric(details) =>
                             format!("{}", details.magnetic_field),
-                        _ => "WRONG-TYPE".to_string(),
-                    },
-                    match &body.details {
-                        CelestialBodyDetails::Telluric(details) =>
-                            StringUtils::to_significant_decimals(details.hydrosphere as f64),
-                        _ => "WRONG-TYPE".to_string(),
-                    },
-                    match &body.details {
-                        CelestialBodyDetails::Telluric(details) =>
-                            StringUtils::to_significant_decimals((details.ice_over_water + details.ice_over_land) as f64),
-                        _ => "WRONG-TYPE".to_string(),
-                    },
-                    match &body.details {
-                        CelestialBodyDetails::Telluric(details) =>
-                            format!("{}% ({})", StringUtils::to_significant_decimals(details.volcanism as f64), details.clone().get_volcanism_level()),
-                        _ => "WRONG-TYPE".to_string(),
-                    },
-                    match &body.details {
-                        CelestialBodyDetails::Telluric(details) =>
-                            format!("{}% ({})", StringUtils::to_significant_decimals(details.tectonic_activity as f64), details.clone().get_tectonics_level()),
-                        _ => "WRONG-TYPE".to_string(),
-                    },
-                    match &body.details {
-                        CelestialBodyDetails::Telluric(details) =>
-                            format!("{}% ({})", StringUtils::to_significant_decimals(details.humidity as f64), details.clone().get_tectonics_level()),
                         _ => "WRONG-TYPE".to_string(),
                     },
                     match &body.details {

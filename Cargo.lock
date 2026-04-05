@@ -49,6 +49,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
 
 [[package]]
+name = "genesis"
+version = "0.0.7-pre-alpha"
+dependencies = [
+ "cosmos",
+ "crafting",
+ "life",
+ "world",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -97,6 +107,7 @@ checksum = "2874a2af47a2325c2001a6e6fad9b16a53b802102b528163885171cf92b15976"
 name = "life"
 version = "0.1.0"
 dependencies = [
+ "cosmos",
  "seeded_dice_roller",
  "serde",
  "smart-default",
@@ -135,16 +146,6 @@ checksum = "3672b37090dbd86368a4145bc067582552b29c27377cad4e0a306c97f9bd7772"
 dependencies = [
  "fixedbitset",
  "indexmap",
-]
-
-[[package]]
-name = "planet_generator"
-version = "0.0.7-pre-alpha"
-dependencies = [
- "cosmos",
- "crafting",
- "life",
- "world",
 ]
 
 [[package]]
@@ -321,15 +322,6 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 [[package]]
 name = "world"
 version = "0.1.0"
-dependencies = [
- "log",
- "ordered-float",
- "seeded_dice_roller",
- "serde",
- "smart-default",
- "strum",
- "strum_macros",
-]
 
 [[package]]
 name = "zerocopy"

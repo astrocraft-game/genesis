@@ -1,5 +1,6 @@
 use crate::internal::*;
 use crate::prelude::*;
+
 pub mod gaseous;
 pub mod generator;
 pub mod icy;
@@ -11,35 +12,23 @@ pub mod world;
 
 #[derive(Clone, PartialEq, PartialOrd, Debug, SmartDefault, Serialize, Deserialize)]
 pub struct CelestialBody {
-    /// Is this body a simple stub to be redesigned later?
     stub: bool,
-    /// This body's name.
     #[default("default")]
     pub name: Rc<str>,
-    /// The body's own orbit, along which it revolves.
     pub orbit: Option<Orbit>,
-    /// The id of the orbital point this body inhabits.
     pub orbital_point_id: u32,
-    /// This body's mass, in Earth's masses.
     pub mass: f64,
-    /// This body's radius, in Earth's radii.
     pub radius: f64,
-    /// This body's density, in g/cm³.
     pub density: f32,
-    /// This body's surface gravity, in Gs.
     pub gravity: f32,
-    /// This body's blackbody temperature, in Kelvins.
     pub blackbody_temperature: u32,
-    /// The size class in which this body falls.
     pub size: CelestialBodySize,
-    /// Specific body details.
     pub details: CelestialBodyDetails,
-    /// A measure of the tidal friction caused on this body by the resonance of its orbit with its neighbors orbits.
     pub tidal_heating: u32,
 }
 
 impl CelestialBody {
-    /// Creates a new [CelestialBody].
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         orbit: Option<Orbit>,
         orbital_point_id: u32,
@@ -69,8 +58,48 @@ impl CelestialBody {
         }
     }
 
-    /// Indicates whether this body is a stub (a temporary body placed here before proper generation).
     pub fn is_stub(self) -> bool {
         self.stub
+    }
+
+    pub fn as_stub(mut self) -> Self {
+        self.stub = true;
+        self
+    }
+
+    pub fn external_facts(
+        &self,
+        star_age_gyr: f32,
+        moon_count: u32,
+        has_rings: bool,
+    ) -> ExternalBodyFacts {
+        let orbit = self.orbit.clone().unwrap_or_default();
+        let is_tidally_locked = match &self.details {
+            CelestialBodyDetails::Telluric(details) => details
+                .special_traits
+                .iter()
+                .any(|trait_| matches!(trait_, CelestialBodySpecialTrait::TideLocked(_))),
+            _ => false,
+        };
+
+        ExternalBodyFacts {
+            body_id: self.orbital_point_id,
+            mass: self.mass,
+            radius: self.radius,
+            density: self.density,
+            gravity: self.gravity,
+            blackbody_temperature: self.blackbody_temperature,
+            star_age: star_age_gyr,
+            distance_from_star: orbit
+                .average_distance_from_system_center
+                .max(orbit.average_distance),
+            eccentricity: orbit.eccentricity,
+            axial_tilt: orbit.axial_tilt,
+            rotation_days: orbit.rotation,
+            is_tidally_locked,
+            tidal_heating: self.tidal_heating,
+            moon_count,
+            has_rings,
+        }
     }
 }

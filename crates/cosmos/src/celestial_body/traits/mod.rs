@@ -4,15 +4,12 @@ use std::fmt::Display;
 
 pub mod types;
 
-/// Peculiarities a celestial body might have.
 #[derive(
     Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug, Hash, SmartDefault, Serialize, Deserialize,
 )]
 pub enum CelestialBodySpecialTrait {
-    /// This body has the exact traits that one might expect for a member of its type and subtype.
     #[default]
     NoPeculiarity,
-    /// This Gas Giant was the first to arise from its star proto-planetary disk.
     ProtoGiant,
     RetrogradeOrbit,
     SpecificGeologicActivity(TelluricGeologicActivity),
@@ -26,7 +23,6 @@ pub enum CelestialBodySpecialTrait {
     SubSurfaceOceans(ChemicalComponent),
     Oceans(ChemicalComponent),
     Lakes(ChemicalComponent),
-    /// In this body, the element is more or less present by the amount
     UnusualElementPresence((ChemicalComponent, ElementPresenceOccurrence)),
 }
 
@@ -44,7 +40,9 @@ impl Display for CelestialBodySpecialTrait {
             CelestialBodySpecialTrait::UnusualRotation(s) => write!(f, "{}", s),
             CelestialBodySpecialTrait::UnusualCore(s) => write!(f, "{}", s),
             CelestialBodySpecialTrait::TideLocked(s) => write!(f, "Tide-Locked {}", s),
-            CelestialBodySpecialTrait::SubSurfaceOceans(s) => write!(f, "{} Sub-Surface Oceans", s),
+            CelestialBodySpecialTrait::SubSurfaceOceans(s) => {
+                write!(f, "{} Sub-Surface Oceans", s)
+            }
             CelestialBodySpecialTrait::Oceans(s) => write!(f, "{} Oceans", s),
             CelestialBodySpecialTrait::Lakes(s) => write!(f, "{} Lakes", s),
             CelestialBodySpecialTrait::UnusualElementPresence(difference) => {

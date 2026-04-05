@@ -321,7 +321,7 @@ pub fn collect_all_zones(all_objects: &mut Vec<OrbitalPoint>) -> Vec<StarZone> {
     all_zones
 }
 
-pub(crate) fn get_orbit_with_updated_zone(orbit: Orbit, blackbody_temperature: u32) -> Orbit {
+pub fn get_orbit_with_updated_zone(orbit: Orbit, blackbody_temperature: u32) -> Orbit {
     let temp_category = get_category_from_temperature(blackbody_temperature);
 
     Orbit {
