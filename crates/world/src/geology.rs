@@ -3,6 +3,7 @@
 
 use crate::grid::{BoundaryKind, GridResolution, Plate, PlateKind, SurfaceGrid};
 use crate::types::PlanetSimulationInput;
+use noise::{NoiseFn, SuperSimplex};
 use seeded_dice_roller::SeededDiceRoller;
 
 pub use crate::types::{
@@ -230,27 +231,56 @@ fn apply_boundary_modifiers(grid: &mut SurfaceGrid, rng: &mut SeededDiceRoller) 
     }
 }
 
-/// Overlay 4-octave value noise for terrain detail.
+/// Overlay domain-warped fractal simplex noise for terrain detail.
+///
+/// Uses `SuperSimplex` from the `noise` crate as the gradient-noise source,
+/// with a two-noise domain-warp that displaces the sample coordinates by a
+/// low-frequency secondary field. This breaks up the axis-aligned artefacts
+/// of plain fBm and produces valley-and-ridge shapes closer to real terrain.
 fn apply_fractal_noise(grid: &mut SurfaceGrid, rng: &mut SeededDiceRoller) {
-    let seed_offset = rng.gen_u32();
-    let amplitude = 800.0;
+    let elev_seed = rng.gen_u32();
+    let warp_seed_x = rng.gen_u32();
+    let warp_seed_y = rng.gen_u32();
+    let amplitude = 900.0;
+    // SuperSimplex output is in [-1, 1] (approximately).
+    let elev_noise = SuperSimplex::new(elev_seed);
+    let warp_noise_x = SuperSimplex::new(warp_seed_x);
+    let warp_noise_y = SuperSimplex::new(warp_seed_y);
+
+    // Octaves: amplitude 1.0, 0.5, 0.25, 0.125 at frequencies 4, 8, 16, 32.
+    // Total amplitude (for normalisation) = 1.875.
+    let octaves = 4;
+    let base_freq = 4.0;
+    // Secondary warp noise runs at a lower frequency than the base terrain.
+    let warp_freq = 2.0;
+    let warp_strength = 0.25;
+
     for r in 0..grid.height {
         for c in 0..grid.width {
             let idx = grid.idx(c, r);
-            let nx = c as f32 / grid.width as f32 * std::f32::consts::TAU;
-            let ny = (r as f32 / grid.height as f32) * std::f32::consts::PI;
-            let mut sample = 0.0f32;
-            let mut amp = 1.0f32;
-            let mut freq = 4.0f32;
-            let mut total_amp = 0.0f32;
-            for _octave in 0..4 {
-                sample += amp * hash_noise_2d(nx * freq, ny * freq, seed_offset);
+            // Spherical-like coordinates in [0, 1].
+            let nx = c as f64 / grid.width as f64;
+            let ny = r as f64 / grid.height as f64;
+
+            // Domain-warp offsets sampled from independent noise fields.
+            let wx = warp_noise_x.get([nx * warp_freq, ny * warp_freq]);
+            let wy = warp_noise_y.get([nx * warp_freq, ny * warp_freq]);
+            let warped_x = nx + wx * warp_strength;
+            let warped_y = ny + wy * warp_strength;
+
+            // Fractal Brownian motion from the (warped) coordinates.
+            let mut sample = 0.0f64;
+            let mut amp = 1.0f64;
+            let mut freq = base_freq;
+            let mut total_amp = 0.0f64;
+            for _ in 0..octaves {
+                sample += amp * elev_noise.get([warped_x * freq, warped_y * freq]);
                 total_amp += amp;
                 amp *= 0.5;
                 freq *= 2.0;
             }
             sample /= total_amp;
-            grid.layers.elevation_m[idx] += sample * amplitude;
+            grid.layers.elevation_m[idx] += (sample as f32) * amplitude;
         }
     }
 }
@@ -303,37 +333,6 @@ fn great_circle_distance(lat1: f32, lon1: f32, lat2: f32, lon2: f32) -> f32 {
     (lat1.sin() * lat2.sin() + lat1.cos() * lat2.cos() * dlon.cos())
         .clamp(-1.0, 1.0)
         .acos()
-}
-
-/// Cheap deterministic 2D value noise using integer hashing + bilinear
-/// interpolation. Produces values in [-1, 1].
-fn hash_noise_2d(x: f32, y: f32, seed: u32) -> f32 {
-    let x0 = x.floor();
-    let y0 = y.floor();
-    let xf = x - x0;
-    let yf = y - y0;
-    let x0i = x0 as i32;
-    let y0i = y0 as i32;
-    let v00 = hash_to_float(x0i, y0i, seed);
-    let v10 = hash_to_float(x0i + 1, y0i, seed);
-    let v01 = hash_to_float(x0i, y0i + 1, seed);
-    let v11 = hash_to_float(x0i + 1, y0i + 1, seed);
-    // Smoothstep the interpolation fractions.
-    let sx = xf * xf * (3.0 - 2.0 * xf);
-    let sy = yf * yf * (3.0 - 2.0 * yf);
-    let a = v00 + (v10 - v00) * sx;
-    let b = v01 + (v11 - v01) * sx;
-    a + (b - a) * sy
-}
-
-fn hash_to_float(x: i32, y: i32, seed: u32) -> f32 {
-    let mut h = (x as u32).wrapping_mul(374761393);
-    h = h.wrapping_add((y as u32).wrapping_mul(668265263));
-    h = h.wrapping_add(seed.wrapping_mul(1274126177));
-    h ^= h >> 13;
-    h = h.wrapping_mul(1274126177);
-    h ^= h >> 16;
-    (h as f32 / u32::MAX as f32) * 2.0 - 1.0
 }
 
 #[cfg(test)]
@@ -434,6 +433,32 @@ mod tests {
             frac > 0.05 && frac < 0.80,
             "boundary fraction {:.2} out of expected range",
             frac
+        );
+    }
+
+    #[test]
+    fn simplex_noise_varies_elevation_within_plates() {
+        // Noise should create sub-plate elevation variety; pick any single
+        // plate and check that its tiles aren't all at the same elevation.
+        let g = generate_geology(&earth_like_input(), 71.0, GridResolution::Fast, "noise");
+        let plate0: Vec<f32> = g
+            .layers
+            .elevation_m
+            .iter()
+            .zip(g.layers.plate_id.iter())
+            .filter(|(_, &pid)| pid == 0)
+            .map(|(&e, _)| e)
+            .collect();
+        if plate0.len() < 10 {
+            return; // plate 0 is too small to be a meaningful sample
+        }
+        let min = plate0.iter().cloned().fold(f32::INFINITY, f32::min);
+        let max = plate0.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+        let spread = max - min;
+        assert!(
+            spread > 500.0,
+            "plate 0 elevations only span {} m (expected >500)",
+            spread
         );
     }
 

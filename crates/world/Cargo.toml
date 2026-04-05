@@ -5,4 +5,5 @@ edition = "2021"
 description = "Planetary interior, atmosphere, climate, ocean, geology, and surface modeling"
 
 [dependencies]
+noise = "0.9"
 seeded_dice_roller = "1.0"
