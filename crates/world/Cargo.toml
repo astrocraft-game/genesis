@@ -11,6 +11,7 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 
 [features]
 serde = ["dep:serde"]
+erosion = []
 
 [dev-dependencies]
 serde_json = "1.0"

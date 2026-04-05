@@ -613,6 +613,11 @@ pub fn generate_surface_grid(
     seed: &str,
 ) -> SurfaceGrid {
     let mut grid = crate::geology::generate_geology(context, hydrosphere_pct, resolution, seed);
+    #[cfg(feature = "erosion")]
+    {
+        crate::erosion::erode(&mut grid, crate::erosion::ErosionParams::default(), seed);
+        grid.sea_level_m = crate::geology::find_sea_level(&mut grid, hydrosphere_pct);
+    }
     crate::climate::generate_temperature(context, greenhouse_delta_k, &mut grid);
     crate::climate::generate_wind(context, atmospheric_pressure, &mut grid);
     crate::hydrology::generate_precipitation(

@@ -28,17 +28,17 @@ Goal: deepen the existing surface-maps pipeline without adding new subsystems.
 - [x] Re-tuned amplitude from 800 m → 900 m for simplex gradient characteristics.
 - [x] Added test verifying sub-plate elevation variety (>500 m spread).
 
-### A2 — Hydraulic + thermal erosion
+### A2 — Hydraulic + thermal erosion ✅
 
-- [ ] Feature-flag `erosion` on the `world` crate (opt-in, expensive).
-- [ ] Particle-based hydraulic erosion (10k-50k particles): each droplet
+- [x] Feature-flag `erosion` on the `world` crate (opt-in, expensive).
+- [x] Particle-based hydraulic erosion (10k-50k particles): each droplet
       slides downhill, picking up sediment proportional to slope and
       velocity, depositing on lower-gradient cells.
-- [ ] Thermal erosion: iteratively spread material where slope exceeds
+- [x] Thermal erosion: iteratively spread material where slope exceeds
       the talus angle (~33° for rock, ~45° for sand).
-- [ ] Run after base elevation, before sea-level binary search.
-- [ ] Tests: erosion creates valleys (max-to-min elevation delta widens
-      on land), rivers carved into geology, coarsening of coastlines.
+- [x] Run after base elevation, before sea-level binary search.
+- [x] Tests: erosion lowers peaks and fills basins, thermal erosion
+      reduces steep slopes, deterministic, mass-conserving within tolerance.
 
 ### A3 — Seasonal monthly climate grids
 

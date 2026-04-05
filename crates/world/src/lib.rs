@@ -21,6 +21,8 @@
 pub mod atmosphere;
 pub mod climate;
 pub mod detail;
+#[cfg(feature = "erosion")]
+pub mod erosion;
 pub mod events;
 pub mod features;
 pub mod geology;

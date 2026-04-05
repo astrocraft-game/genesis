@@ -288,7 +288,7 @@ fn apply_fractal_noise(grid: &mut SurfaceGrid, rng: &mut SeededDiceRoller) {
 /// Binary-search a sea level such that the ocean coverage matches the
 /// target hydrosphere fraction (%). Updates `is_ocean`, returns the
 /// chosen sea level in metres.
-fn find_sea_level(grid: &mut SurfaceGrid, hydrosphere_pct: f32) -> f32 {
+pub fn find_sea_level(grid: &mut SurfaceGrid, hydrosphere_pct: f32) -> f32 {
     let target = hydrosphere_pct.clamp(0.0, 100.0) / 100.0;
     let (mut lo, mut hi) = {
         let mut min = f32::INFINITY;
