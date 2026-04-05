@@ -55,6 +55,7 @@ dependencies = [
  "cosmos",
  "crafting",
  "life",
+ "seeded_dice_roller",
  "world",
 ]
 

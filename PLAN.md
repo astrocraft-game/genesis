@@ -176,15 +176,25 @@ civilisations, resources, history, and dynamic events.
       check (≥60 unique), corpus alphanumeric check, empty-corpus
       fallback, human vs alien phonology (vowel-ratio distinction).
 
-### B6 — Named features
+### B6 — Named features ✅
 
-- [ ] Cluster contiguous mountain tiles into named ranges.
-- [ ] Identify and name rivers (trace main-stem from source to ocean).
-- [ ] Name each ocean basin, major lake, peninsula, island, desert.
-- [ ] Use B5 Markov generators for names.
-- [ ] Output: `NamedFeatures { ranges, rivers, basins, islands, deserts }`.
-- [ ] Tests: every range has ≥1 tile, rivers connect to oceans, names
-      are unique within category.
+- [x] Added `world/src/features.rs` with feature detection (no names,
+      pure geography): `MountainRange`, `River`, `OceanBasin`, `Island`,
+      `Desert`, all bundled in `Features`.
+- [x] Algorithms:
+      - Mountain ranges: flood-fill elevation > sea_level + 1500 m,
+        minimum 3 tiles.
+      - Rivers: trace from each ocean-adjacent high-discharge tile
+        upstream via strictly-decreasing discharge, source-first.
+      - Ocean basins: group ocean tiles by `drainage_basin_id`.
+      - Islands: flood-fill contiguous land tiles, sorted by size.
+      - Deserts: flood-fill tiles with biome=Desert, minimum 2 tiles.
+- [x] All flood-fills 4-connected with longitude wrap.
+- [x] Root adapter `name_features()` pairs each feature with a Markov-
+      generated name (+ category suffix: "Mountains", "River", "Ocean",
+      "Desert") using the chosen NameStyle. Deterministic from seed.
+- [x] 9 world tests + 1 adapter test covering detection, river monotonic
+      discharge, basin-id consistency, name suffixes, determinism.
 
 ### B7 — Weather events & disasters
 

@@ -21,6 +21,7 @@
 pub mod atmosphere;
 pub mod climate;
 pub mod detail;
+pub mod features;
 pub mod geology;
 pub mod grid;
 pub mod hydrology;

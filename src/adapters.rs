@@ -337,6 +337,84 @@ pub fn resource_density_from_map(map: &world::resources::ResourceMap) -> Vec<f32
         .collect()
 }
 
+/// Named geographic features: pairs each detected feature with a
+/// Markov-generated name in the chosen style.
+#[derive(Clone, Debug, Default)]
+pub struct NamedFeatures {
+    pub mountain_ranges: Vec<(String, world::features::MountainRange)>,
+    pub rivers: Vec<(String, world::features::River)>,
+    pub ocean_basins: Vec<(String, world::features::OceanBasin)>,
+    pub islands: Vec<(String, world::features::Island)>,
+    pub deserts: Vec<(String, world::features::Desert)>,
+}
+
+/// Pair each geographic feature with a generated name in the given style.
+/// Names are deterministic from `seed` + a per-category scope key.
+pub fn name_features(
+    features: &world::features::Features,
+    style: life::NameStyle,
+    seed: &str,
+) -> NamedFeatures {
+    use seeded_dice_roller::SeededDiceRoller;
+    let gen = life::MarkovNameGen::for_style(style);
+    let name_one = |rng: &mut SeededDiceRoller, suffix: &str| -> String {
+        let stem = gen.generate(rng, 4, 10);
+        if suffix.is_empty() {
+            stem
+        } else {
+            format!("{} {}", stem, suffix)
+        }
+    };
+
+    let mut rng = SeededDiceRoller::new(seed, "features_ranges");
+    let mountain_ranges = features
+        .mountain_ranges
+        .iter()
+        .cloned()
+        .map(|r| (name_one(&mut rng, "Mountains"), r))
+        .collect();
+
+    let mut rng = SeededDiceRoller::new(seed, "features_rivers");
+    let rivers = features
+        .rivers
+        .iter()
+        .cloned()
+        .map(|r| (name_one(&mut rng, "River"), r))
+        .collect();
+
+    let mut rng = SeededDiceRoller::new(seed, "features_basins");
+    let ocean_basins = features
+        .ocean_basins
+        .iter()
+        .cloned()
+        .map(|b| (name_one(&mut rng, "Ocean"), b))
+        .collect();
+
+    let mut rng = SeededDiceRoller::new(seed, "features_islands");
+    let islands = features
+        .islands
+        .iter()
+        .cloned()
+        .map(|i| (name_one(&mut rng, ""), i))
+        .collect();
+
+    let mut rng = SeededDiceRoller::new(seed, "features_deserts");
+    let deserts = features
+        .deserts
+        .iter()
+        .cloned()
+        .map(|d| (name_one(&mut rng, "Desert"), d))
+        .collect();
+
+    NamedFeatures {
+        mountain_ranges,
+        rivers,
+        ocean_basins,
+        islands,
+        deserts,
+    }
+}
+
 /// Build crafting planetary conditions from a species' tech level.
 ///
 /// Returns `None` for non-sapient species (tech_level unset). Substance
@@ -806,5 +884,73 @@ mod tests {
         // At least a few land tiles should have water access.
         let access_count = water.iter().filter(|&&w| w > 0.5).count();
         assert!(access_count > 0);
+    }
+
+    #[test]
+    fn named_features_use_markov_names() {
+        use world::climate::{generate_biomes, generate_temperature, generate_wind};
+        use world::features::detect_features;
+        use world::geology::generate_geology;
+        use world::grid::GridResolution;
+        use world::hydrology::{generate_hydrology, generate_precipitation};
+        use world::ocean::generate_ocean_dynamics;
+        use world::types::StarContext;
+
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut g = generate_geology(&input, 71.0, GridResolution::Fast, "named");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_precipitation(&input, 1.0, 71.0, &mut g);
+        generate_ocean_dynamics(&mut g);
+        generate_hydrology(1.0, &mut g);
+        generate_biomes(&mut g);
+
+        let features = detect_features(&g);
+        let named = name_features(&features, life::NameStyle::FantasyHuman, "named");
+
+        // Each named feature has a non-empty name.
+        for (name, _) in &named.mountain_ranges {
+            assert!(!name.is_empty());
+            assert!(name.ends_with("Mountains"));
+        }
+        for (name, _) in &named.rivers {
+            assert!(name.ends_with("River"));
+        }
+        for (name, _) in &named.ocean_basins {
+            assert!(name.ends_with("Ocean"));
+        }
+        for (name, _) in &named.deserts {
+            assert!(name.ends_with("Desert"));
+        }
+        assert_eq!(named.mountain_ranges.len(), features.mountain_ranges.len());
+        assert_eq!(named.ocean_basins.len(), features.ocean_basins.len());
+
+        // Determinism: same seed produces same names.
+        let named2 = name_features(&features, life::NameStyle::FantasyHuman, "named");
+        assert_eq!(
+            named
+                .mountain_ranges
+                .iter()
+                .map(|(n, _)| n.clone())
+                .collect::<Vec<_>>(),
+            named2
+                .mountain_ranges
+                .iter()
+                .map(|(n, _)| n.clone())
+                .collect::<Vec<_>>()
+        );
     }
 }

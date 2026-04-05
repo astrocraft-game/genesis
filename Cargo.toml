@@ -18,3 +18,4 @@ cosmos = { path = "crates/cosmos" }
 world = { path = "crates/world" }
 life = { path = "crates/life" }
 crafting = { path = "crates/crafting" }
+seeded_dice_roller = "1.0"
