@@ -292,6 +292,51 @@ pub fn resource_map_to_substance_set(
     out
 }
 
+/// Derive a per-tile water-access score from a `SurfaceGrid`. A tile
+/// scores 1.0 if it borders the ocean or has significant river discharge,
+/// tapering to 0.0 at dry interior tiles.
+pub fn water_access_from_grid(grid: &SurfaceGrid) -> Vec<f32> {
+    let w = grid.width as usize;
+    let h = grid.height as usize;
+    let n = w * h;
+    let mut out = vec![0.0f32; n];
+    for (idx, slot) in out.iter_mut().enumerate() {
+        if grid.layers.is_ocean[idx] {
+            continue;
+        }
+        // Start with a river score based on discharge.
+        let discharge = grid.layers.river_discharge_m3s[idx];
+        let river_score = (discharge / 100.0).min(1.0);
+        // Coastal bonus: check 4 neighbours (with longitude wrap) for ocean.
+        let r = idx / w;
+        let c = idx % w;
+        let neighbours = [
+            (c, r.saturating_sub(1)),
+            (c, (r + 1).min(h - 1)),
+            ((c + w - 1) % w, r),
+            ((c + 1) % w, r),
+        ];
+        let is_coastal = neighbours
+            .iter()
+            .any(|&(nc, nr)| grid.layers.is_ocean[nr * w + nc]);
+        let coastal_score = if is_coastal { 1.0 } else { 0.0 };
+        *slot = river_score.max(coastal_score);
+    }
+    out
+}
+
+/// Derive a per-tile resource density score (0.0 – 1.0) from a ResourceMap.
+/// Tiles with many distinct resources score higher; normalised to the
+/// maximum count observed in the map.
+pub fn resource_density_from_map(map: &world::resources::ResourceMap) -> Vec<f32> {
+    let max_count = map.per_tile.iter().map(|t| t.len()).max().unwrap_or(1) as f32;
+    let max_count = max_count.max(1.0);
+    map.per_tile
+        .iter()
+        .map(|t| (t.len() as f32 / max_count).clamp(0.0, 1.0))
+        .collect()
+}
+
 /// Build crafting planetary conditions from a species' tech level.
 ///
 /// Returns `None` for non-sapient species (tech_level unset). Substance
@@ -638,5 +683,128 @@ mod tests {
         );
         // Ocean tiles always produce Salt.
         assert!(substances.contains(&crafting::Substance::Salt));
+    }
+
+    #[test]
+    fn settlements_placed_on_earth_like_world() {
+        use life::{
+            compute_settlement_suitability, place_settlements, Climate, Habitat, LifeLevel,
+            SpeciesGenerationInput, Temperature,
+        };
+        use world::climate::{generate_biomes, generate_temperature, generate_wind};
+        use world::geology::generate_geology;
+        use world::grid::GridResolution;
+        use world::hydrology::{generate_hydrology, generate_precipitation};
+        use world::ocean::generate_ocean_dynamics;
+        use world::resources::generate_resources;
+        use world::types::StarContext;
+
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut g = generate_geology(&input, 71.0, GridResolution::Fast, "settle");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_precipitation(&input, 1.0, 71.0, &mut g);
+        generate_ocean_dynamics(&mut g);
+        generate_hydrology(1.0, &mut g);
+        generate_biomes(&mut g);
+        let habitat = surface_grid_to_habitat_grid(&g);
+        let resources = generate_resources(&g);
+
+        // Generate a species and compute its ranges.
+        let species_input = SpeciesGenerationInput {
+            habitat: Habitat::Terrestrial,
+            climate: Climate::Terrestrial,
+            temperature: Temperature::Temperate,
+            gravity: 1.0,
+            atmospheric_pressure: 1.0,
+            hydrosphere: 71.0,
+            life_level: LifeLevel::Sentient,
+            seed: "settle".into(),
+            scope_key: "gaia".into(),
+        };
+        let species = life::generator::generate_species_from_world(&species_input).unwrap();
+        let range = crate::generate_species_on_surface(&g, &species, 1.0, LifeLevel::Sentient);
+
+        // Build the scoring inputs.
+        let water = water_access_from_grid(&g);
+        let res_score = resource_density_from_map(&resources);
+        let suitability =
+            compute_settlement_suitability(&habitat, &range.habitability, &water, &res_score);
+
+        // Place up to 8 settlements with separation 5 tiles.
+        let settlements = place_settlements(&suitability, &habitat, species.name.clone(), 8, 5);
+        assert!(
+            !settlements.is_empty(),
+            "Earth-like world should support at least one settlement"
+        );
+        assert!(
+            settlements.len() <= 8,
+            "settlement cap exceeded: {}",
+            settlements.len()
+        );
+        // Highest-scoring settlement should not be on the ocean.
+        for s in &settlements {
+            assert!(!g.layers.is_ocean[s.tile_idx]);
+        }
+        // Settlements should be ordered by suitability.
+        for w in settlements.windows(2) {
+            assert!(w[0].suitability >= w[1].suitability);
+        }
+    }
+
+    #[test]
+    fn water_access_flags_coasts_and_rivers() {
+        use world::climate::{generate_biomes, generate_temperature, generate_wind};
+        use world::geology::generate_geology;
+        use world::grid::GridResolution;
+        use world::hydrology::{generate_hydrology, generate_precipitation};
+        use world::ocean::generate_ocean_dynamics;
+        use world::types::StarContext;
+
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut g = generate_geology(&input, 71.0, GridResolution::Fast, "water");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_precipitation(&input, 1.0, 71.0, &mut g);
+        generate_ocean_dynamics(&mut g);
+        generate_hydrology(1.0, &mut g);
+        generate_biomes(&mut g);
+        let water = water_access_from_grid(&g);
+        assert_eq!(water.len(), g.tile_count());
+        // Ocean tiles score 0 (no interior water needed).
+        for (idx, &w_score) in water.iter().enumerate() {
+            if g.layers.is_ocean[idx] {
+                assert_eq!(w_score, 0.0);
+            }
+        }
+        // At least a few land tiles should have water access.
+        let access_count = water.iter().filter(|&&w| w > 0.5).count();
+        assert!(access_count > 0);
     }
 }

@@ -117,19 +117,22 @@ civilisations, resources, history, and dynamic events.
 - [x] `ResourceMap` supports `count(resource)` and `distinct_resources()`.
 - [x] 9 world tests + 1 adapter test covering all major rules.
 
-### B2 — Settlement placement
+### B2 — Settlement placement ✅
 
-- [ ] New crate? or extend `life`? — lean toward `life/src/settlement.rs`.
-- [ ] Score each land tile for settlement suitability:
-      - `habitability` (from existing SpeciesRange)
-      - nearby ocean or river (coastal/riverine preference)
-      - nearby resources (from B1)
-      - elevation penalty (too high = hard)
-      - climate moderation (Mediterranean/Temperate preferred)
-- [ ] Greedy placement with minimum separation: drop top-N tiles, each
-      blocking a radius around it.
-- [ ] Assign to species/civilisation (uses life's existing species).
-- [ ] Tests: coastal/river tiles favoured, top settlements don't cluster.
+- [x] Added `life/src/settlement.rs` with `Settlement` struct and two
+      public functions.
+- [x] `compute_settlement_suitability()` combines per-tile habitability,
+      water access, resource density, biome moderation, and elevation
+      penalty into a multiplicative score (0–1). Ocean/unhabitable tiles
+      score 0; extreme elevation (>4500 m) scores 0.
+- [x] `place_settlements()` — greedy top-N selection with Chebyshev
+      minimum-separation radius (longitude-wrapped), ordered by
+      suitability, with population order derived from score (3-9).
+- [x] Biome moderation table: TemperateForest/Grassland 1.0 → IceCap 0.0.
+- [x] Root adapters: `water_access_from_grid()` (coastal + riverine) and
+      `resource_density_from_map()` (normalised unique-resource count).
+- [x] 10 life tests + 2 adapter tests, including end-to-end Earth-like
+      world settlement placement using real SurfaceGrid + ResourceMap.
 
 ### B3 — Trade routes
 
