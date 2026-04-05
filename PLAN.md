@@ -201,23 +201,28 @@ civilisations, resources, history, and dynamic events.
 - [x] 9 world tests + 1 adapter test covering detection, river monotonic
       discharge, basin-id consistency, name suffixes, determinism.
 
-### B7 — Weather events & disasters
+### B7 — Weather events & disasters ✅
 
-- [ ] New file `world/src/events.rs` — episodic per-tile events.
-- [ ] Event types:
-      - **Volcanic eruption**: at convergent/divergent boundaries,
-        chance scales with volcanism
-      - **Earthquake**: at all tectonic boundaries
-      - **Hurricane/cyclone**: tropical oceans >27°C SST
-      - **Wildfire**: arid biomes during hot-summer seasons
-      - **Drought**: below-average precipitation years
-      - **Flood**: high-discharge rivers during wet seasons
-      - **Meteorite impact**: random, low probability
-- [ ] Event distribution: return Vec<Event> with location, magnitude,
-      year, duration.
-- [ ] Deterministic, based on grid state + seed.
-- [ ] Tests: no volcanoes in plate interiors, hurricanes avoid cold SST,
-      wildfires need both heat and fuel.
+- [x] Added `world/src/events.rs` with `EventKind` (non_exhaustive) and
+      `NaturalEvent { kind, tile_idx, year, magnitude, duration_days }`.
+- [x] 7 event types with eligibility rules:
+      - **VolcanicEruption**: continental tiles on Convergent/Divergent
+        boundaries, 0.1% per tile-year.
+      - **Earthquake**: any tile with tectonic_boundary ≠ None, 0.4% per
+        tile-year, instantaneous.
+      - **Hurricane**: ocean tiles with SST > 27 °C, 1.0% per tile-year,
+        3–14 days.
+      - **Wildfire**: Desert/Savanna land with summer temp > 28 °C, 2.0%
+        per tile-year, 1–30 days.
+      - **Drought**: 0.5% per drainage basin per year, 90–365 days.
+      - **Flood**: land tiles with discharge > 500 m³/s, 1.0% per
+        tile-year, 1–30 days.
+      - **MeteoriteImpact**: 0.05% per planet per year, random tile.
+- [x] Fully deterministic from `(grid, years, seed)`; uses `BTreeSet`
+      over basin IDs so iteration order stays stable.
+- [x] 11 tests: event generation, determinism, volcano/quake/hurricane/
+      wildfire/flood eligibility, impact rarity, magnitude range,
+      year bounds, year-scaling.
 
 ### B8 — Ecosystem dynamics
 
