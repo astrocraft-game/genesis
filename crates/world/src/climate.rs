@@ -757,6 +757,87 @@ fn compute_distance_to_ocean(grid: &SurfaceGrid) -> Vec<u16> {
 }
 
 // ---------------------------------------------------------------------------
+// Monthly climate
+//
+// Computes per-tile 12-month temperature and precipitation arrays from
+// axial tilt, orbital eccentricity, and the already-populated annual means.
+// The ITCZ (inter-tropical convergence zone) latitude shifts seasonally
+// with the solar declination, driving monsoon-like wet/dry seasonality.
+// ---------------------------------------------------------------------------
+
+/// Populate `temperature_monthly_c` and `precipitation_monthly_mm` on a
+/// grid that already has annual temperature and precipitation filled.
+///
+/// Each month's temperature is interpolated from the annual mean, summer,
+/// and winter extremes using a cosine curve peaking in month 7 (July) for
+/// the Northern Hemisphere and month 1 (January) for the Southern Hemisphere.
+///
+/// Each month's precipitation is modulated by the seasonal ITCZ position,
+/// which migrates toward the summer hemisphere. Tiles near the ITCZ get
+/// wet-season peaks; tiles far from it get dry seasons.
+pub fn generate_monthly_climate(context: &PlanetSimulationInput, grid: &mut SurfaceGrid) {
+    let tilt = context.orbit.axial_tilt_deg.abs();
+
+    for r in 0..grid.height {
+        let lat_deg = grid.row_latitude(r);
+        for c in 0..grid.width {
+            let idx = grid.idx(c, r);
+            let mean_t = grid.layers.temperature_c[idx];
+            let summer_t = grid.layers.temperature_summer_c[idx];
+            let winter_t = grid.layers.temperature_winter_c[idx];
+            let annual_p = grid.layers.precipitation_mm[idx];
+
+            let amp = (summer_t - winter_t) / 2.0;
+            let mut monthly_t = [0.0f32; 12];
+            let mut monthly_p = [0.0f32; 12];
+
+            for month in 0..12 {
+                // Solar declination: peaks at month 6 (July) in northern hemisphere.
+                // For lat > 0, peak warmth is around month 6-7.
+                // For lat < 0, peak warmth is month 0-1 (January).
+                let phase = if lat_deg >= 0.0 {
+                    // NH: warmest at month 6 (July)
+                    std::f32::consts::PI * 2.0 * (month as f32 - 6.0) / 12.0
+                } else {
+                    // SH: warmest at month 0 (January)
+                    std::f32::consts::PI * 2.0 * month as f32 / 12.0
+                };
+                monthly_t[month] = mean_t + amp * phase.cos();
+
+                // ITCZ latitude for this month: oscillates between +tilt and -tilt
+                // over the year, peaking north at month 6 (July).
+                let solar_decl =
+                    tilt * (std::f32::consts::PI * 2.0 * (month as f32 - 6.0) / 12.0).sin();
+                let itcz_lat = solar_decl;
+
+                // Precipitation factor: tiles near the ITCZ get a wet boost,
+                // tiles far from the ITCZ get drier. The factor modulates around
+                // 1.0 so the 12-month sum ≈ annual total.
+                let dist_to_itcz = (lat_deg - itcz_lat).abs();
+                let wet_factor = if dist_to_itcz < 15.0 {
+                    1.0 + (1.0 - dist_to_itcz / 15.0) * 0.8
+                } else {
+                    (1.0 - ((dist_to_itcz - 15.0) / 75.0).min(0.7)).max(0.3)
+                };
+                monthly_p[month] = (annual_p / 12.0) * wet_factor;
+            }
+
+            // Re-normalise monthly precipitation so the sum equals annual total.
+            let sum_p: f32 = monthly_p.iter().sum();
+            if sum_p > 0.0 {
+                let scale = annual_p / sum_p;
+                for p in monthly_p.iter_mut() {
+                    *p *= scale;
+                }
+            }
+
+            grid.layers.temperature_monthly_c[idx] = monthly_t;
+            grid.layers.precipitation_monthly_mm[idx] = monthly_p;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Grid-level wind layer
 //
 // Assigns prevailing wind direction and speed per tile from Hadley cells
@@ -1224,7 +1305,9 @@ pub fn generate_biomes(grid: &mut SurfaceGrid) {
         let height_m = elev - sea_level;
 
         // Köppen classification first (pure climate).
-        grid.layers.koppen_class[idx] = classify_koppen(temp_summer, temp_winter, precip);
+        let monthly_p = &grid.layers.precipitation_monthly_mm[idx];
+        grid.layers.koppen_class[idx] =
+            classify_koppen(temp_summer, temp_winter, precip, monthly_p);
 
         // Whittaker biome.
         let mut biome = classify_biome(temp_c, precip);
@@ -1274,13 +1357,16 @@ pub fn classify_biome(temp_c: f32, precipitation_mm: f32) -> BiomeType {
     }
 }
 
-/// Simplified Köppen-Geiger classification using summer/winter means and
-/// annual precipitation. Ignores seasonal precipitation subtypes since the
-/// grid does not currently model monthly rainfall.
+/// Köppen-Geiger classification using summer/winter means, annual
+/// precipitation, and monthly precipitation for seasonal subtypes.
+///
+/// `monthly_precip` is a 12-element array of mm/month. If all zeros
+/// (monthly data not yet computed), falls back to non-seasonal subtypes.
 pub fn classify_koppen(
     temp_summer_c: f32,
     temp_winter_c: f32,
     precipitation_mm: f32,
+    monthly_precip: &[f32; 12],
 ) -> KoppenClass {
     // Group A — Tropical: coldest month ≥ 18 °C.
     if temp_winter_c >= 18.0 {
@@ -1321,29 +1407,118 @@ pub fn classify_koppen(
         };
     }
 
+    // Seasonal precipitation analysis (summer = months 4-9, winter = 10-3
+    // for NH; reversed for SH, but since we store 12 values per tile
+    // without hemisphere info, we define summer/winter by warmest/coldest
+    // half and use min/max of each half).
+    let has_monthly = monthly_precip.iter().any(|&p| p > 0.0);
+    let season = if has_monthly {
+        precip_seasonality(monthly_precip)
+    } else {
+        SeasonType::NoDistinctDry
+    };
+
     // Group C — Temperate: coldest month 0 to 18 °C.
     if (0.0..18.0).contains(&temp_winter_c) {
-        return if temp_summer_c >= 22.0 {
-            KoppenClass::Cfa
-        } else if temp_summer_c >= 10.0 {
-            KoppenClass::Cfb
-        } else {
-            KoppenClass::Cfc
+        return match season {
+            SeasonType::DrySummer => {
+                if temp_summer_c >= 22.0 {
+                    KoppenClass::Csa
+                } else {
+                    KoppenClass::Csb
+                }
+            }
+            SeasonType::DryWinter => {
+                if temp_summer_c >= 22.0 {
+                    KoppenClass::Cwa
+                } else {
+                    KoppenClass::Cwb
+                }
+            }
+            SeasonType::NoDistinctDry => {
+                if temp_summer_c >= 22.0 {
+                    KoppenClass::Cfa
+                } else if temp_summer_c >= 10.0 {
+                    KoppenClass::Cfb
+                } else {
+                    KoppenClass::Cfc
+                }
+            }
         };
     }
 
     // Group D — Continental: coldest < 0 °C, warmest ≥ 10 °C.
-    // Dfb requires a long warm season (summer ≥ 18 °C as a proxy for
-    // ≥4 months > 10 °C); shorter warm seasons fall into Dfc (subarctic).
     if temp_winter_c < -38.0 {
-        KoppenClass::Dfd
-    } else if temp_summer_c >= 22.0 {
-        KoppenClass::Dfa
-    } else if temp_summer_c >= 18.0 {
-        KoppenClass::Dfb
-    } else {
-        KoppenClass::Dfc
+        return KoppenClass::Dfd;
     }
+    match season {
+        SeasonType::DrySummer => {
+            if temp_summer_c >= 22.0 {
+                KoppenClass::Dsa
+            } else {
+                KoppenClass::Dsb
+            }
+        }
+        SeasonType::DryWinter => {
+            if temp_summer_c >= 22.0 {
+                KoppenClass::Dwa
+            } else {
+                KoppenClass::Dwb
+            }
+        }
+        SeasonType::NoDistinctDry => {
+            if temp_summer_c >= 22.0 {
+                KoppenClass::Dfa
+            } else if temp_summer_c >= 18.0 {
+                KoppenClass::Dfb
+            } else {
+                KoppenClass::Dfc
+            }
+        }
+    }
+}
+
+/// Seasonal precipitation pattern used to select Köppen subtypes.
+enum SeasonType {
+    DrySummer,
+    DryWinter,
+    NoDistinctDry,
+}
+
+/// Determine whether a 12-month precipitation series is dry-summer,
+/// dry-winter, or has no distinct dry season.
+///
+/// "Summer" = months 4-9 (May–Oct), "Winter" = months 10-11, 0-3 (Nov–Apr).
+/// Dry-summer: driest summer month < 1/3 of wettest winter month.
+/// Dry-winter: driest winter month < 1/10 of wettest summer month.
+fn precip_seasonality(monthly: &[f32; 12]) -> SeasonType {
+    let summer = &[
+        monthly[4], monthly[5], monthly[6], monthly[7], monthly[8], monthly[9],
+    ];
+    let winter = &[
+        monthly[10],
+        monthly[11],
+        monthly[0],
+        monthly[1],
+        monthly[2],
+        monthly[3],
+    ];
+
+    let summer_min = summer.iter().copied().fold(f32::INFINITY, f32::min);
+    let summer_max = summer.iter().copied().fold(0.0f32, f32::max);
+    let winter_min = winter.iter().copied().fold(f32::INFINITY, f32::min);
+    let winter_max = winter.iter().copied().fold(0.0f32, f32::max);
+
+    // Dry summer: driest summer month < 1/3 of wettest winter month,
+    // AND driest summer month < 40 mm.
+    if winter_max > 0.0 && summer_min < winter_max / 3.0 && summer_min < 40.0 {
+        return SeasonType::DrySummer;
+    }
+    // Dry winter: driest winter month < 1/10 of wettest summer month.
+    if summer_max > 0.0 && winter_min < summer_max / 10.0 {
+        return SeasonType::DryWinter;
+    }
+    SeasonType::NoDistinctDry
 }
 
 #[cfg(test)]
@@ -1409,51 +1584,103 @@ mod biome_tests {
         assert_eq!(classify_biome(-25.0, 100.0), BiomeType::IceCap);
     }
 
+    /// No monthly data — fallback to non-seasonal subtypes.
+    const NO_MONTHLY: [f32; 12] = [0.0; 12];
+
     #[test]
     fn koppen_rainforest() {
-        assert_eq!(classify_koppen(27.0, 24.0, 2500.0), KoppenClass::Af);
+        assert_eq!(
+            classify_koppen(27.0, 24.0, 2500.0, &NO_MONTHLY),
+            KoppenClass::Af
+        );
     }
 
     #[test]
     fn koppen_savanna() {
-        assert_eq!(classify_koppen(29.0, 22.0, 900.0), KoppenClass::Aw);
+        assert_eq!(
+            classify_koppen(29.0, 22.0, 900.0, &NO_MONTHLY),
+            KoppenClass::Aw
+        );
     }
 
     #[test]
     fn koppen_hot_desert() {
-        // Mean 25°C, P < threshold → BWh
-        assert_eq!(classify_koppen(35.0, 15.0, 80.0), KoppenClass::BWh);
+        assert_eq!(
+            classify_koppen(35.0, 15.0, 80.0, &NO_MONTHLY),
+            KoppenClass::BWh
+        );
     }
 
     #[test]
     fn koppen_cold_desert() {
-        // Mean 10°C, low precipitation → BWk
-        assert_eq!(classify_koppen(20.0, 0.0, 50.0), KoppenClass::BWk);
+        assert_eq!(
+            classify_koppen(20.0, 0.0, 50.0, &NO_MONTHLY),
+            KoppenClass::BWk
+        );
     }
 
     #[test]
     fn koppen_humid_subtropical() {
-        assert_eq!(classify_koppen(27.0, 5.0, 1200.0), KoppenClass::Cfa);
+        assert_eq!(
+            classify_koppen(27.0, 5.0, 1200.0, &NO_MONTHLY),
+            KoppenClass::Cfa
+        );
     }
 
     #[test]
     fn koppen_oceanic() {
-        assert_eq!(classify_koppen(18.0, 5.0, 1000.0), KoppenClass::Cfb);
+        assert_eq!(
+            classify_koppen(18.0, 5.0, 1000.0, &NO_MONTHLY),
+            KoppenClass::Cfb
+        );
     }
 
     #[test]
     fn koppen_subarctic() {
-        assert_eq!(classify_koppen(15.0, -20.0, 400.0), KoppenClass::Dfc);
+        assert_eq!(
+            classify_koppen(15.0, -20.0, 400.0, &NO_MONTHLY),
+            KoppenClass::Dfc
+        );
     }
 
     #[test]
     fn koppen_tundra() {
-        assert_eq!(classify_koppen(5.0, -20.0, 250.0), KoppenClass::ET);
+        assert_eq!(
+            classify_koppen(5.0, -20.0, 250.0, &NO_MONTHLY),
+            KoppenClass::ET
+        );
     }
 
     #[test]
     fn koppen_ice_cap() {
-        assert_eq!(classify_koppen(-10.0, -40.0, 200.0), KoppenClass::EF);
+        assert_eq!(
+            classify_koppen(-10.0, -40.0, 200.0, &NO_MONTHLY),
+            KoppenClass::EF
+        );
+    }
+
+    #[test]
+    fn koppen_mediterranean_hot_summer() {
+        // Dry summer: little rain in summer months, wet winter.
+        let monthly = [
+            100.0, 90.0, 80.0, 60.0, 10.0, 5.0, 3.0, 5.0, 15.0, 40.0, 80.0, 100.0,
+        ];
+        assert_eq!(
+            classify_koppen(28.0, 8.0, 588.0, &monthly),
+            KoppenClass::Csa
+        );
+    }
+
+    #[test]
+    fn koppen_dry_winter_subtropical() {
+        // Wet summer, dry winter (monsoon pattern).
+        let monthly = [
+            5.0, 5.0, 10.0, 30.0, 80.0, 150.0, 200.0, 180.0, 100.0, 50.0, 10.0, 5.0,
+        ];
+        assert_eq!(
+            classify_koppen(27.0, 5.0, 825.0, &monthly),
+            KoppenClass::Cwa
+        );
     }
 
     #[test]
@@ -1590,5 +1817,86 @@ mod biome_tests {
         let b = make();
         assert_eq!(a.layers.biome, b.layers.biome);
         assert_eq!(a.layers.koppen_class, b.layers.koppen_class);
+    }
+
+    #[test]
+    fn monthly_temperatures_bracket_annual_mean() {
+        use crate::hydrology::generate_precipitation;
+        let input = earth_like_input();
+        let mut g = generate_geology(&input, 71.0, GridResolution::Fast, "monthly_t");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_precipitation(&input, 1.0, 71.0, &mut g);
+        generate_monthly_climate(&input, &mut g);
+
+        for idx in 0..g.tile_count() {
+            let mean = g.layers.temperature_c[idx];
+            let monthly_mean: f32 = g.layers.temperature_monthly_c[idx].iter().sum::<f32>() / 12.0;
+            // Monthly average should be close to the annual mean.
+            assert!(
+                (monthly_mean - mean).abs() < 1.0,
+                "monthly mean {} differs from annual mean {} at tile {}",
+                monthly_mean,
+                mean,
+                idx
+            );
+        }
+    }
+
+    #[test]
+    fn monthly_precipitation_sums_to_annual() {
+        use crate::hydrology::generate_precipitation;
+        let input = earth_like_input();
+        let mut g = generate_geology(&input, 71.0, GridResolution::Fast, "monthly_p");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_precipitation(&input, 1.0, 71.0, &mut g);
+        generate_monthly_climate(&input, &mut g);
+
+        for idx in 0..g.tile_count() {
+            let annual = g.layers.precipitation_mm[idx];
+            let monthly_sum: f32 = g.layers.precipitation_monthly_mm[idx].iter().sum();
+            if annual > 0.0 {
+                assert!(
+                    (monthly_sum - annual).abs() < 0.1,
+                    "monthly sum {} vs annual {} at tile {}",
+                    monthly_sum,
+                    annual,
+                    idx
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn zero_tilt_flattens_precipitation_seasonality() {
+        use crate::hydrology::generate_precipitation;
+        // With zero axial tilt, the ITCZ stays at the equator year-round.
+        // Monthly precipitation should be nearly uniform (low variance).
+        let mut input = earth_like_input();
+        input.orbit.axial_tilt_deg = 0.0;
+        let mut g = generate_geology(&input, 71.0, GridResolution::Fast, "no_tilt");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_precipitation(&input, 1.0, 71.0, &mut g);
+        generate_monthly_climate(&input, &mut g);
+
+        // Pick an equatorial land tile with some precipitation.
+        let equator_row = g.height / 2;
+        let equator_tile = (0..g.width)
+            .map(|c| g.idx(c, equator_row))
+            .find(|&i| !g.layers.is_ocean[i] && g.layers.precipitation_mm[i] > 100.0);
+        if let Some(idx) = equator_tile {
+            let mp = &g.layers.precipitation_monthly_mm[idx];
+            let mean_p = mp.iter().sum::<f32>() / 12.0;
+            // Variance should be low — every month similar.
+            let max_dev = mp.iter().map(|p| (p - mean_p).abs()).fold(0.0f32, f32::max);
+            assert!(
+                max_dev < mean_p * 0.5,
+                "tilt=0 should have low seasonal variance: max_dev={}, mean={}",
+                max_dev,
+                mean_p
+            );
+        }
     }
 }

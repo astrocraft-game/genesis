@@ -136,6 +136,9 @@ pub struct SurfaceLayers {
     pub precipitation_mm: Vec<f32>,
     pub humidity_relative: Vec<f32>,
     pub pet_ratio: Vec<f32>,
+    // Monthly climate (12-element arrays per tile)
+    pub temperature_monthly_c: Vec<[f32; 12]>,
+    pub precipitation_monthly_mm: Vec<[f32; 12]>,
     // Climate vectors (Phases 3, 5)
     pub wind_direction_deg: Vec<f32>,
     pub wind_speed_ms: Vec<f32>,
@@ -184,6 +187,8 @@ impl SurfaceGrid {
                 precipitation_mm: vec![0.0; n],
                 humidity_relative: vec![0.0; n],
                 pet_ratio: vec![0.0; n],
+                temperature_monthly_c: vec![[0.0; 12]; n],
+                precipitation_monthly_mm: vec![[0.0; 12]; n],
                 wind_direction_deg: vec![0.0; n],
                 wind_speed_ms: vec![0.0; n],
                 ocean_current_direction_deg: vec![0.0; n],
@@ -628,6 +633,7 @@ pub fn generate_surface_grid(
     );
     crate::ocean::generate_ocean_dynamics(&mut grid);
     crate::hydrology::generate_hydrology(context.body_radius_earth as f32, &mut grid);
+    crate::climate::generate_monthly_climate(context, &mut grid);
     crate::climate::generate_biomes(&mut grid);
     grid
 }

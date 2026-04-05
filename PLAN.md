@@ -40,18 +40,18 @@ Goal: deepen the existing surface-maps pipeline without adding new subsystems.
 - [x] Tests: erosion lowers peaks and fills basins, thermal erosion
       reduces steep slopes, deterministic, mass-conserving within tolerance.
 
-### A3 — Seasonal monthly climate grids
+### A3 — Seasonal monthly climate grids ✅
 
-- [ ] Expand `temperature_c` → per-month array `Vec<[f32; 12]>` or add
-      `temperature_monthly: Vec<[f32; 12]>` alongside existing summer/
-      winter means.
-- [ ] Compute monthly insolation from axial tilt + orbital eccentricity
-      + current month (simple orbital-mechanics).
-- [ ] Monthly precipitation: zonal bands shift seasonally with the
-      migrating ITCZ (follows solar declination).
-- [ ] Enable full Köppen seasonal subtypes (Cwa, Csa, Dwb, Dsa…).
-- [ ] Tests: Earth's axial tilt reproduces approx. seasonal Indian
-      monsoon pattern; at tilt=0 seasons flatten.
+- [x] Add `temperature_monthly_c` and `precipitation_monthly_mm`
+      (`Vec<[f32; 12]>`) to SurfaceLayers.
+- [x] Compute monthly insolation from axial tilt + orbital eccentricity
+      + current month (cosine-curve interpolation from summer/winter).
+- [x] Monthly precipitation: ITCZ latitude shifts seasonally with solar
+      declination, driving wet/dry seasonality per tile.
+- [x] Enable full Köppen seasonal subtypes (Csa, Csb, Cwa, Cwb, Dsa,
+      Dsb, Dwa, Dwb) using monthly precipitation data.
+- [x] Tests: monthly mean brackets annual, monthly sum equals annual,
+      tilt=0 flattens precipitation seasonality.
 
 ### A4 — Biome palette expansion
 

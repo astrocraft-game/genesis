@@ -226,21 +226,37 @@ pub enum KoppenClass {
     /// Cold steppe
     BSk,
     // Group C — Temperate (coldest month 0-18 °C)
-    /// Humid subtropical
+    /// Humid subtropical (no dry season)
     Cfa,
-    /// Oceanic / marine west coast
+    /// Oceanic / marine west coast (no dry season)
     Cfb,
-    /// Subpolar oceanic
+    /// Subpolar oceanic (no dry season)
     Cfc,
+    /// Mediterranean hot summer (dry summer)
+    Csa,
+    /// Mediterranean warm summer (dry summer)
+    Csb,
+    /// Humid subtropical (dry winter)
+    Cwa,
+    /// Oceanic (dry winter)
+    Cwb,
     // Group D — Continental (coldest month < 0 °C, warmest > 10 °C)
-    /// Hot-summer humid continental
+    /// Hot-summer humid continental (no dry season)
     Dfa,
-    /// Warm-summer humid continental
+    /// Warm-summer humid continental (no dry season)
     Dfb,
-    /// Subarctic
+    /// Subarctic (no dry season)
     Dfc,
-    /// Extremely cold subarctic
+    /// Extremely cold subarctic (no dry season)
     Dfd,
+    /// Hot-summer continental (dry summer)
+    Dsa,
+    /// Warm-summer continental (dry summer)
+    Dsb,
+    /// Hot-summer continental (dry winter)
+    Dwa,
+    /// Warm-summer continental (dry winter)
+    Dwb,
     // Group E — Polar (all months < 10 °C)
     /// Tundra
     ET,
