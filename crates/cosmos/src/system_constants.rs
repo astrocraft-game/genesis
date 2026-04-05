@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 /// Shamelessly stolen from: https://github.com/treyhunner/names
-const NAMES: &'static [&'static str] = &[
+const NAMES: &[&str] = &[
     "Smith",
     "Johnson",
     "Williams",

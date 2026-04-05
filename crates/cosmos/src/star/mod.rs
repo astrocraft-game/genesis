@@ -115,7 +115,7 @@ impl Star {
                     ..Default::default()
                 })
                 .eccentricity) as f64
-            * self.radius) as f64
+            * self.radius)
     }
 
     pub fn get_maximum_orbital_separation(&self) -> f64 {
@@ -127,7 +127,7 @@ impl Star {
                     ..Default::default()
                 })
                 .eccentricity) as f64
-            * self.radius) as f64
+            * self.radius)
     }
 }
 

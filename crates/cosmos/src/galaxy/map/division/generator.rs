@@ -25,11 +25,7 @@ impl GalacticMapDivision {
     }
 }
 
-fn generate_division_name(
-    index: SpaceCoordinates,
-    level: u8,
-    region: &GalacticRegion,
-) -> Rc<str> {
+fn generate_division_name(index: SpaceCoordinates, level: u8, region: &GalacticRegion) -> Rc<str> {
     let region_prefix = match region {
         GalacticRegion::Core => "Core",
         GalacticRegion::Nucleus => "Nucleus",
@@ -48,7 +44,11 @@ fn generate_division_name(
         GalacticRegion::Exile => "Exile",
         GalacticRegion::Multiple => "Sector",
     };
-    format!("{}-L{}-{}.{}.{}", region_prefix, level, index.x, index.y, index.z).into()
+    format!(
+        "{}-L{}-{}.{}.{}",
+        region_prefix, level, index.x, index.y, index.z
+    )
+    .into()
 }
 
 fn get_region(division: &mut GalacticMapDivision, galaxy: &Galaxy) -> GalacticRegion {
@@ -130,22 +130,41 @@ fn generate_region(coord: SpaceCoordinates, galaxy: &Galaxy) -> GalacticRegion {
         if dist_ratio > 1.0 {
             // Check for tidal streams from interacting galaxies
             let has_tail = galaxy.special_traits.iter().any(|t| {
-                matches!(t, GalaxySpecialTrait::Interacting | GalaxySpecialTrait::Tail)
+                matches!(
+                    t,
+                    GalaxySpecialTrait::Interacting | GalaxySpecialTrait::Tail
+                )
             });
             return if has_tail && dist_ratio < 1.5 {
-                let hash = ((coord.x.wrapping_mul(73) ^ coord.y.wrapping_mul(179)) % 100).unsigned_abs();
-                if hash < 15 { GalacticRegion::Stream } else { GalacticRegion::Void }
+                let hash =
+                    ((coord.x.wrapping_mul(73) ^ coord.y.wrapping_mul(179)) % 100).unsigned_abs();
+                if hash < 15 {
+                    GalacticRegion::Stream
+                } else {
+                    GalacticRegion::Void
+                }
             } else {
                 GalacticRegion::Void
             };
         }
-        let hash = ((coord.x.wrapping_mul(73) ^ coord.y.wrapping_mul(179) ^ coord.z.wrapping_mul(283)) % 1000).unsigned_abs();
+        let hash =
+            ((coord.x.wrapping_mul(73) ^ coord.y.wrapping_mul(179) ^ coord.z.wrapping_mul(283))
+                % 1000)
+                .unsigned_abs();
         return if dist_ratio < 0.05 {
             GalacticRegion::Core
         } else if dist_ratio < 0.5 {
-            if hash < 5 { GalacticRegion::GlobularCluster } else { GalacticRegion::Ellipse }
+            if hash < 5 {
+                GalacticRegion::GlobularCluster
+            } else {
+                GalacticRegion::Ellipse
+            }
         } else {
-            if hash < 3 { GalacticRegion::GlobularCluster } else { GalacticRegion::Halo }
+            if hash < 3 {
+                GalacticRegion::GlobularCluster
+            } else {
+                GalacticRegion::Halo
+            }
         };
     }
 
@@ -157,7 +176,11 @@ fn generate_region(coord: SpaceCoordinates, galaxy: &Galaxy) -> GalacticRegion {
         // Irregular galaxies can have open clusters near their core
         if dist_ratio < 0.3 {
             // Use coordinate hash for deterministic cluster placement
-            let hash = ((coord.x.wrapping_mul(73) ^ coord.y.wrapping_mul(179) ^ coord.z.wrapping_mul(283)) % 100).unsigned_abs();
+            let hash = ((coord.x.wrapping_mul(73)
+                ^ coord.y.wrapping_mul(179)
+                ^ coord.z.wrapping_mul(283))
+                % 100)
+                .unsigned_abs();
             if hash < 5 {
                 return GalacticRegion::OpenCluster;
             }
@@ -171,7 +194,10 @@ fn generate_region(coord: SpaceCoordinates, galaxy: &Galaxy) -> GalacticRegion {
     }
     if z_ratio > 1.0 {
         // Halo region can contain globular clusters
-        let hash = ((coord.x.wrapping_mul(73) ^ coord.y.wrapping_mul(179) ^ coord.z.wrapping_mul(283)) % 1000).unsigned_abs();
+        let hash =
+            ((coord.x.wrapping_mul(73) ^ coord.y.wrapping_mul(179) ^ coord.z.wrapping_mul(283))
+                % 1000)
+                .unsigned_abs();
         return if hash < 3 {
             GalacticRegion::GlobularCluster
         } else {
@@ -183,9 +209,7 @@ fn generate_region(coord: SpaceCoordinates, galaxy: &Galaxy) -> GalacticRegion {
         GalacticRegion::Nucleus
     } else if dist_ratio < 0.1 {
         GalacticRegion::Bulge
-    } else if dist_ratio < 0.15
-        && matches!(galaxy.sub_category, GalaxySubCategory::BarredSpiral)
-    {
+    } else if dist_ratio < 0.15 && matches!(galaxy.sub_category, GalaxySubCategory::BarredSpiral) {
         GalacticRegion::Bar
     } else if dist_ratio <= 0.85 {
         // In a spiral, check if we're near an arm
@@ -205,7 +229,11 @@ fn generate_region(coord: SpaceCoordinates, galaxy: &Galaxy) -> GalacticRegion {
 
         if angular_offset < arm_width || angular_offset > (arm_angle_spacing - arm_width) {
             // Inside an arm - check for open clusters and associations
-            let hash = ((coord.x.wrapping_mul(73) ^ coord.y.wrapping_mul(179) ^ coord.z.wrapping_mul(283)) % 100).unsigned_abs();
+            let hash = ((coord.x.wrapping_mul(73)
+                ^ coord.y.wrapping_mul(179)
+                ^ coord.z.wrapping_mul(283))
+                % 100)
+                .unsigned_abs();
             if hash < 3 {
                 GalacticRegion::OpenCluster
             } else if hash < 6 {

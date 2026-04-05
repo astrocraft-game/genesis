@@ -1,6 +1,6 @@
 pub use crate::types::{
-    AtmosphericEscape, AtmosphericEscapeDriver, AtmosphericLayers, AtmosphericLossIntensity,
-    AtmosphereBreathability, AtmosphereToxicity, ChemicalComponent, LifeLevel,
+    AtmosphereBreathability, AtmosphereToxicity, AtmosphericEscape, AtmosphericEscapeDriver,
+    AtmosphericLayers, AtmosphericLossIntensity, ChemicalComponent, LifeLevel,
     MagneticFieldStrength, PlanetSimulationInput, StarContext,
 };
 
@@ -130,8 +130,7 @@ fn generate_atmospheric_layers(
     let scale_height_m =
         8.314 * blackbody_temperature as f64 / (mean_molecular_mass * g_ms2.max(0.1) as f64);
     let scale_height_km = (scale_height_m / 1000.0) as f32;
-    let tropopause_km =
-        (scale_height_km * 1.5 * atmospheric_pressure.powf(0.3)).clamp(1.0, 100.0);
+    let tropopause_km = (scale_height_km * 1.5 * atmospheric_pressure.powf(0.3)).clamp(1.0, 100.0);
     let has_stratosphere = (has_oxygen && life_level.as_u8() >= LifeLevel::PlantLike.as_u8())
         || (has_methane && has_nitrogen);
     let exobase_km = scale_height_km * (atmospheric_pressure.max(0.001).ln() + 15.0).max(5.0);
@@ -155,10 +154,9 @@ fn generate_atmospheric_escape(
         return None;
     }
 
-    let escape_velocity_km_s =
-        (11.186
-            * (context.gravity_g.max(0.01) * context.body_radius_earth.max(0.05) as f32).sqrt())
-        .max(1.0);
+    let escape_velocity_km_s = (11.186
+        * (context.gravity_g.max(0.01) * context.body_radius_earth.max(0.05) as f32).sqrt())
+    .max(1.0);
     let xuv_flux_relative = ((context.blackbody_temp_k as f32 / 278.0).max(0.2)).powi(4);
     let stellar_activity = if context.star.age_gyr < 0.7 {
         4.0

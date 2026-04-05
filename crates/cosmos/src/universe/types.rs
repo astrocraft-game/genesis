@@ -74,11 +74,11 @@ pub enum StelliferousEra {
 impl Display for StelliferousEra {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            StelliferousEra::AncientStelliferous => write!(f, "{}", "Ancient Stelliferous"),
-            StelliferousEra::EarlyStelliferous => write!(f, "{}", "Early Stelliferous"),
-            StelliferousEra::MiddleStelliferous => write!(f, "{}", "Middle Stelliferous"),
-            StelliferousEra::LateStelliferous => write!(f, "{}", "Late Stelliferous"),
-            StelliferousEra::EndStelliferous => write!(f, "{}", "End Stelliferous"),
+            StelliferousEra::AncientStelliferous => write!(f, "Ancient Stelliferous"),
+            StelliferousEra::EarlyStelliferous => write!(f, "Early Stelliferous"),
+            StelliferousEra::MiddleStelliferous => write!(f, "Middle Stelliferous"),
+            StelliferousEra::LateStelliferous => write!(f, "Late Stelliferous"),
+            StelliferousEra::EndStelliferous => write!(f, "End Stelliferous"),
         }
     }
 }

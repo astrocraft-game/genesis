@@ -1,6 +1,6 @@
-use serde::{Serialize, Deserialize};
-use smart_default::SmartDefault;
 use seeded_dice_roller::SeededDiceRoller;
+use serde::{Deserialize, Serialize};
+use smart_default::SmartDefault;
 use std::fmt::{self, Display};
 
 #[derive(
@@ -36,6 +36,57 @@ impl Display for HistoricalEra {
                 HistoricalEra::Interstellar => "Interstellar",
             }
         )
+    }
+}
+
+impl HistoricalEra {
+    /// Minimum tech level a civilisation needs to be *in* this era.
+    /// Origin is pre-technological (tech 0); each subsequent era steps by one
+    /// or two tech levels to align with `expansion::tech_level_capabilities`.
+    pub fn min_tech_level(self) -> u8 {
+        match self {
+            HistoricalEra::Origin => 0,
+            HistoricalEra::FirstTools => 1,
+            HistoricalEra::Agriculture => 2,
+            HistoricalEra::EarlyCivilization => 4,
+            HistoricalEra::Industrialization => 6,
+            HistoricalEra::InformationAge => 8,
+            HistoricalEra::SpaceExploration => 9,
+            HistoricalEra::Interplanetary => 10,
+            HistoricalEra::Interstellar => 12,
+        }
+    }
+
+    /// Which era a civilisation with the given tech level is currently in.
+    pub fn from_tech_level(tech_level: u8) -> Self {
+        match tech_level {
+            0 => HistoricalEra::Origin,
+            1 => HistoricalEra::FirstTools,
+            2..=3 => HistoricalEra::Agriculture,
+            4..=5 => HistoricalEra::EarlyCivilization,
+            6..=7 => HistoricalEra::Industrialization,
+            8 => HistoricalEra::InformationAge,
+            9 => HistoricalEra::SpaceExploration,
+            10..=11 => HistoricalEra::Interplanetary,
+            _ => HistoricalEra::Interstellar,
+        }
+    }
+
+    /// Maximum temperature (°C) and pressure (atm) achievable at this era.
+    /// Returns `(0, 0.0)` for the pre-technological Origin era. Values are
+    /// derived from `expansion::tech_level_capabilities`.
+    pub fn capability_thresholds(self) -> (i32, f32) {
+        if self == HistoricalEra::Origin {
+            return (0, 0.0);
+        }
+        crate::expansion::tech_level_capabilities(self.min_tech_level())
+    }
+
+    /// Whether this era's civilisation can fire recipes at the given
+    /// minimum temperature and pressure.
+    pub fn can_achieve(self, min_temp_c: i32, pressure_atm: f32) -> bool {
+        let (t, p) = self.capability_thresholds();
+        min_temp_c <= t && pressure_atm <= p
     }
 }
 
@@ -96,15 +147,16 @@ pub fn generate_species_history(
     // Scale based on tech level, adjusted by lifespan
     // Longer-lived species develop slower (more conservative), shorter-lived faster
     let lifespan_factor = (lifespan_years / 80.0) as f64; // 80 years = human baseline
-    let history_length_years = lifespan_factor * match tech_level {
-        0..=1 => 10_000.0,
-        2..=3 => 50_000.0,
-        4..=5 => 200_000.0,
-        6..=7 => 500_000.0,
-        8..=9 => 1_000_000.0,
-        10..=11 => 5_000_000.0,
-        _ => 10_000_000.0,
-    };
+    let history_length_years = lifespan_factor
+        * match tech_level {
+            0..=1 => 10_000.0,
+            2..=3 => 50_000.0,
+            4..=5 => 200_000.0,
+            6..=7 => 500_000.0,
+            8..=9 => 1_000_000.0,
+            10..=11 => 5_000_000.0,
+            _ => 10_000_000.0,
+        };
 
     // Origin event
     events.push(HistoricalEvent {
@@ -218,6 +270,95 @@ mod tests {
         let h = generate_species_history(10, 100.0, "seed", "TestC");
         for w in h.windows(2) {
             assert!(w[0].years_ago >= w[1].years_ago);
+        }
+    }
+
+    #[test]
+    fn era_from_tech_level_is_monotonic() {
+        // Era index should never decrease as tech level rises.
+        let mut prev = HistoricalEra::from_tech_level(0);
+        for tech in 1u8..=12 {
+            let cur = HistoricalEra::from_tech_level(tech);
+            assert!(
+                cur >= prev,
+                "tech {}: era {:?} regressed from {:?}",
+                tech,
+                cur,
+                prev
+            );
+            prev = cur;
+        }
+    }
+
+    #[test]
+    fn era_thresholds_increase_with_progression() {
+        // Each era admits at least as much temp/pressure as the previous.
+        let order = [
+            HistoricalEra::FirstTools,
+            HistoricalEra::Agriculture,
+            HistoricalEra::EarlyCivilization,
+            HistoricalEra::Industrialization,
+            HistoricalEra::InformationAge,
+            HistoricalEra::SpaceExploration,
+            HistoricalEra::Interplanetary,
+            HistoricalEra::Interstellar,
+        ];
+        let mut prev = order[0].capability_thresholds();
+        for era in &order[1..] {
+            let cur = era.capability_thresholds();
+            assert!(
+                cur.0 >= prev.0 && cur.1 >= prev.1,
+                "{:?}: thresholds {:?} regressed from {:?}",
+                era,
+                cur,
+                prev
+            );
+            prev = cur;
+        }
+    }
+
+    #[test]
+    fn origin_era_has_no_capability() {
+        let (t, p) = HistoricalEra::Origin.capability_thresholds();
+        assert_eq!(t, 0);
+        assert_eq!(p, 0.0);
+        assert!(!HistoricalEra::Origin.can_achieve(100, 1.0));
+    }
+
+    #[test]
+    fn industrialization_can_make_steel() {
+        // Steel casting requires ~1500 °C.
+        assert!(HistoricalEra::Industrialization.can_achieve(1500, 1.0));
+        // Bronze age cannot.
+        assert!(!HistoricalEra::Agriculture.can_achieve(1500, 1.0));
+    }
+
+    #[test]
+    fn interstellar_era_admits_plasma_recipes() {
+        assert!(HistoricalEra::Interstellar.can_achieve(5000, 10_000.0));
+    }
+
+    #[test]
+    fn era_min_tech_matches_from_tech_level() {
+        // If era X requires tech N, from_tech_level(N) should return X or later.
+        for era in [
+            HistoricalEra::FirstTools,
+            HistoricalEra::Agriculture,
+            HistoricalEra::EarlyCivilization,
+            HistoricalEra::Industrialization,
+            HistoricalEra::InformationAge,
+            HistoricalEra::SpaceExploration,
+            HistoricalEra::Interplanetary,
+            HistoricalEra::Interstellar,
+        ] {
+            let derived = HistoricalEra::from_tech_level(era.min_tech_level());
+            assert!(
+                derived >= era,
+                "era {:?} requires tech {} but from_tech_level returns {:?}",
+                era,
+                era.min_tech_level(),
+                derived
+            );
         }
     }
 }

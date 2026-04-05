@@ -1,7 +1,6 @@
+use super::constants;
 use crate::internal::*;
 use crate::prelude::*;
-#[path = "../constants.rs"]
-mod constants;
 pub mod division;
 pub mod division_level;
 pub mod hex;
@@ -86,8 +85,7 @@ impl Galaxy {
                 let new_division = GalacticMapDivision::generate(
                     index,
                     i,
-                    &self
-                        .division_levels
+                    self.division_levels
                         .iter()
                         .find(|lvl| lvl.level == i + 1)
                         .unwrap_or(&GalacticMapDivisionLevel::new(10, 255, 255, 255)),
@@ -103,7 +101,7 @@ impl Galaxy {
 
     /// Returns the starting point of a galactic 3D map.
     pub fn get_galactic_start(&self) -> SpaceCoordinates {
-        return match self.category {
+        match self.category {
             GalaxyCategory::Intergalactic(l, w, h)
             | GalaxyCategory::Irregular(l, w, h)
             | GalaxyCategory::Intracluster(l, w, h) => {
@@ -137,7 +135,7 @@ impl Galaxy {
                 let x: i64 = 1 - (r as i64);
                 SpaceCoordinates::new(x, x, x)
             }
-        };
+        }
     }
 
     /// Returns the center point of a galactic 3D map.
@@ -147,7 +145,7 @@ impl Galaxy {
 
     /// Returns the point of a galactic 3D map that is the farthest from (0, 0, 0).
     pub fn get_galactic_end(&self) -> SpaceCoordinates {
-        return match self.category {
+        match self.category {
             GalaxyCategory::Intergalactic(l, w, h)
             | GalaxyCategory::Irregular(l, w, h)
             | GalaxyCategory::Intracluster(l, w, h) => {
@@ -159,12 +157,12 @@ impl Galaxy {
             GalaxyCategory::Elliptical(r) | GalaxyCategory::DominantElliptical(r) => {
                 SpaceCoordinates::new(r as i64, r as i64, r as i64)
             }
-        };
+        }
     }
 
     /// Returns the size of the [Galaxy] in parsecs on the (x, y, z) axis.
     pub fn get_galaxy_size(&self) -> SpaceCoordinates {
-        return match self.category {
+        match self.category {
             GalaxyCategory::Intergalactic(l, w, h)
             | GalaxyCategory::Irregular(l, w, h)
             | GalaxyCategory::Intracluster(l, w, h) => {
@@ -176,7 +174,7 @@ impl Galaxy {
             GalaxyCategory::Elliptical(r) | GalaxyCategory::DominantElliptical(r) => {
                 SpaceCoordinates::new(r as i64 * 2, r as i64 * 2, r as i64 * 2)
             }
-        };
+        }
     }
 
     /// Checks whether the given coordinates are within the bounds of the galaxy.

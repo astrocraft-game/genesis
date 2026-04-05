@@ -1,6 +1,6 @@
-use crate::types::StarSystem;
 use crate::internal::*;
 use crate::prelude::*;
+use crate::types::StarSystem;
 use std::collections::HashSet;
 
 #[path = "system_constants.rs"]
@@ -10,111 +10,108 @@ use crate::contents::zones::generate_star_zones;
 use constants::*;
 
 // StarSystem generation (free function since type is in system crate)
-    /// Generates a brand new star system at the given coordinates
+/// Generates a brand new star system at the given coordinates
 pub fn generate_star_system(
-        system_index: u16,
-        coord: SpaceCoordinates,
-        hex: &GalacticHex,
-        sub_sector: &GalacticMapDivision,
-        galaxy: &mut Galaxy,
-    ) -> StarSystem {
-        let mut center_id: u32 = 0;
-        let mut main_star_id: u32 = 0;
-        let mut all_objects: Vec<OrbitalPoint> = Vec::new();
-        let mut special_traits: Vec<SystemPeculiarity> = Vec::new();
+    system_index: u16,
+    coord: SpaceCoordinates,
+    hex: &GalacticHex,
+    sub_sector: &GalacticMapDivision,
+    galaxy: &mut Galaxy,
+) -> StarSystem {
+    let mut center_id: u32 = 0;
+    let mut main_star_id: u32 = 0;
+    let mut all_objects: Vec<OrbitalPoint> = Vec::new();
+    let mut special_traits: Vec<SystemPeculiarity> = Vec::new();
 
-        let name = get_system_name(system_index, coord, galaxy);
+    let name = get_system_name(system_index, coord, galaxy);
 
-        let mut accept_system = false;
-        let mut i = 0;
-        while !accept_system {
-            all_objects = Vec::new();
-            special_traits = generate_system_peculiarities(i, system_index, coord, galaxy);
+    let mut accept_system = false;
+    let mut i = 0;
+    while !accept_system {
+        all_objects = Vec::new();
+        special_traits = generate_system_peculiarities(i, system_index, coord, galaxy);
 
-            let number_of_stars =
-                generate_number_of_stars_in_system(i, system_index, coord, galaxy);
-            let mut stars = generate_stars(
+        let number_of_stars = generate_number_of_stars_in_system(i, system_index, coord, galaxy);
+        let mut stars = generate_stars(
+            i,
+            number_of_stars,
+            system_index,
+            name.clone(),
+            coord,
+            hex,
+            sub_sector,
+            galaxy,
+        );
+
+        if stars.len() > 1 {
+            let result = generate_binary_relations(
                 i,
-                number_of_stars,
-                system_index,
-                name.clone(),
-                coord,
-                hex,
-                sub_sector,
-                galaxy,
-            );
-
-            if stars.len() > 1 {
-                let result = generate_binary_relations(
-                    i,
-                    &mut stars,
-                    &mut all_objects,
-                    system_index,
-                    coord,
-                    galaxy,
-                );
-                center_id = result.0;
-                main_star_id = result.1;
-
-                let mut calculated_ids = HashSet::new();
-                for id in all_objects.iter().map(|op| op.id).collect::<Vec<u32>>() {
-                    calculate_distance_from_system_center(
-                        id,
-                        &mut all_objects,
-                        &mut calculated_ids,
-                    );
-                }
-            } else {
-                let center =
-                    OrbitalPoint::new(0, None, AstronomicalObject::Star(stars.remove(0)), vec![]);
-                center_id = 0;
-                main_star_id = 0;
-                all_objects.push(center);
-            }
-
-            // TODO: Generate dynamic parameters for star orbits
-            update_existing_orbits(&mut all_objects);
-            generate_star_zones(&mut all_objects);
-            generate_stars_systems(
-                i,
+                &mut stars,
                 &mut all_objects,
-                &special_traits,
                 system_index,
                 coord,
                 galaxy,
             );
-            update_existing_orbits(&mut all_objects);
+            center_id = result.0;
+            main_star_id = result.1;
 
-            accept_system = if galaxy.settings.system.only_interesting {
-                let mut is_interesting = false;
+            let mut calculated_ids = HashSet::new();
+            for id in all_objects.iter().map(|op| op.id).collect::<Vec<u32>>() {
+                calculate_distance_from_system_center(id, &mut all_objects, &mut calculated_ids);
+            }
+        } else {
+            let center =
+                OrbitalPoint::new(0, None, AstronomicalObject::Star(stars.remove(0)), vec![]);
+            center_id = 0;
+            main_star_id = 0;
+            all_objects.push(center);
+        }
 
-                is_interesting = all_objects
-                    .iter()
-                    .find(|o| {
-                        if let AstronomicalObject::TelluricBody(body) = o.object.clone() {
-                            if let CelestialBodyDetails::Telluric(details) = body.details {
-                                details.world_type == CelestialBodyWorldType::Terrestrial
-                                    || details.world_type == CelestialBodyWorldType::Ocean
-                            } else {
-                                false
-                            }
+        // Star orbit eccentricity, inclination, period, and spin are
+        // computed inside `make_binary_pair` via Kepler's third law and
+        // `stellar_rotation_period`. Single stars have `orbit = None`.
+        update_existing_orbits(&mut all_objects);
+        generate_star_zones(&mut all_objects);
+        generate_stars_systems(
+            i,
+            &mut all_objects,
+            &special_traits,
+            system_index,
+            coord,
+            galaxy,
+        );
+        update_existing_orbits(&mut all_objects);
+
+        accept_system = if galaxy.settings.system.only_interesting {
+            let mut is_interesting = false;
+
+            is_interesting = all_objects
+                .iter()
+                .find(|o| {
+                    if let AstronomicalObject::TelluricBody(body) = o.object.clone() {
+                        if let CelestialBodyDetails::Telluric(details) = body.details {
+                            details.world_type == CelestialBodyWorldType::Terrestrial
+                                || details.world_type == CelestialBodyWorldType::Ocean
                         } else {
                             false
                         }
-                    })
-                    .is_some();
+                    } else {
+                        false
+                    }
+                })
+                .is_some();
 
-                is_interesting
-            } else {
-                true
-            };
-            i += 1;
-            if i > 5000 {
-                panic!("There should be at least one interesting system in every 5000 tries!");
-            }
+            is_interesting
+        } else {
+            true
+        };
+        i += 1;
+        if i > 5000 {
+            panic!("There should be at least one interesting system in every 5000 tries!");
         }
-        StarSystem::new(name, center_id, main_star_id, all_objects, special_traits)
     }
+    StarSystem::new(name, center_id, main_star_id, all_objects, special_traits)
+}
 
 /// Temporary name generation
 fn get_system_name(system_index: u16, coord: SpaceCoordinates, galaxy: &Galaxy) -> Rc<str> {
@@ -138,7 +135,7 @@ fn generate_number_of_stars_in_system(
     galaxy: &mut Galaxy,
 ) -> u16 {
     let mut rng = SeededDiceRoller::new(
-        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("sys_{}_{}_ste_evo", coord, system_index),
     );
     let mut count: u16 = rng
@@ -218,19 +215,19 @@ fn generate_stellar_evolution(
     galaxy: &mut Galaxy,
 ) -> StellarEvolution {
     let mut subsector_rng = SeededDiceRoller::new(
-        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("sys_{}_ste_evo", sub_sector.index),
     );
     let mut hex_rng = SeededDiceRoller::new(
-        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("sys_{}_ste_evo", hex.index),
     );
     let mut rng = SeededDiceRoller::new(
-        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("sys_{}_{}_ste_evo", coord, system_index),
     );
     let mut coord_rng = SeededDiceRoller::new(
-        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("sys_{}_ste_evo", star_index),
     );
 
@@ -249,9 +246,8 @@ fn generate_stellar_evolution(
     } else {
         0
     };
-    match galaxy.category {
-        GalaxyCategory::Intergalactic(_, _, _) => modifier -= 10,
-        _ => (),
+    if let GalaxyCategory::Intergalactic(_, _, _) = galaxy.category {
+        modifier -= 10
     }
     match galaxy.sub_category {
         GalaxySubCategory::DwarfAmorphous
@@ -275,7 +271,7 @@ fn generate_stellar_evolution(
     let mut regions = Vec::new();
     divisions.iter().for_each(|div| {
         if regions.iter().find(|r| **r == div.region).is_none() {
-            regions.push(div.region.clone());
+            regions.push(div.region);
         }
     });
     regions.iter().for_each(|region| match region {
@@ -293,7 +289,8 @@ fn generate_stellar_evolution(
         + coord_rng.roll(1, 3, -1)
         + rng.roll(1, 4, -1)
         + modifier;
-    let result = if roll < -10 {
+
+    if roll < -10 {
         StellarEvolution::Paleodwarf
     } else if roll < 3 {
         StellarEvolution::Subdwarf
@@ -303,8 +300,7 @@ fn generate_stellar_evolution(
         StellarEvolution::Superdwarf
     } else {
         StellarEvolution::Hyperdwarf
-    };
-    result
+    }
 }
 
 /// For a given list of stars, generates binary pairs and makes them dance together. Returns the id of the system's
@@ -318,7 +314,7 @@ fn generate_binary_relations(
     galaxy: &mut Galaxy,
 ) -> (u32, u32, u32) {
     let mut rng = SeededDiceRoller::new(
-        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("sys_{}_{}_bin_rel", coord, system_index),
     );
     let mut center_id = 0;
@@ -354,11 +350,13 @@ fn generate_binary_relations(
     let mut first_turn = true;
     let mut previous_actual_distance = 0.005;
     // Then make binary pairs as long as you have stars
-    while stars_left.len() > 0 {
+    while !stars_left.is_empty() {
         // If at least two stars left, with a random chance of 1 in 4 or more
         if stars_left.len() > 1
-            && (rng.gen_u8() % 7 != 0
-                || (!first_turn && number_of_stars % 2 == 0 && rng.gen_u8() % 5 != 0))
+            && (!rng.gen_u8().is_multiple_of(7)
+                || (!first_turn
+                    && number_of_stars.is_multiple_of(2)
+                    && !rng.gen_u8().is_multiple_of(5)))
         {
             // Make a pair and have it dance with the biggest mass/last pair.
             last_id += 1;
@@ -391,10 +389,7 @@ fn generate_binary_relations(
                 second_of_pair_mass,
                 second_of_pair_radius,
                 second_of_pair_point,
-                calculate_stars_minimum_distance(
-                    first_of_pair_radius as f64,
-                    second_of_pair_radius as f64,
-                ),
+                calculate_stars_minimum_distance(first_of_pair_radius, second_of_pair_radius),
                 star_index,
                 system_index,
                 coord,
@@ -559,6 +554,15 @@ fn find_center_of_binary_pair(
         coord,
         galaxy,
     );
+
+    // Derive each star's spin rate from spectral type and age.
+    // Short-period binaries are tidally synchronised to the orbit.
+    let synchronised = star_period < 20.0;
+    let most_massive_rotation =
+        stellar_rotation_for_point(most_massive_point, star_period, synchronised);
+    let less_massive_rotation =
+        stellar_rotation_for_point(less_massive_point, star_period, synchronised);
+
     let most_massive_min = barycentre_distance_from_most_massive * (1.0 - star_ecc as f64);
     let most_massive_max = barycentre_distance_from_most_massive * (1.0 + star_ecc as f64);
     let most_massive_orbit = Orbit::new(
@@ -573,7 +577,7 @@ fn find_center_of_binary_pair(
         star_incl,
         0.0,
         star_period,
-        0.0,
+        most_massive_rotation,
         f32::INFINITY,
     );
     let less_dist = actual_distance - barycentre_distance_from_most_massive;
@@ -591,7 +595,7 @@ fn find_center_of_binary_pair(
         star_incl,
         0.0,
         star_period,
-        0.0,
+        less_massive_rotation,
         f32::INFINITY,
     );
 
@@ -602,9 +606,9 @@ fn find_center_of_binary_pair(
     less_massive_point.set_own_orbit(less_massive_orbit);
 
     let most_massive_distance_and_radius =
-        most_massive_radius as f64 + barycentre_distance_from_most_massive;
+        most_massive_radius + barycentre_distance_from_most_massive;
     let less_massive_distance_and_radius =
-        less_massive_radius as f64 + actual_distance - barycentre_distance_from_most_massive;
+        less_massive_radius + actual_distance - barycentre_distance_from_most_massive;
     let radius = if most_massive_distance_and_radius > less_massive_distance_and_radius {
         most_massive_distance_and_radius
     } else {
@@ -693,6 +697,46 @@ fn update_existing_orbits(all_objects: &mut Vec<OrbitalPoint>) {
     all_objects
         .iter_mut()
         .for_each(|o| o.update_object_own_orbit());
+}
+
+/// Spin period of a star in days. Late-type stars (F-M) spin down via
+/// magnetic braking following the Skumanich law (P ∝ sqrt(t)); early-type
+/// and substellar objects retain their young-star rotation rates. Anchor
+/// values are chosen so that the Sun (G-type, 4.6 Gyr) comes out at ≈27 days.
+fn stellar_rotation_period(spectral_type: &StarSpectralType, age_myr: f32) -> f32 {
+    use StarSpectralType::*;
+    let (anchor_period_days, has_magnetic_braking): (f32, bool) = match spectral_type {
+        O(_) | WR(_) => (3.0, false),
+        B(_) => (5.0, false),
+        A(_) => (2.0, false),
+        F(_) => (7.0, true),
+        G(_) => (12.6, true),
+        K(_) => (20.0, true),
+        M(_) => (30.0, true),
+        L(_) | T(_) | Y(_) => (5.0, false),
+        _ => (20.0, false),
+    };
+    if has_magnetic_braking {
+        // Anchor at 1000 Myr; period scales with sqrt(age).
+        anchor_period_days * (age_myr.max(1.0) / 1000.0).sqrt()
+    } else {
+        anchor_period_days
+    }
+}
+
+fn stellar_rotation_for_point(
+    point: &OrbitalPoint,
+    orbital_period_days: f32,
+    synchronised: bool,
+) -> f32 {
+    if synchronised {
+        return orbital_period_days;
+    }
+    if let AstronomicalObject::Star(star) = &point.object {
+        stellar_rotation_period(&star.spectral_type, star.age)
+    } else {
+        0.0
+    }
 }
 
 /// Generate eccentricity, inclination, and orbital period for a binary star pair.
@@ -810,13 +854,13 @@ fn generate_distance_between_stars(
             RollMethod::PreparedRoll(PreparedRoll::new(3, 6, modifier)),
         ))
         .expect("Should return a range to generate a the distance between two stars.");
-    let generated = rng.gen_f64() % (range.1 - range.0) + range.0;
-    generated
+
+    rng.gen_f64() % (range.1 - range.0) + range.0
 }
 
 /// Finds where the barycentre between two stars or centers of mass is.
 fn calculate_barycentre(distance_between: f64, heaviest_mass: f64, lowest_mass: f64) -> f64 {
-    distance_between * (lowest_mass as f64 / (heaviest_mass as f64 + lowest_mass as f64))
+    distance_between * (lowest_mass / (heaviest_mass + lowest_mass))
 }
 
 fn generate_system_peculiarities(
@@ -826,7 +870,7 @@ fn generate_system_peculiarities(
     galaxy: &Galaxy,
 ) -> Vec<SystemPeculiarity> {
     let mut rng = SeededDiceRoller::new(
-        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("sys_{}_{}_pec", coord, system_index),
     );
     let mut traits = Vec::new();
@@ -886,6 +930,39 @@ mod tests {
     }
 
     #[test]
+    fn stellar_rotation_solar_analog() {
+        // Sun: G-type, 4600 Myr → ~27 days (calibrated anchor).
+        let p = stellar_rotation_period(&StarSpectralType::G(2), 4600.0);
+        assert!(p > 24.0 && p < 30.0, "Sun rotation out of range: {}", p);
+    }
+
+    #[test]
+    fn stellar_rotation_young_vs_old() {
+        // Skumanich: older late-type stars spin slower than young ones.
+        let young = stellar_rotation_period(&StarSpectralType::G(2), 100.0);
+        let old = stellar_rotation_period(&StarSpectralType::G(2), 10_000.0);
+        assert!(old > young, "old ({}) should exceed young ({})", old, young);
+    }
+
+    #[test]
+    fn stellar_rotation_no_braking_for_early_types() {
+        // O/B/A stars do not spin down via magnetic braking.
+        let young = stellar_rotation_period(&StarSpectralType::B(5), 10.0);
+        let old = stellar_rotation_period(&StarSpectralType::B(5), 1000.0);
+        assert!((young - old).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn stellar_rotation_m_dwarfs_spin_slow_when_old() {
+        let old_m = stellar_rotation_period(&StarSpectralType::M(4), 10_000.0);
+        assert!(
+            old_m > 50.0,
+            "old M dwarf should spin slowly, got {}",
+            old_m
+        );
+    }
+
+    #[test]
     fn generate_system_produces_objects() {
         let coord = SpaceCoordinates::new(0, 0, 0);
         let hex = GalacticHex::default();
@@ -893,8 +970,11 @@ mod tests {
         let mut galaxy = make_test_galaxy("test_system_gen");
 
         let system = generate_star_system(0, coord, &hex, &div, &mut galaxy);
-        assert!(!system.all_objects.is_empty(), "System should have at least one object");
-        assert!(system.name.len() > 0, "System should have a name");
+        assert!(
+            !system.all_objects.is_empty(),
+            "System should have at least one object"
+        );
+        assert!(!system.name.is_empty(), "System should have a name");
     }
 
     #[test]
@@ -909,7 +989,11 @@ mod tests {
         let mut g2 = make_test_galaxy("determinism_test");
         let s2 = generate_star_system(0, coord, &hex, &div, &mut g2);
 
-        assert_eq!(s1.all_objects.len(), s2.all_objects.len(), "Same seed should produce same system");
+        assert_eq!(
+            s1.all_objects.len(),
+            s2.all_objects.len(),
+            "Same seed should produce same system"
+        );
         assert_eq!(s1.name, s2.name);
     }
 
@@ -921,7 +1005,10 @@ mod tests {
         let mut galaxy = make_test_galaxy("star_test");
 
         let system = generate_star_system(0, coord, &hex, &div, &mut galaxy);
-        let main_star = system.all_objects.iter().find(|o| o.id == system.main_star_id);
+        let main_star = system
+            .all_objects
+            .iter()
+            .find(|o| o.id == system.main_star_id);
         assert!(main_star.is_some(), "System should have a main star");
     }
 }

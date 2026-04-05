@@ -50,24 +50,25 @@ pub fn generate_impact_history(
         CraterDensity::Saturated => SurfaceAgeClass::Primordial,
     };
 
-    let resurfacing_driver = if body_type == TelluricBodyComposition::Icy && context.tidal_heating > 3 {
-        ResurfacingDriver::Cryovolcanic
-    } else if tectonic_activity > 35.0 {
-        ResurfacingDriver::Tectonic
-    } else if volcanism > 20.0 {
-        ResurfacingDriver::Volcanic
-    } else if glaciation.is_some_and(|g| g.ice_coverage_fraction > 0.2) {
-        ResurfacingDriver::Glacial
-    } else if atmospheric_pressure > 0.01
-        && hydrosphere < 5.0
-        && wind.is_some_and(|w| w.mean_surface_wind_ms > 15.0)
-    {
-        ResurfacingDriver::Aeolian
-    } else if atmospheric_pressure <= 0.01 {
-        ResurfacingDriver::ImpactOnly
-    } else {
-        ResurfacingDriver::None
-    };
+    let resurfacing_driver =
+        if body_type == TelluricBodyComposition::Icy && context.tidal_heating > 3 {
+            ResurfacingDriver::Cryovolcanic
+        } else if tectonic_activity > 35.0 {
+            ResurfacingDriver::Tectonic
+        } else if volcanism > 20.0 {
+            ResurfacingDriver::Volcanic
+        } else if glaciation.is_some_and(|g| g.ice_coverage_fraction > 0.2) {
+            ResurfacingDriver::Glacial
+        } else if atmospheric_pressure > 0.01
+            && hydrosphere < 5.0
+            && wind.is_some_and(|w| w.mean_surface_wind_ms > 15.0)
+        {
+            ResurfacingDriver::Aeolian
+        } else if atmospheric_pressure <= 0.01 {
+            ResurfacingDriver::ImpactOnly
+        } else {
+            ResurfacingDriver::None
+        };
 
     let planet_radius_km = context.body_radius_earth as f32 * 6371.0;
     let largest_basin_class = if largest_crater_km > planet_radius_km * 0.35 {
@@ -85,7 +86,9 @@ pub fn generate_impact_history(
         CraterDensity::Light => 1,
         CraterDensity::Moderate => 2 + u8::from(largest_basin_class >= ImpactBasinClass::Basin),
         CraterDensity::Heavy => 4 + u8::from(largest_basin_class >= ImpactBasinClass::Basin),
-        CraterDensity::Saturated => 6 + u8::from(largest_basin_class >= ImpactBasinClass::MegaBasin),
+        CraterDensity::Saturated => {
+            6 + u8::from(largest_basin_class >= ImpactBasinClass::MegaBasin)
+        }
     };
 
     let ejecta_blanket_fraction = match crater_density {

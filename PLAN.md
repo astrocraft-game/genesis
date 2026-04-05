@@ -1,374 +1,507 @@
-# Plan: Fully Independent `cosmos` and `world`
+# Genesis — Surface Maps Roadmap
 
-## Goal
+**Version target:** 0.1.0
+**Last updated:** 2026-04-05
 
-Make `cosmos` and `world` truly independent libraries.
+This plan lays out the full build-out of **tile-level surface grids** for
+terrestrial worlds. It replaces the previous summary-stat approach
+(`PlanetSurfaceMap`) with a stack of physically-motivated 2D layers that
+downstream crates (life, apps) consume to decide where biomes, plants,
+and species actually live.
 
-That means:
+---
 
-- `cosmos` can be used in another project with no `world`
-- `world` can be used in another project with no `cosmos`
-- `cosmos` does not depend on `world`
-- `world` does not depend on `cosmos`
-- no shared tiny crate
-- no required root-owned contract
-- integration happens through explicit conversion code in whatever application uses both
+## Guiding principles
 
-This is the only model that actually satisfies “each crate works on its own”.
+### Separation of concerns
 
-## Core Rule
+- **`world` crate** owns **physical** maps — everything derivable from
+  physics, astronomy, and climate: elevation, temperature, pressure,
+  humidity, wind, precipitation, sea-surface temperature, rivers, biome.
+- **`life` crate** owns **biological** overlays — species habitability,
+  territory, population density, plant-zone classification. It *consumes*
+  the physical grid and produces biological interpretations.
+- **No duplication**: the life crate never recomputes temperature or
+  humidity; it reads the world grid and asks "is this tile habitable
+  for species X?". Similarly the world crate never decides where jaguars
+  go — it only produces the climate they'd need.
+- **Adapter layer** (`src/adapters.rs`) holds any bridging logic that
+  needs both crates.
 
-Do not share required public types between `cosmos` and `world`.
+### Determinism
 
-Instead:
+Every layer is deterministic from the world's `(seed, body_id)`. Grids
+at the same resolution produced from the same seed are byte-identical.
 
-- `cosmos` owns its own output types
-- `world` owns its own input and output types
-- an app that uses both maps one into the other
+### Cost control
 
-So the architecture is:
+Grid generation is **opt-in** via a `surface_maps` feature flag. Default
+world generation keeps producing the summary-stat `PlanetSurfaceMap` for
+cheap batch runs. Apps that need tile maps pay the cost once per body.
 
-```text
-cosmos -> exports external facts
-world  -> accepts world simulation inputs
-app/root -> converts cosmos facts into world inputs
-```
+### Grid layout
 
-Not:
+Equirectangular projection (lat/lon cells) at caller-chosen resolution:
+- Fast: 72×36 (5° cells, 2,592 tiles)
+- Standard: 144×72 (2.5° cells, 10,368 tiles)
+- Detailed: 360×180 (1° cells, 64,800 tiles)
 
-- shared contract crate
-- root-owned required contract
-- direct crate dependency
+The cylindrical distortion is accepted — all callers agree on the
+projection and handle polar area-weighting at query time.
 
-## Ownership Split
+---
 
-### `cosmos` owns
+## Data model
 
-Everything outside the body:
-
-- stars
-- stellar age
-- stellar size/class/luminosity
-- habitable zone / goldilocks region
-- orbital mechanics
-- orbital points
-- distance from star
-- eccentricity
-- axial tilt
-- rotation/day length
-- tidal locking
-- tidal heating as an external forcing term
-- moon count
-- ring presence
-- system/neighborhood/galaxy/universe generation
-- high-level external body classification
-
-`cosmos` should expose those as its own public facts type.
-
-Suggested example:
+### `SurfaceGrid` (world crate)
 
 ```rust
-pub struct ExternalBodyFacts {
-    pub body_id: u32,
-    pub star_age_gyr: f32,
-    pub star_luminosity: f32,
-    pub orbital_distance_au: f64,
-    pub in_habitable_zone: bool,
-    pub eccentricity: f32,
-    pub axial_tilt_deg: f32,
-    pub rotation_period_days: f32,
-    pub day_length_days: f32,
-    pub tidally_locked: bool,
-    pub tidal_heating: u32,
-    pub moon_count: u32,
-    pub has_rings: bool,
-    pub body_mass_earth: f64,
-    pub body_radius_earth: f64,
-    pub density_g_cm3: f32,
-    pub gravity_g: f32,
-    pub blackbody_temp_k: u32,
+pub struct SurfaceGrid {
+    pub width: u16,   // longitude cells
+    pub height: u16,  // latitude cells
+    pub layers: SurfaceLayers,
+}
+
+pub struct SurfaceLayers {
+    // Geology
+    pub elevation_m: Vec<f32>,           // metres; negative for ocean
+    pub plate_id: Vec<u8>,               // tectonic plate membership
+    pub is_ocean: Vec<bool>,             // elevation_m < sea_level
+    pub tectonic_boundary: Vec<BoundaryKind>, // divergent/convergent/transform/none
+
+    // Climate — scalars
+    pub temperature_c: Vec<f32>,         // mean annual surface temperature
+    pub temperature_summer_c: Vec<f32>,  // peak summer month
+    pub temperature_winter_c: Vec<f32>,  // coldest month
+    pub precipitation_mm: Vec<f32>,      // annual mm
+    pub humidity_relative: Vec<f32>,     // 0.0-1.0 annual mean
+    pub pet_ratio: Vec<f32>,             // Precipitation / PET (Holdridge AI)
+
+    // Climate — vectors
+    pub wind_direction_deg: Vec<f32>,    // 0-360, meteorological convention
+    pub wind_speed_ms: Vec<f32>,         // m/s
+    pub ocean_current_direction_deg: Vec<f32>,
+    pub ocean_current_speed_ms: Vec<f32>,
+    pub sea_surface_temp_c: Vec<f32>,
+
+    // Hydrology
+    pub flow_accumulation: Vec<u32>,     // upstream tile count
+    pub river_discharge_m3s: Vec<f32>,   // estimated volumetric flow
+    pub drainage_basin_id: Vec<u16>,     // which basin this tile drains into
+
+    // Classification
+    pub biome: Vec<BiomeType>,
+    pub koppen_class: Vec<KoppenClass>,
 }
 ```
 
-Important:
+Index convention: `idx = lat_row * width + lon_col`, row 0 at the north
+pole, increasing southward. Accessors `at(lon_col, lat_row)` and
+`at_latlon(lat_deg, lon_deg)` handle wrapping and clamping.
 
-- this type belongs to `cosmos`
-- it must not reference `world`
-
-### `world` owns
-
-Everything inside the body:
-
-- atmosphere
-- atmospheric escape
-- greenhouse state
-- climate regulation
-- tidally locked climate state
-- winds
-- glaciation
-- hydrology
-- ocean chemistry
-- impacts
-- subsurface oceans
-- geology
-- surface materials
-- photochemistry
-- final planetary detail assembly
-
-`world` should define its own input type.
-
-Suggested example:
+### `LifeDistribution` (life crate)
 
 ```rust
-pub struct PlanetSimulationInput {
-    pub star_age_gyr: f32,
-    pub orbital_distance_au: f64,
-    pub in_habitable_zone: bool,
-    pub eccentricity: f32,
-    pub axial_tilt_deg: f32,
-    pub rotation_period_days: f32,
-    pub day_length_days: f32,
-    pub tidally_locked: bool,
-    pub tidal_heating: u32,
-    pub moon_count: u32,
-    pub has_rings: bool,
-    pub body_mass_earth: f64,
-    pub body_radius_earth: f64,
-    pub density_g_cm3: f32,
-    pub gravity_g: f32,
-    pub blackbody_temp_k: u32,
+pub struct LifeDistribution {
+    pub ranges: Vec<SpeciesRange>,
+    pub vegetation_density: Vec<f32>,       // 0.0-1.0 per tile
+    pub primary_productivity: Vec<f32>,     // relative biomass per tile
+}
+
+pub struct SpeciesRange {
+    pub species_name: Rc<str>,
+    pub habitability: Vec<f32>,   // 0.0-1.0 suitability per tile
+    pub territory: Vec<bool>,     // where species currently inhabits
+    pub population_density: Vec<f32>,  // 0.0-1.0
 }
 ```
 
-Important:
+Life consumes a borrowed `&SurfaceGrid` plus a species/ecosystem and
+fills habitability by matching the species' preferred ranges against the
+tile's temperature, humidity, elevation, biome, and hydrosphere state.
 
-- this type belongs to `world`
-- it must not reference `cosmos`
+---
 
-Then `world` should also own:
+## Phase 1 — Geology layer
 
-- `PlanetaryDetail`
-- `PlanetSurfaceMap`
-- `LifeLevel` if `world` needs it
-- any atmosphere/climate/geology/ocean/etc enums and structs
+**Goal:** produce elevation and tectonic structure.
 
-## What Must Not Exist
+### 1.1 Plate tectonics via Voronoi
 
-These are all wrong for the desired architecture:
+- Generate 8-40 plate seed points via Fibonacci spiral on the sphere,
+  then project to equirectangular for the grid.
+- Flood-fill plate membership (Voronoi on the grid) into `plate_id`.
+- Per plate, roll: velocity vector, density (continental/oceanic),
+  age (affects elevation).
+- Classify each tile's `tectonic_boundary` by comparing its plate's
+  motion with its neighbour's plate motion (convergent/divergent/
+  transform/none).
 
-- `cosmos::PlanetaryDetail`
-- `cosmos::LifeLevel`
-- `world` importing `cosmos` types
-- `cosmos` importing `world` types
-- root-owned required shared handoff types
-- any “bridge” API in `world` that takes `cosmos::CelestialBody` or `cosmos::OrbitalPoint`
+### 1.2 Base elevation
 
-The app/root may have convenience adapter functions, but those adapters are optional glue, not required shared type ownership.
+- Start with plate altitude: oceanic plates at −3000 m baseline,
+  continental at +400 m.
+- Boundary modifiers:
+  - Convergent continental-continental → mountain range (+2000–6000 m).
+  - Convergent oceanic-continental → coastal range + trench.
+  - Divergent → mid-ocean ridge or rift valley.
+  - Transform → fault scarps.
+- Overlay domain-warped fractal simplex noise (4-6 octaves, amplitude
+  decaying 0.5×/octave, warped by a low-frequency secondary noise).
+- Apply continental-shelf falloff near ocean/continent boundaries.
 
-## Correct Integration Model
+### 1.3 Erosion (optional feature)
 
-If an app uses both crates, it does this explicitly:
+- **Thermal erosion**: talus-angle spreading, 50-200 iterations.
+- **Hydraulic erosion**: particle-based simulation, ~10k particles,
+  carves valleys.
+- Feature-flag `erosion` — gate behind it since it's the heaviest step.
 
-```rust
-let facts: cosmos::ExternalBodyFacts = cosmos::extract_external_body_facts(...);
+### 1.4 Sea level
 
-let input = world::PlanetSimulationInput {
-    star_age_gyr: facts.star_age_gyr,
-    orbital_distance_au: facts.orbital_distance_au,
-    in_habitable_zone: facts.in_habitable_zone,
-    eccentricity: facts.eccentricity,
-    axial_tilt_deg: facts.axial_tilt_deg,
-    rotation_period_days: facts.rotation_period_days,
-    day_length_days: facts.day_length_days,
-    tidally_locked: facts.tidally_locked,
-    tidal_heating: facts.tidal_heating,
-    moon_count: facts.moon_count,
-    has_rings: facts.has_rings,
-    body_mass_earth: facts.body_mass_earth,
-    body_radius_earth: facts.body_radius_earth,
-    density_g_cm3: facts.density_g_cm3,
-    gravity_g: facts.gravity_g,
-    blackbody_temp_k: facts.blackbody_temp_k,
-};
+- Compute sea level from target hydrosphere fraction (interior.hydrosphere).
+- Binary-search a threshold such that tiles below it cover the target
+  ocean percentage, then set `is_ocean` and adjust `elevation_m`.
 
-let detail = world::planet::generate_planetary_detail(&input, ...);
-```
+**Deliverables:** elevation_m, plate_id, is_ocean, tectonic_boundary.
+**Tests:** plate count matches seed, elevation distribution is
+plausible (20%-80% land consistent with hydrosphere), boundaries are
+contiguous, determinism.
 
-That conversion code can live in:
+---
 
-- the root crate of this repo
-- another app crate
-- tests
-- a game runtime
+## Phase 2 — Temperature layer
 
-But it must not define ownership of the two libraries.
+**Goal:** mean annual and seasonal surface temperature per tile.
 
-## Why This Works
+### 2.1 Latitude insolation
 
-This model gives real independence:
+- Base temperature from latitude using `cos(lat)` insolation with the
+  body's `blackbody_temp_k`.
+- Axial tilt `orbit.axial_tilt_deg` modulates equator-to-pole gradient:
+  high tilt → weaker gradient (hot summers everywhere), low tilt →
+  strong gradient.
 
-- another project can use `cosmos` only
-- another project can use `world` only
-- neither crate has hidden compile-time reliance on the other
-- no one is forced to adopt a shared contract crate or a root crate
+### 2.2 Elevation lapse
 
-The cost is deliberate duplication at the boundary.
+- Apply lapse rate −6.5 °C per 1000 m above sea level.
+- Elevations below sea level ignored (use SST).
 
-That duplication is acceptable because:
+### 2.3 Continentality
 
-- the crates are independent by design
-- adapters are cheap
-- the boundary stays explicit instead of magical
+- Compute distance-to-ocean via BFS from ocean tiles.
+- Interior continental tiles swing ±5–15 °C seasonally; ocean-adjacent
+  tiles stay within ±2–5 °C of annual mean.
+- Produces `temperature_summer_c` and `temperature_winter_c`.
 
-## Refactor Phases
+### 2.4 Ocean surface temperature
 
-### Phase 1: Remove any direct crate dependency
+- SST = base latitude profile + warm western-boundary currents −
+  cold eastern-boundary currents.
+- Interpolate gyres over ocean basins (see Phase 5).
 
-Make sure:
+**Deliverables:** temperature_c, temperature_summer_c, temperature_winter_c.
+**Tests:** equator warmer than poles, high elevation colder than sea
+level at same latitude, continentality widens seasonal swing, tilt
+scaling (0° → strong gradient; 70° → chaotic).
 
-- `cosmos/Cargo.toml` has no `world`
-- `world/Cargo.toml` has no `cosmos`
+---
 
-Deliverable:
+## Phase 3 — Atmospheric circulation
 
-- crates compile independently
+**Goal:** prevailing wind vector per tile.
 
-### Phase 2: Remove cross-crate public types
+### 3.1 Hadley/Ferrel/Polar cells
 
-Delete or replace any `world` usage of:
+- Reuse Phase 4.2's `hadley_cells_per_hemisphere` count.
+- 3-cell (Earth-like): trade-easterlies 0–30°, westerlies 30–60°,
+  polar-easterlies 60–90°.
+- Cell count changes band layout:
+  - 1 cell (low tilt) → single Hadley circulation, easterlies everywhere.
+  - 2 cells → Hadley + combined polar, no Ferrel.
+  - 3 cells (Earth-like) → classic bands.
+  - Chaotic (>54° tilt) → seasonally flipped, treat as turbulent mean.
 
-- `cosmos::BodyExternalContext`
-- `cosmos::ChemicalComponent`
-- `cosmos::LifeLevel`
-- `cosmos::MagneticFieldStrength`
-- `cosmos::CelestialBodyWorldType`
-- `cosmos::TelluricBodyComposition`
-- `cosmos::PlanetaryDetail`
-- `cosmos::PlanetSurfaceMap`
+### 3.2 Coriolis deflection
 
-And delete or replace any `cosmos` usage of `world` types if any exist.
+- Winds deflect right in northern hemisphere, left in southern.
+- Apply per-cell deflection angle based on latitude.
 
-Deliverable:
+### 3.3 Wind speed
 
-- each crate’s public API is self-owned
+- Scale by pressure gradient (stronger near band boundaries).
+- Modifier for atmospheric pressure (thin atmosphere → weaker surface
+  winds).
 
-### Phase 3: Create `cosmos`-owned external facts types
+**Deliverables:** wind_direction_deg, wind_speed_ms.
+**Tests:** NH trade winds blow NE→SW, westerlies blow SW→NE, speed
+scales with atmospheric pressure.
 
-Add explicit public types in `cosmos` such as:
+---
 
-- `ExternalStarFacts`
-- `ExternalOrbitFacts`
-- `ExternalBodyFacts`
+## Phase 4 — Precipitation & humidity
 
-These should be plain exported structs with no `world` references.
+**Goal:** mean annual precipitation and relative humidity per tile.
 
-Deliverable:
+### 4.1 Zonal base from atmospheric cells
 
-- `cosmos` has a stable external-facing boundary for apps
+- Start from Phase 4.2's `zonal_precipitation_mm` as per-hemisphere
+  band baselines.
+- Expand to per-tile: each tile samples the band for its latitude.
 
-### Phase 4: Create `world`-owned simulation input types
+### 4.2 Ocean proximity (moisture source)
 
-Add explicit public types in `world` such as:
+- Distance-to-ocean (reuse from 2.3) modulates moisture availability.
+- Exponential decay with prevailing-wind-weighted distance — ocean
+  upwind of tile contributes more than downwind.
 
-- `PlanetSimulationInput`
-- optional `AtmosphereInput`
-- optional `ClimateInput`
+### 4.3 Orographic rain shadow
 
-These should be plain exported structs with no `cosmos` references.
+- For each land tile, trace upwind along `wind_direction_deg` for a
+  few cells.
+- If elevation rises sharply upstream → enhanced rainfall windward,
+  suppressed leeward.
+- Formula: `precipitation_mm *= 1 + upwind_elevation_gain / scale`
+  on windward, `*= max(0.3, 1 - leeward_drop)` on leeward.
 
-Deliverable:
+### 4.4 Holdridge PET ratio
 
-- `world` has a stable self-owned input boundary
+- Compute potential evapotranspiration from biotemperature:
+  `PET_mm = 58.93 × biotemperature_c` (Holdridge formula).
+- `pet_ratio = precipitation_mm / PET_mm`.
+- Derive relative humidity from PET ratio bounded to 0.0–1.0.
 
-### Phase 5: Make `world` internals use only `world` input types
+**Deliverables:** precipitation_mm, humidity_relative, pet_ratio.
+**Tests:** ITCZ wet, subtropical dry, windward > leeward across
+mountain ranges, oceanic islands wetter than continental interiors.
 
-Refactor:
+---
 
-- `atmosphere`
-- `climate`
-- `photochemistry`
-- `ocean`
-- `impacts`
-- `subsurface`
-- `detail`
+## Phase 5 — Ocean dynamics
 
-So they accept only `world` input types and `world` enums.
+**Goal:** SST and ocean-current field.
 
-Deliverable:
+### 5.1 Ocean basins
 
-- `world` no longer needs knowledge of any `cosmos` data model
+- Flood-fill connected ocean tiles into `drainage_basin_id`.
+- Basins smaller than a threshold merge with the nearest large basin.
 
-### Phase 6: Move `PlanetaryDetail` fully into `world`
+### 5.2 Gyres
 
-Right now the type ownership is still historically messy.
+- Per basin, identify subtropical gyre centres (~30° latitude).
+- Assign current direction perpendicular to radial vector from gyre
+  centre (clockwise in NH, counterclockwise in SH).
 
-The final state should be:
+### 5.3 Western-boundary intensification
 
-- `PlanetaryDetail` lives in `world`
-- the related detail structs live in `world`
-- `cosmos` stops being the source of truth for internal planet detail
+- Ocean tiles on the west side of a basin (warm currents flowing
+  poleward) get +3–8 °C SST boost.
+- East-side boundaries (cold currents equator-ward) get −3–8 °C.
 
-Deliverable:
+**Deliverables:** ocean_current_direction_deg, ocean_current_speed_ms,
+sea_surface_temp_c.
+**Tests:** gyres rotate correctly per hemisphere, western boundaries
+warmer, equatorial SST > polar SST.
 
-- `world` fully owns internal planet state
+---
 
-### Phase 7: Shrink `cosmos` to external-only facts
+## Phase 6 — Hydrology
 
-Remove internal-body ownership from `cosmos`:
+**Goal:** rivers, lakes, drainage basins on land.
 
-- no atmosphere/climate/ocean detail ownership
-- no `LifeLevel` ownership if it is not truly part of astronomy
-- no `PlanetaryDetail` ownership
+### 6.1 D8 flow direction
 
-Deliverable:
+- Per land tile, find the neighbour with steepest downslope.
+- Sinks flagged as potential lakes.
 
-- `cosmos` becomes astronomy/system/orbit only
+### 6.2 Flow accumulation
 
-### Phase 8: Add optional adapters in the app/root
+- Topologically sort tiles by elevation, propagate unit water downstream.
+- `flow_accumulation[tile]` = number of upstream tiles draining into it.
 
-If this repo wants convenience glue, add adapter helpers in the root crate:
+### 6.3 River discharge estimation
 
-- `fn to_world_input(facts: &cosmos::ExternalBodyFacts) -> world::PlanetSimulationInput`
-- `fn enrich_body(...)`
+- Scale flow accumulation by upstream mean precipitation:
+  `discharge_m3s = accumulation × mean_upstream_precip_mm × tile_area_km2 × 1e-3 / (365×86400)`.
+- Threshold: tiles with discharge > 10 m³/s form a visible river.
 
-These are optional convenience APIs.
+### 6.4 Basin assignment
 
-Important:
+- `drainage_basin_id[tile]` = ID of the ocean outlet or endorheic lake
+  it drains to.
 
-- they do not define shared ownership
-- they are just app glue
+**Deliverables:** flow_accumulation, river_discharge_m3s,
+drainage_basin_id.
+**Tests:** discharge increases downstream, no water disappears,
+basins partition the land area.
 
-Deliverable:
+---
 
-- the repo can still offer easy combined usage without coupling the crates
+## Phase 7 — Biome classification
 
-## Current Repository Direction
+**Goal:** assign `BiomeType` and `KoppenClass` to every tile.
 
-The current repo should move toward this end state:
+### 7.1 Whittaker lookup
 
-- `world` owns its own internal planet types and logic
-- `life` should consume `world`-owned world/life-facing enums where appropriate
-- `cosmos` should emit its own independent facts structs
-- the root crate should only provide optional mapping helpers
+- Build a 2D lookup table keyed by `(temperature_c, precipitation_mm)`:
+  - **Tropical rain forest**: T > 20 °C, P > 2000 mm
+  - **Tropical seasonal forest / savanna**: T > 20 °C, 500–2000 mm
+  - **Subtropical desert**: T > 18 °C, P < 300 mm
+  - **Temperate rain forest**: 8–20 °C, P > 1500 mm
+  - **Temperate seasonal forest**: 5–20 °C, 500–1500 mm
+  - **Woodland / shrubland**: 5–20 °C, 200–500 mm
+  - **Temperate grassland / cold desert**: −5–20 °C, 100–300 mm
+  - **Boreal forest (taiga)**: −5–5 °C, 200–750 mm
+  - **Tundra**: T < −5 °C, P < 250 mm
+  - **Polar / ice desert**: T < −15 °C
 
-## Immediate Next Task
+### 7.2 Köppen-Geiger full classification
 
-The next code step should be:
+- Implement full Köppen rule ladder from monthly temp+precip data:
+  - **A (tropical)**: all months ≥18 °C
+    - Af, Am, Aw based on dry-month rainfall
+  - **B (arid)**: P < threshold(T, seasonal distribution)
+    - BW (desert), BS (steppe), BWh/BWk/BSh/BSk hot/cold
+  - **C (temperate)**: coldest month 0–18 °C
+    - Cfa, Cfb, Cfc, Cwa, Cwb, Csa, Csb
+  - **D (continental)**: coldest month <0 °C, ≥1 month >10 °C
+    - Dfa, Dfb, Dfc, Dfd, Dwa..., Dsa...
+  - **E (polar)**: all months <10 °C
+    - ET (tundra), EF (ice cap)
 
-1. delete the root-owned required contract idea
-2. replace it with `world`-owned input structs
-3. add `cosmos`-owned external facts structs
-4. add explicit conversion code only in the root crate or another integrating layer
+### 7.3 Elevation overlays
 
-Start with:
+- High elevation (>2500 m) tiles override to `Alpine`.
+- Very high (>4500 m) → `IceCap` regardless of latitude.
+- Active volcanism → `Volcanic`.
 
-- replacing [src/planet_context.rs](/home/bresilla/code/game/cosmos/src/planet_context.rs)
+**Deliverables:** biome, koppen_class (new enum).
+**Tests:** Earth-like world reproduces ~Earth's biome distribution
+(±15% per biome), hot deserts at 30° latitude, ice caps at poles.
 
-It should stop being “the required contract”.
+---
 
-Instead:
+## Phase 8 — Life distribution (life crate)
 
-- `world` should define its own `PlanetSimulationInput`
-- `cosmos` should define its own `ExternalBodyFacts`
+**Goal:** given a SurfaceGrid, compute species habitability and vegetation
+density.
 
-Then the root crate can optionally convert one into the other, but neither library should rely on the root to define its public API.
+### 8.1 Vegetation density
+
+- Primary productivity from Whittaker-style formula:
+  `productivity ∝ min(temperature_factor, moisture_factor)`
+- `vegetation_density[tile] = productivity × (1 - ice_cover) × biome_modifier`.
+
+### 8.2 Species habitability
+
+Per species, score each tile 0.0–1.0:
+- **Temperature fit**: gaussian curve centred on `preferred_temp_range`.
+- **Gravity fit**: 1.0 at preferred, dropping outside the ±40% band.
+- **Hydrosphere fit**: depends on locomotion (Swimmer wants ocean,
+  Walker wants land, Flyer wants coasts/plains).
+- **Biome affinity**: e.g. PlantLike prefers forests, Amorphous prefers
+  wetlands/oceans.
+- Final `habitability = product_of_factors.clamp(0, 1)`.
+
+### 8.3 Territory and population
+
+- Select top N% habitable tiles as `territory`.
+- `population_density` proportional to habitability × vegetation_density
+  (for heterotrophs) or × productivity (for autotrophs).
+
+### 8.4 Ecosystem range stacking
+
+- For a full `Ecosystem`, stack ranges: producers first, herbivores
+  constrained by producer density, predators constrained by herbivore
+  density.
+
+**Deliverables:** `LifeDistribution`, `SpeciesRange`, `distribute_ecosystem()`.
+**Tests:** aquatic species avoid land, plant-like prefers wet warm
+tiles, predator range ⊆ herbivore range, density conserved.
+
+---
+
+## Phase 9 — Adapter layer
+
+**Goal:** wire surface grids through the root `generate_*` pipeline.
+
+### 9.1 Feature-flag rollout
+
+- Add `surface_maps` feature to `world` and `life` Cargo.toml.
+- Add `surface_maps` passthrough to root `genesis` crate.
+
+### 9.2 Root helpers
+
+- `generate_world_with_surface(body, ...) -> (PlanetInterior, PlanetaryDetail, SurfaceGrid)`.
+- `generate_life_on_surface(grid, ecosystem) -> LifeDistribution`.
+- `generate_species_on_surface(grid, species) -> SpeciesRange`.
+
+### 9.3 Grid resolution config
+
+- Add `SurfaceGridResolution::{Fast, Standard, Detailed}` enum.
+- Default to `Fast` (72×36) for interactive use.
+
+**Deliverables:** feature flag, root helpers, resolution enum.
+**Tests:** end-to-end Earth-like test producing a full grid + species
+distribution, resolution scaling.
+
+---
+
+## Phase 10 — API stabilisation (road to 0.1.0)
+
+- Freeze public types after Phases 1–9 complete.
+- Add `#[non_exhaustive]` to `BiomeType`, `KoppenClass`, `BoundaryKind`.
+- Version-bump each crate from 0.1.0 → 0.2.0 (surface maps addition).
+- Update README with surface-maps feature examples.
+
+---
+
+## Execution order
+
+1. **Phase 1** (geology) — foundation every other layer depends on.
+2. **Phase 2** (temperature) — needed for precipitation, biome.
+3. **Phase 3** (wind) — needed for rain shadow.
+4. **Phase 4** (precipitation) — needed for biome, rivers.
+5. **Phase 5** (ocean) — can run in parallel with 3–4.
+6. **Phase 6** (hydrology) — needs 1, 2, 4.
+7. **Phase 7** (biome) — needs 2, 4, 1.
+8. **Phase 8** (life) — needs 7.
+9. **Phase 9** (adapters) — wires it all together.
+10. **Phase 10** (stabilisation) — final gate.
+
+Phases 2/3/5 are parallelisable after 1. Phases 4/6/7 form a sequential
+chain from precipitation to biome classification.
+
+---
+
+## Open design questions
+
+- **Hex vs. equirectangular grid?** Starting with equirectangular
+  (simplest math, standard image format). Hex/HEALPix can be added
+  as an alternative layout later if distortion becomes a problem.
+- **Single-frame or seasonal simulation?** Starting with annual means
+  + summer/winter extremes. Monthly grids are a future extension.
+- **How to hand off grids to game engines?** Grids are `Vec<T>` in
+  row-major order — callers can map directly to image textures or
+  game tile arrays. No wrapper abstractions in v1.
+- **Plate-count sensitivity?** Too few plates → boring continents,
+  too many → no coherent structure. Target 8–24 for Earth-size bodies,
+  scaled by surface area.
+
+---
+
+## Glossary
+
+- **Biotemperature**: mean annual temperature with values clamped to
+  [0, 30] °C; used by Holdridge. Freezing months contribute 0.
+- **PET**: potential evapotranspiration — how much water *could*
+  evaporate given unlimited supply. `Precipitation/PET` is the
+  Holdridge aridity index.
+- **ITCZ**: Intertropical Convergence Zone — equatorial low-pressure
+  belt where trade winds converge and rainfall peaks.
+- **Rain shadow**: dry region on the leeward (downwind) side of a
+  mountain range.
+- **Gyre**: large rotating ocean current system; subtropical gyres
+  centred at ~30° latitude.
+- **Orographic lift**: air forced upward by a mountain, cooling and
+  releasing moisture as rain on the windward side.

@@ -18,7 +18,7 @@ fn generate_age(coord: SpaceCoordinates, galaxy: &mut Galaxy) -> StellarNeighbor
     let mut regions = Vec::new();
     divisions.iter().for_each(|div| {
         if regions.iter().find(|r| **r == div.region).is_none() {
-            regions.push(div.region.clone());
+            regions.push(div.region);
         }
     });
     let sub_sector = divisions
@@ -106,7 +106,9 @@ fn generate_age(coord: SpaceCoordinates, galaxy: &mut Galaxy) -> StellarNeighbor
         }
         StellarNeighborhoodAge::Ancient(_) => {
             age = StellarNeighborhoodAge::Ancient(
-                universe_age.saturating_sub(200).min(universe_age.saturating_sub(rng.roll(1, 10, -1) as u64 * 1000)),
+                universe_age
+                    .saturating_sub(200)
+                    .min(universe_age.saturating_sub(rng.roll(1, 10, -1) as u64 * 1000)),
             );
         }
     }
@@ -130,8 +132,8 @@ mod tests {
                 ..Default::default()
             };
             let neighborhood =
-                GalacticNeighborhood::generate(Universe::generate(&settings), &settings);
-            let mut galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, &settings);
+                GalacticNeighborhood::generate(Universe::generate(settings), settings);
+            let mut galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, settings);
             let gal_end = galaxy.get_galactic_end();
             let x = rng.gen_u32() as i64 % gal_end.x;
             let y = rng.gen_u32() as i64 % gal_end.y;

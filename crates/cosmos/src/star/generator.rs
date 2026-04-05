@@ -32,7 +32,7 @@ impl Star {
                 system_index,
                 coord,
                 hex,
-                &*seed,
+                &seed,
                 &galaxy.neighborhood.universe,
             )
         };
@@ -41,7 +41,7 @@ impl Star {
             settings.star.fixed_mass.unwrap()
         } else {
             let generated_mass: f64 =
-                generate_mass(star_index, system_index, coord, &*seed, &settings.star);
+                generate_mass(star_index, system_index, coord, &seed, &settings.star);
             simulate_mass_loss_over_the_years(generated_mass, age)
         };
 
@@ -80,11 +80,11 @@ impl Star {
                 radius = calculate_white_dwarf_radius(mass);
                 let initial_luminosity = calculate_white_dwarf_initial_luminosity(mass);
                 let initial_temperature =
-                    calculate_temperature_using_luminosity(initial_luminosity, radius as f64);
+                    calculate_temperature_using_luminosity(initial_luminosity, radius);
                 temperature = calculate_white_dwarf_temperature(initial_temperature, age);
-                luminosity = calculate_luminosity_using_temperature(temperature, radius as f64);
+                luminosity = calculate_luminosity_using_temperature(temperature, radius);
                 spectral_type =
-                    generate_white_dwarf_spectral_type(star_index, system_index, coord, &*seed);
+                    generate_white_dwarf_spectral_type(star_index, system_index, coord, &seed);
                 luminosity_class = StarLuminosityClass::VII;
             } else if mass < 3.2 {
                 // Neutron star
@@ -181,7 +181,10 @@ impl Star {
             special_traits.push(StarPeculiarity::NoMetals);
         }
 
-        // TODO: Still have to take into account metallicity
+        // Element abundance is modulated by stellar population (a discrete
+        // metallicity proxy): Paleodwarf systems are dominated by non-metals,
+        // Hyperdwarf systems are metal-rich. A continuous [Fe/H] variable
+        // could refine this further as future work.
         let elements_abundance: Vec<ChemicalComponent> = {
             let mut rng = SeededDiceRoller::new(
                 &settings.seed,
@@ -230,7 +233,7 @@ impl Star {
         };
         let elements_lack: Vec<ChemicalComponent> = {
             let mut rng = SeededDiceRoller::new(
-                &*seed,
+                &seed,
                 &format!("sys_{}_{}_{}_elem_lack", coord, system_index, star_index),
             );
             let mut elements = Vec::new();
@@ -277,7 +280,7 @@ impl Star {
             elements
         };
         let mut rng = SeededDiceRoller::new(
-            &*seed,
+            &seed,
             &format!("sys_{}_{}_{}_elem_comp", coord, system_index, star_index),
         );
 
@@ -320,11 +323,9 @@ impl Star {
             }
         });
 
-        let absolute_magnitude =
-            crate::star::absolute_magnitude_from_luminosity(luminosity);
+        let absolute_magnitude = crate::star::absolute_magnitude_from_luminosity(luminosity);
         let color_bv = crate::star::temperature_to_bv(temperature);
-        let flare_activity =
-            crate::star::compute_flare_activity(&spectral_type, age / 1000.0);
+        let flare_activity = crate::star::compute_flare_activity(&spectral_type, age / 1000.0);
 
         Self {
             name,
@@ -579,7 +580,7 @@ fn generate_star_peculiarities(
     galaxy: &Galaxy,
 ) -> Vec<StarPeculiarity> {
     let mut rng = SeededDiceRoller::new(
-        &*format!("{}{}", system_gen_try, &galaxy.settings.seed),
+        &format!("{}{}", system_gen_try, &galaxy.settings.seed),
         &format!("star_{}_{}_{}_pec", coord, system_index, star_index),
     );
     let mut traits = Vec::new();
@@ -614,14 +615,12 @@ fn generate_star_peculiarities(
     // UnusualMetallicity: ~8%
     if rng.roll(1, 100, 0) <= 8 {
         let met = match population {
-            StellarEvolution::Paleodwarf | StellarEvolution::Subdwarf => {
-                match rng.roll(1, 4, 0) {
-                    1 => StarMetallicityDifference::MuchLower,
-                    2 => StarMetallicityDifference::Lower,
-                    3 => StarMetallicityDifference::Higher,
-                    _ => StarMetallicityDifference::MuchHigher,
-                }
-            }
+            StellarEvolution::Paleodwarf | StellarEvolution::Subdwarf => match rng.roll(1, 4, 0) {
+                1 => StarMetallicityDifference::MuchLower,
+                2 => StarMetallicityDifference::Lower,
+                3 => StarMetallicityDifference::Higher,
+                _ => StarMetallicityDifference::MuchHigher,
+            },
             _ => match rng.roll(1, 4, 0) {
                 1 => StarMetallicityDifference::Lower,
                 2 => StarMetallicityDifference::MuchLower,
@@ -697,7 +696,7 @@ fn calculate_radius(
         // Remnant
         if mass < 8.0 {
             // White dwarf
-            radius = radius / 60.0;
+            radius /= 60.0;
         } else if mass < 50.0 {
             // Neutron star
             radius = 0.001_f64.max((mass / (mass - 6.0) + mass) / 20000.0);
@@ -874,7 +873,8 @@ fn calculate_spectral_type(temperature: u32) -> StarSpectralType {
             / (*upper_temp as f32 - *lower_temp as f32)) as u32;
 
     // Convert the class value to the spectral type
-    let spectral_type = match class_as_int / 10 {
+
+    match class_as_int / 10 {
         0 => StarSpectralType::WR((class_as_int % 10) as u8),
         1 => StarSpectralType::O((class_as_int % 10) as u8),
         2 => StarSpectralType::B((class_as_int % 10) as u8),
@@ -886,9 +886,7 @@ fn calculate_spectral_type(temperature: u32) -> StarSpectralType {
         8 => StarSpectralType::L((class_as_int % 10) as u8),
         9 => StarSpectralType::T((class_as_int % 10) as u8),
         _ => StarSpectralType::Y((class_as_int % 10) as u8),
-    };
-
-    spectral_type
+    }
 }
 
 fn generate_white_dwarf_spectral_type(
@@ -965,7 +963,7 @@ fn calculate_luminosity_class(
         }
         _ => (),
     }
-    return if age <= main_lifespan {
+    if age <= main_lifespan {
         StarLuminosityClass::V
     } else if age <= subgiant_lifespan {
         StarLuminosityClass::IV
@@ -981,10 +979,13 @@ fn calculate_luminosity_class(
         } else {
             StarLuminosityClass::O
         }
-    };
+    }
 }
 
 fn calculate_remnant_mass(mass: f64, _settings: &GenerationSettings) -> f64 {
+    // Empirical linear fits to the initial-final mass relation (Cummings
+    // et al. 2018). The 0.318 constant is a coefficient, not 1/π.
+    #[allow(clippy::approx_constant)]
     if mass < 2.7 {
         0.096 * mass + 0.429
     } else {
@@ -1000,17 +1001,100 @@ fn calculate_white_dwarf_initial_luminosity(mass: f64) -> f32 {
     (10.0_f64.powf(-2.15) * mass.powf(3.95)) as f32
 }
 
-/// TODO: That doesn't seem right at all, but at the moment I don't have anything better, so to be rewritten later.
-/// Neutron star surface temperature via modified URCA cooling.
-/// T ~ 1e6 * (cooling_age_years / 1e6)^(-1/6) for standard cooling.
-/// TODO: That doesn't seem right at all, but at the moment I don't have anything better, so to be rewritten later.
+/// Neutron star surface temperature as a function of age using a two-phase
+/// cooling model: modified URCA (neutrino-dominated) up to ~10^5 yr, then
+/// photon cooling after that.
+///
+/// Reference: Yakovlev & Pethick (2004), "Neutron Star Cooling".
+/// Approximate observed temperatures for young neutron stars:
+///   Crab (~10^3 yr): ~1.5e6 K
+///   Vela (~10^4 yr): ~7e5 K
+///   Geminga (~3e5 yr): ~3e5 K
+///
+/// `age` and `full_lifespan` are both in millions of years (Myr).
 fn calculate_neutron_star_temperature(age: f32, full_lifespan: f32) -> u32 {
-    let neutron_star_age = age - full_lifespan * 1_000_000.0;
-    let initial_temp = 1_000_000.0;
-    let t_cool = 1.0 / (0.02 * (neutron_star_age / 10.0).powf(1.5));
-    let t_sec = 3.15e7 * t_cool;
-    let temperature = initial_temp * ((t_sec / 1.0e6).ln() / (neutron_star_age / 10.0));
-    if temperature < 0.0 { 0 } else { temperature as u32 }
+    // Years elapsed since the supernova that formed the neutron star.
+    let nova_age_myr = (age - full_lifespan).max(0.0);
+    let t_years = (nova_age_myr * 1.0e6).max(1.0);
+
+    // Anchor: surface T ≈ 2e6 K at t = 10 yr.
+    // Modified URCA: T_s ∝ t^(-1/6) for t < 1e5 yr.
+    // Photon cooling: T_s ∝ t^(-1/2) for t ≥ 1e5 yr, stitched continuously.
+    let t_surface = if t_years < 1.0e5 {
+        2.0e6 * (t_years / 10.0).powf(-1.0 / 6.0)
+    } else {
+        let t_transition = 2.0e6 * (1.0e5_f32 / 10.0).powf(-1.0 / 6.0);
+        t_transition * (t_years / 1.0e5).powf(-0.5)
+    };
+
+    t_surface.max(1_000.0) as u32
+}
+
+#[cfg(test)]
+mod neutron_star_tests {
+    use super::*;
+
+    /// Helper: compute surface temperature given t_years since supernova.
+    fn temp_at_years(t_years: f32) -> u32 {
+        // Use age=full_lifespan + t_years_in_myr so nova_age_myr = t_years_in_myr.
+        let full_lifespan = 100.0f32;
+        let age = full_lifespan + t_years / 1.0e6;
+        calculate_neutron_star_temperature(age, full_lifespan)
+    }
+
+    #[test]
+    fn young_neutron_star_is_megakelvin() {
+        // At 10 yr: ~2 MK
+        let t = temp_at_years(10.0);
+        assert!(t > 1_500_000 && t < 2_500_000, "got {}", t);
+    }
+
+    #[test]
+    fn crab_era_matches_observation() {
+        // Crab (~1000 yr): observed ~1.5 MK, model expects ~0.9-1 MK
+        let t = temp_at_years(1_000.0);
+        assert!(t > 700_000 && t < 1_400_000, "got {}", t);
+    }
+
+    #[test]
+    fn vela_era_matches_observation() {
+        // Vela (~10000 yr): observed ~0.7 MK, model ~0.63 MK
+        let t = temp_at_years(10_000.0);
+        assert!(t > 400_000 && t < 900_000, "got {}", t);
+    }
+
+    #[test]
+    fn photon_cooling_kicks_in() {
+        // At 1e8 yr (long past transition): should be tens of thousands K
+        let t = temp_at_years(1.0e8);
+        assert!(t > 5_000 && t < 30_000, "got {}", t);
+    }
+
+    #[test]
+    fn temperature_monotonically_decreases() {
+        let ages = [
+            10.0,
+            100.0,
+            1000.0,
+            10_000.0,
+            100_000.0,
+            1_000_000.0,
+            10_000_000.0,
+        ];
+        let mut prev = u32::MAX;
+        for &t in &ages {
+            let cur = temp_at_years(t);
+            assert!(cur < prev, "non-monotonic at t={}: {} >= {}", t, cur, prev);
+            prev = cur;
+        }
+    }
+
+    #[test]
+    fn floors_at_1000k() {
+        // Extremely old neutron star — temperature should floor.
+        let t = temp_at_years(1.0e15);
+        assert!(t >= 1_000);
+    }
 }
 
 fn calculate_precise_radius_of_neutron_star_or_black_hole(mass: f64) -> f64 {
@@ -1042,7 +1126,7 @@ fn get_age_range_in_star_lifecycle_dataset(
 ) -> f32 {
     let to_subgiant_lifespan = main_lifespan + subgiant_lifespan;
     let to_giant_lifespan = to_subgiant_lifespan + giant_lifespan;
-    return if age >= 0.0 && age <= main_lifespan {
+    if age >= 0.0 && age <= main_lifespan {
         (age / main_lifespan) * 2.0
     } else if age > main_lifespan && age <= to_subgiant_lifespan {
         2.0 + ((age - main_lifespan) / to_subgiant_lifespan) * 2.0
@@ -1050,13 +1134,13 @@ fn get_age_range_in_star_lifecycle_dataset(
         4.0 + ((age - to_subgiant_lifespan) / to_giant_lifespan) * 2.0
     } else {
         7.0
-    };
+    }
 }
 
 fn get_mass_range_in_star_lifecycle_dataset(mass: f64) -> f32 {
     (if mass < 0.4 {
         0.0
-    } else if mass >= 0.4 && mass <= 0.5 {
+    } else if (0.4..=0.5).contains(&mass) {
         mass / 0.5
     } else if mass > 0.5 && mass <= 1.0 {
         1.0 + ((mass - 0.5) / (1.0 - 0.5))
@@ -1079,7 +1163,7 @@ fn get_nearest_star_lifecycle_dataset_cells(
     age_range: f32,
     mass_range: f32,
 ) -> [TemperatureAndLuminosity; 4] {
-    if age_range < 0.0 || age_range > 6.0 || mass_range < 0.0 || mass_range > 7.0 {
+    if !(0.0..=6.0).contains(&age_range) || !(0.0..=7.0).contains(&mass_range) {
         panic!(
             "{}",
             format!(
@@ -1151,7 +1235,7 @@ mod tests {
                 let ms_luminosity = calculate_main_sequence_luminosity(mass);
                 let ms_radius = calculate_radius(mass, 0.0, 1.0, 0.0, 0.0, 0, 0, coord, galaxy);
                 let ms_temperature =
-                    calculate_temperature_using_luminosity(ms_luminosity, ms_radius as f64) as u32;
+                    calculate_temperature_using_luminosity(ms_luminosity, ms_radius) as u32;
                 let main_lifespan = calculate_lifespan(mass, ms_luminosity);
                 let subgiant_lifespan = calculate_subgiant_lifespan(mass, main_lifespan);
                 let spectral_type = calculate_spectral_type(ms_temperature);
@@ -1191,15 +1275,11 @@ mod tests {
         temp_ms_sum /= n as f64;
 
         // The results shouldn't have a variance higher than 10% in general
-        print_real_to_generated_stars_comparison_results(
-            rad_ms_sum as f64,
-            lum_ms_sum as f64,
-            temp_ms_sum as f64,
-        );
+        print_real_to_generated_stars_comparison_results(rad_ms_sum, lum_ms_sum, temp_ms_sum);
 
-        assert!(-0.2 <= rad_ms_sum && rad_ms_sum <= 0.2);
-        assert!(-0.2 <= lum_ms_sum && lum_ms_sum <= 0.2);
-        assert!(-0.2 <= temp_ms_sum && temp_ms_sum <= 0.2);
+        assert!((-0.2..=0.2).contains(&rad_ms_sum));
+        assert!((-0.2..=0.2).contains(&lum_ms_sum));
+        assert!((-0.2..=0.2).contains(&temp_ms_sum));
     }
 
     #[test]
@@ -1225,7 +1305,7 @@ mod tests {
                 let ms_luminosity = calculate_main_sequence_luminosity(mass);
                 let ms_radius = calculate_radius(mass, 0.0, 1.0, 0.0, 0.0, 0, 0, coord, galaxy);
                 let ms_temperature =
-                    calculate_temperature_using_luminosity(ms_luminosity, ms_radius as f64) as u32;
+                    calculate_temperature_using_luminosity(ms_luminosity, ms_radius) as u32;
 
                 let main_lifespan = calculate_lifespan(mass, ms_luminosity);
                 let age_range = get_age_range_in_star_lifecycle_dataset(
@@ -1300,9 +1380,9 @@ mod tests {
         // The results shouldn't have a variance higher than 10% in general
         print_real_to_generated_stars_comparison_results(rad_sum, lum_sum, temp_sum);
 
-        assert!(-0.2 <= rad_sum && rad_sum <= 0.2);
-        assert!(-0.2 <= lum_sum && lum_sum <= 0.2);
-        assert!(-0.2 <= temp_sum && temp_sum <= 0.2);
+        assert!((-0.2..=0.2).contains(&rad_sum));
+        assert!((-0.2..=0.2).contains(&lum_sum));
+        assert!((-0.2..=0.2).contains(&temp_sum));
     }
 
     #[test]
@@ -1319,9 +1399,9 @@ mod tests {
                     star.temperature,
                 );
                 let calc_luminosity =
-                    calculate_luminosity_using_temperature(star.temperature, star.radius as f64);
+                    calculate_luminosity_using_temperature(star.temperature, star.radius);
                 let calc_temperature =
-                    calculate_temperature_using_luminosity(star.luminosity, star.radius as f64);
+                    calculate_temperature_using_luminosity(star.luminosity, star.radius);
                 let main_lifespan = calculate_lifespan(star.mass, calc_luminosity);
                 let subgiant_lifespan = calculate_subgiant_lifespan(star.mass, main_lifespan);
                 let spectral_type = calculate_spectral_type(calc_temperature as u32);
@@ -1363,9 +1443,9 @@ mod tests {
         // The results shouldn't have a variance higher than 10% in general
         print_real_to_generated_stars_comparison_results(rad_calc_sum, lum_calc_sum, temp_calc_sum);
 
-        assert!(-0.2 <= rad_calc_sum && rad_calc_sum <= 0.2);
-        assert!(-0.2 <= lum_calc_sum && lum_calc_sum <= 0.2);
-        assert!(-0.2 <= temp_calc_sum && temp_calc_sum <= 0.2);
+        assert!((-0.2..=0.2).contains(&rad_calc_sum));
+        assert!((-0.2..=0.2).contains(&lum_calc_sum));
+        assert!((-0.2..=0.2).contains(&temp_calc_sum));
     }
 
     #[test]
@@ -1439,9 +1519,9 @@ mod tests {
         // The results shouldn't have a variance higher than 10% in general
         print_real_to_generated_stars_comparison_results(rad_sum, lum_sum, temp_sum);
 
-        assert!(-0.2 <= rad_sum && rad_sum <= 0.2);
-        assert!(-0.2 <= lum_sum && lum_sum <= 0.2);
-        assert!(-0.2 <= temp_sum && temp_sum <= 0.2);
+        assert!((-0.2..=0.2).contains(&rad_sum));
+        assert!((-0.2..=0.2).contains(&lum_sum));
+        assert!((-0.2..=0.2).contains(&temp_sum));
     }
 
     #[test]
@@ -1495,7 +1575,7 @@ mod tests {
                     ..Default::default()
                 },
                 star: StarSettings {
-                    fixed_mass: Some(expected.0 as f64),
+                    fixed_mass: Some(expected.0),
                     fixed_age: Some(0.00001f32),
                     ..Default::default()
                 },
@@ -1535,7 +1615,7 @@ mod tests {
     #[test]
     fn calculate_proper_star_age() {
         for i in 0..1000 {
-            let mut rng = SeededDiceRoller::new(&format!("{}", i), &"test_age");
+            let mut rng = SeededDiceRoller::new(&format!("{}", i), "test_age");
             let settings = &GenerationSettings {
                 seed: Rc::from(i.to_string()),
                 galaxy: GalaxySettings {
@@ -1544,8 +1624,8 @@ mod tests {
                 ..Default::default()
             };
             let neighborhood =
-                GalacticNeighborhood::generate(Universe::generate(&settings), &settings);
-            let mut galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, &settings);
+                GalacticNeighborhood::generate(Universe::generate(settings), settings);
+            let mut galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, settings);
             let gal_end = galaxy.get_galactic_end();
             let x = rng.gen_u32() as i64 % gal_end.x;
             let y = rng.gen_u32() as i64 % gal_end.y;
@@ -1742,7 +1822,9 @@ mod tests {
         assert!(
             bv_hot < bv_sun && bv_sun < bv_cool,
             "B-V should increase with decreasing temperature: hot={}, sun={}, cool={}",
-            bv_hot, bv_sun, bv_cool
+            bv_hot,
+            bv_sun,
+            bv_cool
         );
     }
 

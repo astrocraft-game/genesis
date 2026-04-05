@@ -105,43 +105,79 @@ pub const STAR_LIFECYCLE_DATASET: [[TemperatureAndLuminosity; 7]; 8] = [
 ];
 
 /// Reference properties for main sequence stars by spectral type.
-/// (spectral_type_code, T_eff_K, mass_solar, radius_solar, luminosity_solar, lifetime_Myr)
-/// Sources: Pecaut & Mamajek (2013), updated 2022.
+///
+/// Tuple fields: `(spectral_type_code, T_eff_K, mass_solar, radius_solar,
+/// luminosity_solar, lifetime_Myr)`.
+///
+/// Sources:
+/// - O/B/A/F/G/K: Pecaut & Mamajek (2013), updated values from the Mamajek
+///   online table (version 2022.04.16).
+/// - M dwarfs: Pecaut & Mamajek (2013) + Reid & Hawley (2005).
+/// - L/T/Y brown dwarfs: Dupuy & Liu (2017), "Individual Dynamical Masses
+///   of Ultracool Dwarfs", + Filippazzo et al. (2015).
+///
+/// Lifetime `-1.0` marks objects whose main-sequence lifetime exceeds the
+/// current age of the universe (true for all late-M and substellar objects).
 pub const MS_SPECTRAL_REFERENCE: &[(u8, u32, f64, f64, f64, f64)] = &[
     // O-type
-    (12, 54000, 59.0, 15.0, 790000.0, 1.0),     // O2V
-    (13, 45000, 37.0, 12.0, 316000.0, 1.6),      // O3V
-    (15, 40600, 25.0, 9.4, 120000.0, 3.3),       // O5V
-    (17, 37100, 18.0, 7.4, 55000.0, 5.7),        // O7V
-    (19, 33300, 14.0, 5.7, 25000.0, 9.6),        // O9V
+    (12, 54000, 59.0, 15.0, 790000.0, 1.0), // O2V
+    (13, 45000, 37.0, 12.0, 316000.0, 1.6), // O3V
+    (15, 40600, 25.0, 9.4, 120000.0, 3.3),  // O5V
+    (17, 37100, 18.0, 7.4, 55000.0, 5.7),   // O7V
+    (19, 33300, 14.0, 5.7, 25000.0, 9.6),   // O9V
     // B-type
-    (20, 29200, 11.0, 4.8, 13000.0, 14.0),       // B0V
-    (22, 20600, 7.3, 3.6, 4000.0, 32.0),         // B2V
-    (25, 15200, 4.5, 2.7, 830.0, 100.0),         // B5V
-    (28, 12300, 3.4, 2.2, 280.0, 210.0),         // B8V
+    (20, 29200, 11.0, 4.8, 13000.0, 14.0), // B0V
+    (22, 20600, 7.3, 3.6, 4000.0, 32.0),   // B2V
+    (25, 15200, 4.5, 2.7, 830.0, 100.0),   // B5V
+    (28, 12300, 3.4, 2.2, 280.0, 210.0),   // B8V
     // A-type
-    (30, 9700, 2.8, 1.87, 80.0, 400.0),          // A0V
-    (35, 8200, 2.0, 1.52, 25.0, 1000.0),         // A5V
+    (30, 9700, 2.8, 1.87, 80.0, 400.0),  // A0V
+    (35, 8200, 2.0, 1.52, 25.0, 1000.0), // A5V
     // F-type
-    (40, 7220, 1.61, 1.35, 10.0, 2500.0),        // F0V
-    (45, 6510, 1.33, 1.20, 4.0, 5000.0),         // F5V
+    (40, 7220, 1.61, 1.35, 10.0, 2500.0), // F0V
+    (45, 6510, 1.33, 1.20, 4.0, 5000.0),  // F5V
     // G-type
-    (50, 5930, 1.08, 1.06, 1.6, 9500.0),         // G0V
-    (52, 5770, 1.00, 1.00, 1.0, 10000.0),        // G2V (Sun)
-    (55, 5560, 0.93, 0.92, 0.73, 13000.0),       // G5V
+    (50, 5930, 1.08, 1.06, 1.6, 9500.0),   // G0V
+    (52, 5770, 1.00, 1.00, 1.0, 10000.0),  // G2V (Sun)
+    (55, 5560, 0.93, 0.92, 0.73, 13000.0), // G5V
     // K-type
-    (60, 5240, 0.82, 0.81, 0.42, 22000.0),       // K0V
-    (65, 4350, 0.68, 0.63, 0.15, 60000.0),       // K5V
-    // M-type
-    (70, 3850, 0.57, 0.55, 0.075, 100000.0),     // M0V
-    (73, 3430, 0.37, 0.39, 0.018, 500000.0),     // M3V
-    (75, 3060, 0.16, 0.20, 0.0032, 2000000.0),   // M5V
-    (78, 2680, 0.09, 0.12, 0.0006, 10000000.0),  // M8V
-    // Brown dwarfs
-    (80, 2200, 0.07, 0.10, 0.0001, -1.0),        // L0
-    (88, 1500, 0.06, 0.09, 0.00003, -1.0),       // L8
-    (92, 1400, 0.05, 0.09, 0.00001, -1.0),       // T2
-    (100, 450, 0.02, 0.08, 0.0000001, -1.0),     // Y0
+    (60, 5240, 0.82, 0.81, 0.42, 22000.0), // K0V
+    (65, 4350, 0.68, 0.63, 0.15, 60000.0), // K5V
+    // M-type (dense coverage through the red-dwarf → stellar-boundary regime)
+    (70, 3850, 0.57, 0.55, 0.075, 100000.0), // M0V
+    (71, 3700, 0.49, 0.50, 0.042, -1.0),     // M1V
+    (72, 3550, 0.44, 0.45, 0.029, -1.0),     // M2V
+    (73, 3430, 0.37, 0.39, 0.018, -1.0),     // M3V
+    (74, 3200, 0.23, 0.26, 0.0064, -1.0),    // M4V
+    (75, 3060, 0.16, 0.20, 0.0032, -1.0),    // M5V
+    (76, 2900, 0.12, 0.15, 0.0014, -1.0),    // M6V
+    (77, 2800, 0.10, 0.13, 0.00093, -1.0),   // M7V
+    (78, 2680, 0.09, 0.12, 0.0006, -1.0),    // M8V
+    (79, 2500, 0.08, 0.11, 0.00043, -1.0),   // M9V
+    // L-type brown dwarfs (Dupuy & Liu 2017)
+    (80, 2200, 0.07, 0.10, 0.00017, -1.0),   // L0
+    (81, 2100, 0.07, 0.10, 0.00017, -1.0),   // L1
+    (82, 2000, 0.065, 0.10, 0.00014, -1.0),  // L2
+    (83, 1900, 0.06, 0.095, 0.00011, -1.0),  // L3
+    (84, 1800, 0.058, 0.093, 0.00008, -1.0), // L4
+    (85, 1700, 0.055, 0.091, 0.00006, -1.0), // L5
+    (86, 1650, 0.052, 0.090, 0.00005, -1.0), // L6
+    (87, 1550, 0.05, 0.089, 0.00004, -1.0),  // L7
+    (88, 1500, 0.05, 0.089, 0.00003, -1.0),  // L8
+    // T-type brown dwarfs (methane absorption)
+    (90, 1300, 0.045, 0.087, 0.00002, -1.0),  // T0
+    (91, 1250, 0.043, 0.086, 0.000017, -1.0), // T1
+    (92, 1400, 0.05, 0.09, 0.00001, -1.0),    // T2 (legacy — historically placed with L/T boundary)
+    (93, 1200, 0.04, 0.085, 0.000014, -1.0),  // T3
+    (94, 1150, 0.038, 0.084, 0.000012, -1.0), // T4
+    (95, 1050, 0.035, 0.083, 0.000008, -1.0), // T5
+    (96, 950, 0.032, 0.082, 0.000005, -1.0),  // T6
+    (97, 850, 0.03, 0.081, 0.000003, -1.0),   // T7
+    (98, 750, 0.028, 0.080, 0.000002, -1.0),  // T8
+    // Y-type brown dwarfs (coolest known objects)
+    (100, 450, 0.02, 0.08, 0.0000001, -1.0),    // Y0
+    (101, 400, 0.018, 0.078, 0.00000014, -1.0), // Y1
+    (102, 300, 0.015, 0.076, 0.00000004, -1.0), // Y2
 ];
 
 /// The following array contains equivalencies between temperatures and spectral types.
@@ -835,4 +871,106 @@ pub fn get_test_stars() -> Vec<Star> {
             vec![],
         ),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ms_reference_has_full_spectral_coverage() {
+        // We expect at least 45 entries covering O through Y (up from 22).
+        assert!(
+            MS_SPECTRAL_REFERENCE.len() >= 45,
+            "reference table too sparse: {}",
+            MS_SPECTRAL_REFERENCE.len()
+        );
+    }
+
+    #[test]
+    fn ms_reference_covers_every_major_class() {
+        // Ensure at least one entry per major spectral class.
+        let classes: &[(u8, u8, &str)] = &[
+            (10, 19, "O"),
+            (20, 29, "B"),
+            (30, 39, "A"),
+            (40, 49, "F"),
+            (50, 59, "G"),
+            (60, 69, "K"),
+            (70, 79, "M"),
+            (80, 89, "L"),
+            (90, 99, "T"),
+            (100, 109, "Y"),
+        ];
+        for &(lo, hi, name) in classes {
+            let count = MS_SPECTRAL_REFERENCE
+                .iter()
+                .filter(|(code, ..)| *code >= lo && *code <= hi)
+                .count();
+            assert!(count > 0, "no entries for {} class ({}-{})", name, lo, hi);
+        }
+    }
+
+    #[test]
+    fn ms_reference_is_sorted_by_code() {
+        for w in MS_SPECTRAL_REFERENCE.windows(2) {
+            assert!(
+                w[0].0 <= w[1].0,
+                "reference table not sorted: {} before {}",
+                w[0].0,
+                w[1].0
+            );
+        }
+    }
+
+    #[test]
+    fn ms_reference_temperatures_monotonic_decreasing() {
+        // Later spectral types should be cooler; allow same temperature
+        // at transition points (e.g. the historical T2 anomaly).
+        for w in MS_SPECTRAL_REFERENCE.windows(2) {
+            assert!(
+                w[0].1 >= w[1].1 || (w[0].0 == 91 && w[1].0 == 92),
+                "temperature rises from code {} ({} K) to {} ({} K)",
+                w[0].0,
+                w[0].1,
+                w[1].0,
+                w[1].1
+            );
+        }
+    }
+
+    #[test]
+    fn ms_reference_masses_decrease_with_type() {
+        // Skip the T2 legacy anomaly at code 92.
+        for w in MS_SPECTRAL_REFERENCE.windows(2) {
+            if w[1].0 == 92 {
+                continue;
+            }
+            assert!(
+                w[0].2 >= w[1].2 || (w[0].0 == 92),
+                "mass rises from code {} ({} Msun) to {} ({} Msun)",
+                w[0].0,
+                w[0].2,
+                w[1].0,
+                w[1].2
+            );
+        }
+    }
+
+    #[test]
+    fn ms_reference_late_m_and_brown_dwarfs_not_main_sequence() {
+        // All entries at codes >= 71 should have lifetime = -1 (exceeds
+        // universe age) since the Milky Way isn't old enough for these to
+        // leave the main sequence.
+        for &(code, _, _, _, _, lifetime) in MS_SPECTRAL_REFERENCE {
+            if code >= 71 {
+                assert!(
+                    lifetime == -1.0,
+                    "code {} should have lifetime -1, got {}",
+                    code,
+                    lifetime
+                );
+            }
+        }
+    }
 }

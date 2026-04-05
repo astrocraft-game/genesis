@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use serde::{Serialize, Deserialize};
 use super::substance::Substance;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash, Serialize, Deserialize)]
 pub enum RecipeCategory {
@@ -60,7 +60,10 @@ pub struct RecipeComponent {
 
 impl RecipeComponent {
     pub const fn new(substance: Substance, quantity_kg: f32) -> Self {
-        Self { substance, quantity_kg }
+        Self {
+            substance,
+            quantity_kg,
+        }
     }
 }
 

@@ -1,7 +1,7 @@
-use crate::internal::*;
-use crate::prelude::*;
 use crate::celestial_body::world::utils::get_category_from_temperature;
 use crate::contents::utils::{calculate_distance_for_temperature, calculate_habitable_zone};
+use crate::internal::*;
+use crate::prelude::*;
 use std::cmp::Ordering;
 
 pub fn generate_star_zones(all_objects: &mut Vec<OrbitalPoint>) {
@@ -33,7 +33,7 @@ fn calculate_star_zones(orbital_point: &mut OrbitalPoint, all_objects: &[Orbital
 }
 
 fn calculate_corona_zone(star: &mut Star) {
-    let corona_radius = ConversionUtils::solar_radii_to_astronomical_units(star.radius as f64);
+    let corona_radius = ConversionUtils::solar_radii_to_astronomical_units(star.radius);
     star.zones
         .push(StarZone::new(0.0, corona_radius, ZoneType::Corona));
 }
@@ -45,7 +45,7 @@ fn calculate_inner_limit_zone(star: &mut Star) {
         using_mass
     } else {
         using_luminosity
-    } as f64;
+    };
     star.zones.push(StarZone::new(
         star.zones
             .iter()
@@ -96,7 +96,7 @@ fn calculate_bio_zone(star: &mut Star) {
 }
 
 fn calculate_outer_zone(star: &mut Star) {
-    let outer_limit_radius = 40.0 * star.mass as f64;
+    let outer_limit_radius = 40.0 * star.mass;
     let inner_limit = star
         .zones
         .iter()

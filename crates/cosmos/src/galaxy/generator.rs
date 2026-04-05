@@ -1,8 +1,6 @@
+use super::constants::*;
 use crate::internal::*;
 use crate::prelude::*;
-#[path = "./constants.rs"]
-mod constants;
-use constants::*;
 
 impl Galaxy {
     /// Generates a brand new [Galaxy] using the given seed and [GenerationSettings].
@@ -102,10 +100,10 @@ fn generate_age(
     settings: &GenerationSettings,
 ) -> f32 {
     let mut age_rng = SeededDiceRoller::new(seed.as_ref(), &format!("gal_{}_age", index));
-    let age;
+
     let fixed_age = get_fixed_age(settings);
 
-    age = if fixed_age > neighborhood.universe.age {
+    let age = if fixed_age > neighborhood.universe.age {
         fixed_age
     } else {
         neighborhood.universe.age
@@ -1239,7 +1237,7 @@ fn remove_opposite_traits(
         opposites.iter().for_each(|opposite| {
             let possible_found = list_to_fill
                 .iter()
-                .find(|current_trait| discriminant(*current_trait) == discriminant(&opposite));
+                .find(|current_trait| discriminant(*current_trait) == discriminant(opposite));
             if let Some(found) = possible_found {
                 remove_specific_trait(list_to_fill, *found);
             }
@@ -1249,7 +1247,7 @@ fn remove_opposite_traits(
 
 /// If no traits, adds the "NoPeculiarity" one, otherwise checks if it's present and removes it.
 fn clean_special_traits(special_traits: &mut Vec<GalaxySpecialTrait>) -> Vec<GalaxySpecialTrait> {
-    if special_traits.len() < 1 {
+    if special_traits.is_empty() {
         special_traits.push(GalaxySpecialTrait::NoPeculiarity);
     } else if special_traits.len() > 1
         && special_traits
@@ -1303,12 +1301,11 @@ fn get_number_of_random_traits(index: u16, seed: &Rc<str>) -> i32 {
 
 /// Retreives an age to use in [Galaxy] generation from the given [GenerationSettings].
 fn get_fixed_age(settings: &GenerationSettings) -> f32 {
-    let fixed_age = if settings.galaxy.fixed_age.is_some() {
+    if settings.galaxy.fixed_age.is_some() {
         settings.galaxy.fixed_age.expect("Fixed age should be set")
     } else {
         -1.0
-    };
-    fixed_age
+    }
 }
 
 /// Is the [Galaxy] to be generated a dominant one in its local cluster?
@@ -1342,10 +1339,10 @@ fn is_galaxy_major(neighborhood: GalacticNeighborhood, index: u16) -> bool {
 }
 
 const GALAXY_NAME_PREFIXES: &[&str] = &[
-    "An", "Al", "Ar", "Ax", "Be", "Br", "Ca", "Ce", "Cy", "Da", "De", "Do", "El", "Er", "Fa",
-    "Fe", "Ga", "Ge", "Ha", "He", "Hy", "In", "Ir", "Ka", "Ki", "La", "Le", "Lu", "Ma", "Me",
-    "Mi", "Ne", "No", "Nu", "Or", "Pa", "Pe", "Qu", "Ra", "Re", "Ri", "Sa", "Se", "Si", "So",
-    "Ta", "Te", "Th", "Ul", "Va", "Ve", "Vi", "Xe", "Za", "Ze",
+    "An", "Al", "Ar", "Ax", "Be", "Br", "Ca", "Ce", "Cy", "Da", "De", "Do", "El", "Er", "Fa", "Fe",
+    "Ga", "Ge", "Ha", "He", "Hy", "In", "Ir", "Ka", "Ki", "La", "Le", "Lu", "Ma", "Me", "Mi", "Ne",
+    "No", "Nu", "Or", "Pa", "Pe", "Qu", "Ra", "Re", "Ri", "Sa", "Se", "Si", "So", "Ta", "Te", "Th",
+    "Ul", "Va", "Ve", "Vi", "Xe", "Za", "Ze",
 ];
 
 const GALAXY_NAME_MIDDLES: &[&str] = &[
@@ -1355,8 +1352,8 @@ const GALAXY_NAME_MIDDLES: &[&str] = &[
 ];
 
 const GALAXY_NAME_SUFFIXES: &[&str] = &[
-    "ia", "us", "on", "ar", "is", "ea", "um", "ax", "os", "al", "ix", "an", "or", "el", "yx",
-    "as", "en", "ur",
+    "ia", "us", "on", "ar", "is", "ea", "um", "ax", "os", "al", "ix", "an", "or", "el", "yx", "as",
+    "en", "ur",
 ];
 
 fn generate_galaxy_name(index: u16, seed: &Rc<str>) -> Rc<str> {
@@ -1422,8 +1419,8 @@ mod tests {
                 ..Default::default()
             };
             let neighborhood =
-                GalacticNeighborhood::generate(Universe::generate(&settings), &settings);
-            let galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, &settings);
+                GalacticNeighborhood::generate(Universe::generate(settings), settings);
+            let galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, settings);
             assert!(galaxy.age <= neighborhood.universe.age - 0.2)
         }
     }
@@ -1438,8 +1435,8 @@ mod tests {
                 ..Default::default()
             };
             let neighborhood =
-                GalacticNeighborhood::generate(Universe::generate(&settings), &settings);
-            let galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, &settings);
+                GalacticNeighborhood::generate(Universe::generate(settings), settings);
+            let galaxy = Galaxy::generate(neighborhood, (i as u16) % 5, settings);
 
             let category = galaxy.category;
             let sub_category = galaxy.sub_category;
@@ -1447,128 +1444,143 @@ mod tests {
                 GalaxySubCategory::DwarfAmorphous => {
                     if let GalaxyCategory::Intergalactic(l, w, h) = category {
                         assert!(
-                            l >= 100 && l <= 4000 && w >= 100 && w <= 4000 && h >= 75 && h <= 3000
+                            (100..=4000).contains(&l)
+                                && (100..=4000).contains(&w)
+                                && (75..=3000).contains(&h)
                         );
                     } else if let GalaxyCategory::Irregular(l, w, h) = category {
                         assert!(
-                            l >= 100 && l <= 4000 && w >= 100 && w <= 4000 && h >= 75 && h <= 3000
+                            (100..=4000).contains(&l)
+                                && (100..=4000).contains(&w)
+                                && (75..=3000).contains(&h)
                         );
                     } else if let GalaxyCategory::Intracluster(l, w, h) = category {
                         assert!(
-                            l >= 100 && l <= 4000 && w >= 100 && w <= 4000 && h >= 75 && h <= 3000
+                            (100..=4000).contains(&l)
+                                && (100..=4000).contains(&w)
+                                && (75..=3000).contains(&h)
                         );
                     }
                 }
                 GalaxySubCategory::Amorphous => {
                     if let GalaxyCategory::Intergalactic(l, w, h) = category {
                         assert!(
-                            l >= 1250
-                                && l <= 12500
-                                && w >= 1250
-                                && w <= 12500
-                                && h >= 1000
-                                && h <= 10000
+                            (1250..=12500).contains(&l)
+                                && (1250..=12500).contains(&w)
+                                && (1000..=10000).contains(&h)
                         );
                     } else if let GalaxyCategory::Irregular(l, w, h) = category {
                         assert!(
-                            l >= 1250
-                                && l <= 12500
-                                && w >= 1250
-                                && w <= 12500
-                                && h >= 1000
-                                && h <= 10000
+                            (1250..=12500).contains(&l)
+                                && (1250..=12500).contains(&w)
+                                && (1000..=10000).contains(&h)
                         );
                     } else if let GalaxyCategory::Intracluster(l, w, h) = category {
                         assert!(
-                            l >= 1250
-                                && l <= 12500
-                                && w >= 1250
-                                && w <= 12500
-                                && h >= 1000
-                                && h <= 10000
+                            (1250..=12500).contains(&l)
+                                && (1250..=12500).contains(&w)
+                                && (1000..=10000).contains(&h)
                         );
                     }
                 }
                 GalaxySubCategory::DwarfSpiral => {
                     if let GalaxyCategory::Intergalactic(l, w, h) = category {
                         assert!(
-                            l >= 500 && l <= 10000 && w >= 500 && w <= 10000 && h >= 2 && h <= 300
+                            (500..=10000).contains(&l)
+                                && (500..=10000).contains(&w)
+                                && (2..=300).contains(&h)
                         );
                     } else if let GalaxyCategory::Irregular(l, w, h) = category {
                         assert!(
-                            l >= 500 && l <= 10000 && w >= 500 && w <= 10000 && h >= 2 && h <= 300
+                            (500..=10000).contains(&l)
+                                && (500..=10000).contains(&w)
+                                && (2..=300).contains(&h)
                         );
                     } else if let GalaxyCategory::Intracluster(l, w, h) = category {
                         assert!(
-                            l >= 500 && l <= 10000 && w >= 500 && w <= 10000 && h >= 2 && h <= 300
+                            (500..=10000).contains(&l)
+                                && (500..=10000).contains(&w)
+                                && (2..=300).contains(&h)
                         );
                     } else if let GalaxyCategory::Spiral(r, t) = category {
-                        assert!(r >= 250 && r <= 5000 && t >= 2 && t <= 300);
+                        assert!((250..=5000).contains(&r) && (2..=300).contains(&t));
                     }
                 }
                 GalaxySubCategory::FlatSpiral
                 | GalaxySubCategory::BarredSpiral
                 | GalaxySubCategory::ClassicSpiral => {
                     if let GalaxyCategory::Spiral(r, t) = category {
-                        assert!(r >= 5000 && r <= 20000 && t >= 50 && t <= 400);
+                        assert!((5000..=20000).contains(&r) && (50..=400).contains(&t));
                     }
                 }
                 GalaxySubCategory::DwarfLenticular => {
                     if let GalaxyCategory::Intergalactic(l, w, h) = category {
                         assert!(
-                            l >= 500 && l <= 10000 && w >= 500 && w <= 10000 && h >= 2 && h <= 300
+                            (500..=10000).contains(&l)
+                                && (500..=10000).contains(&w)
+                                && (2..=300).contains(&h)
                         );
                     } else if let GalaxyCategory::Irregular(l, w, h) = category {
                         assert!(
-                            l >= 500 && l <= 10000 && w >= 500 && w <= 10000 && h >= 2 && h <= 300
+                            (500..=10000).contains(&l)
+                                && (500..=10000).contains(&w)
+                                && (2..=300).contains(&h)
                         );
                     } else if let GalaxyCategory::Intracluster(l, w, h) = category {
                         assert!(
-                            l >= 500 && l <= 10000 && w >= 500 && w <= 10000 && h >= 2 && h <= 300
+                            (500..=10000).contains(&l)
+                                && (500..=10000).contains(&w)
+                                && (2..=300).contains(&h)
                         );
                     } else if let GalaxyCategory::Lenticular(r, t) = category {
-                        assert!(r >= 250 && r <= 5000 && t >= 2 && t <= 300);
+                        assert!((250..=5000).contains(&r) && (2..=300).contains(&t));
                     }
                 }
                 GalaxySubCategory::CommonLenticular => {
                     if let GalaxyCategory::Lenticular(r, t) = category {
-                        assert!(r >= 5000 && r <= 30000 && t >= 100 && t <= 3600);
+                        assert!((5000..=30000).contains(&r) && (100..=3600).contains(&t));
                     }
                 }
                 GalaxySubCategory::GiantLenticular => {
                     if let GalaxyCategory::Lenticular(r, t) = category {
-                        assert!(r >= 30000 && r <= 60000 && t >= 900 && t <= 10800);
+                        assert!((30000..=60000).contains(&r) && (900..=10800).contains(&t));
                     }
                 }
                 GalaxySubCategory::DwarfElliptical => {
                     if let GalaxyCategory::Intergalactic(l, w, h) = category {
                         assert!(
-                            l >= 20 && l <= 3500 && w >= 20 && w <= 3500 && h >= 5 && h <= 3500
+                            (20..=3500).contains(&l)
+                                && (20..=3500).contains(&w)
+                                && (5..=3500).contains(&h)
                         );
                     } else if let GalaxyCategory::Irregular(l, w, h) = category {
                         assert!(
-                            l >= 20 && l <= 3500 && w >= 20 && w <= 3500 && h >= 5 && h <= 3500
+                            (20..=3500).contains(&l)
+                                && (20..=3500).contains(&w)
+                                && (5..=3500).contains(&h)
                         );
                     } else if let GalaxyCategory::Intracluster(l, w, h) = category {
                         assert!(
-                            l >= 20 && l <= 3500 && w >= 20 && w <= 3500 && h >= 5 && h <= 3500
+                            (20..=3500).contains(&l)
+                                && (20..=3500).contains(&w)
+                                && (5..=3500).contains(&h)
                         );
                     } else if let GalaxyCategory::Elliptical(r) = category {
-                        assert!(r >= 10 && r <= 1750);
+                        assert!((10..=1750).contains(&r));
                     }
                 }
                 GalaxySubCategory::CommonElliptical => {
                     if let GalaxyCategory::DominantElliptical(r) = category {
-                        assert!(r >= 50000 && r <= 200000);
+                        assert!((50000..=200000).contains(&r));
                     } else if let GalaxyCategory::Elliptical(r) = category {
-                        assert!(r >= 1000 && r <= 20000);
+                        assert!((1000..=20000).contains(&r));
                     }
                 }
                 GalaxySubCategory::GiantElliptical => {
                     if let GalaxyCategory::DominantElliptical(r) = category {
-                        assert!(r >= 200000 && r <= 500000);
+                        assert!((200000..=500000).contains(&r));
                     } else if let GalaxyCategory::Elliptical(r) = category {
-                        assert!(r >= 20000 && r <= 50000);
+                        assert!((20000..=50000).contains(&r));
                     }
                 }
             }

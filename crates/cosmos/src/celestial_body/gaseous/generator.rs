@@ -1,15 +1,15 @@
-use crate::internal::types::MoonDistance;
-use crate::internal::*;
-use crate::prelude::types::{TelluricRotationDifference, TideLockTarget};
-use crate::prelude::*;
 use crate::celestial_body::gaseous::constants::MASS_TO_DENSITY_DATASET;
 use crate::contents::utils::{
     calculate_blackbody_temperature, calculate_radius, calculate_surface_gravity,
 };
 use crate::contents::zones::get_orbit_with_updated_zone;
+use crate::internal::types::MoonDistance;
+use crate::internal::*;
 use crate::orbital_point::generator::{
     complete_orbit_with_orbital_period, complete_orbit_with_rotation_and_axis,
 };
+use crate::prelude::types::{TelluricRotationDifference, TideLockTarget};
+use crate::prelude::*;
 
 impl GaseousBodyDetails {
     /// Returns the generated gas giant and its list of moons.
@@ -84,7 +84,10 @@ impl GaseousBodyDetails {
                 cloud_mass,
                 calculate_radius(cloud_mass, cloud_density as f64),
                 cloud_density,
-                calculate_surface_gravity(cloud_density, calculate_radius(cloud_mass, cloud_density as f64)),
+                calculate_surface_gravity(
+                    cloud_density,
+                    calculate_radius(cloud_mass, cloud_density as f64),
+                ),
                 blackbody_temp,
                 0,
                 CelestialBodySize::Large,

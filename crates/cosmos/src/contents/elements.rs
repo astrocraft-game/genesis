@@ -883,7 +883,7 @@ impl ChemicalComponent {
         if let Some((triple_point_temp, triple_point_pressure)) = self.triple_point() {
             if let Some(boiling_point_temp) = self.boiling_point() {
                 // Check if the temperature is above the boiling point or above the triple point temperature
-                if temperature > boiling_point_temp as f64 {
+                if temperature > boiling_point_temp {
                     return true;
                 } else if temperature > triple_point_temp && pressure < triple_point_pressure {
                     return true;

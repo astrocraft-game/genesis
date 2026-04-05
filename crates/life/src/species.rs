@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use smart_default::SmartDefault;
 use std::fmt::{self, Display};
 use std::rc::Rc;
@@ -17,13 +17,17 @@ pub enum Biochemistry {
 
 impl Display for Biochemistry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            Biochemistry::CarbonWater => "Carbon/Water",
-            Biochemistry::Ammonia => "Ammonia",
-            Biochemistry::Silicon => "Silicon",
-            Biochemistry::Methane => "Methane",
-            Biochemistry::Exotic => "Exotic",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Biochemistry::CarbonWater => "Carbon/Water",
+                Biochemistry::Ammonia => "Ammonia",
+                Biochemistry::Silicon => "Silicon",
+                Biochemistry::Methane => "Methane",
+                Biochemistry::Exotic => "Exotic",
+            }
+        )
     }
 }
 
@@ -42,14 +46,18 @@ pub enum BodyPlan {
 
 impl Display for BodyPlan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            BodyPlan::Vertebrate => "Vertebrate",
-            BodyPlan::Arthropod => "Arthropod",
-            BodyPlan::Mollusk => "Mollusk",
-            BodyPlan::PlantLike => "Plant-like",
-            BodyPlan::Amorphous => "Amorphous",
-            BodyPlan::Crystalline => "Crystalline",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                BodyPlan::Vertebrate => "Vertebrate",
+                BodyPlan::Arthropod => "Arthropod",
+                BodyPlan::Mollusk => "Mollusk",
+                BodyPlan::PlantLike => "Plant-like",
+                BodyPlan::Amorphous => "Amorphous",
+                BodyPlan::Crystalline => "Crystalline",
+            }
+        )
     }
 }
 
@@ -68,14 +76,18 @@ pub enum LocomotionType {
 
 impl Display for LocomotionType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            LocomotionType::Walker => "Walker",
-            LocomotionType::Swimmer => "Swimmer",
-            LocomotionType::Flyer => "Flyer",
-            LocomotionType::Burrower => "Burrower",
-            LocomotionType::Sessile => "Sessile",
-            LocomotionType::Floater => "Floater",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                LocomotionType::Walker => "Walker",
+                LocomotionType::Swimmer => "Swimmer",
+                LocomotionType::Flyer => "Flyer",
+                LocomotionType::Burrower => "Burrower",
+                LocomotionType::Sessile => "Sessile",
+                LocomotionType::Floater => "Floater",
+            }
+        )
     }
 }
 
@@ -94,14 +106,18 @@ pub enum TrophicLevel {
 
 impl Display for TrophicLevel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            TrophicLevel::Autotroph => "Autotroph",
-            TrophicLevel::Herbivore => "Herbivore",
-            TrophicLevel::Omnivore => "Omnivore",
-            TrophicLevel::Carnivore => "Carnivore",
-            TrophicLevel::FilterFeeder => "Filter Feeder",
-            TrophicLevel::Parasite => "Parasite",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                TrophicLevel::Autotroph => "Autotroph",
+                TrophicLevel::Herbivore => "Herbivore",
+                TrophicLevel::Omnivore => "Omnivore",
+                TrophicLevel::Carnivore => "Carnivore",
+                TrophicLevel::FilterFeeder => "Filter Feeder",
+                TrophicLevel::Parasite => "Parasite",
+            }
+        )
     }
 }
 
@@ -134,14 +150,18 @@ pub enum SocialStructure {
 
 impl Display for SocialStructure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            SocialStructure::Solitary => "Solitary",
-            SocialStructure::Pair => "Pair-bonded",
-            SocialStructure::Pack => "Pack",
-            SocialStructure::Herd => "Herd",
-            SocialStructure::Hive => "Hive",
-            SocialStructure::Collective => "Collective",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                SocialStructure::Solitary => "Solitary",
+                SocialStructure::Pair => "Pair-bonded",
+                SocialStructure::Pack => "Pack",
+                SocialStructure::Herd => "Herd",
+                SocialStructure::Hive => "Hive",
+                SocialStructure::Collective => "Collective",
+            }
+        )
     }
 }
 

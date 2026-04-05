@@ -1,7 +1,8 @@
-use crate::interior::generate_planet_interior;
 use crate::atmosphere::generate_atmosphere_profile;
 use crate::climate::generate_climate_profile;
+use crate::hydrology::generate_hydrography;
 use crate::impacts::generate_impact_history;
+use crate::interior::generate_planet_interior;
 use crate::ocean::generate_ocean_chemistry;
 use crate::photochemistry::generate_photochemistry;
 use crate::subsurface::generate_subsurface_ocean;
@@ -76,6 +77,8 @@ pub fn generate_planetary_detail(
         interior.volcanism,
         interior.tectonic_activity,
     );
+    let hydrography =
+        generate_hydrography(context, interior.atmospheric_pressure, interior.hydrosphere);
 
     PlanetaryDetail {
         atmospheric_layers: atmosphere.atmospheric_layers,
@@ -88,6 +91,7 @@ pub fn generate_planetary_detail(
         photochemistry,
         sky: climate.sky,
         wind: climate.wind,
+        hydrography,
         glaciation: climate.glaciation,
         impact_history,
         subsurface_ocean,
@@ -141,7 +145,10 @@ mod tests {
 
         assert_eq!(detail.breathability, AtmosphereBreathability::Standard);
         assert_eq!(detail.toxicity, AtmosphereToxicity::Benign);
-        assert_eq!(detail.photochemistry.unwrap().haze_regime, HazeRegime::OzoneShielded);
+        assert_eq!(
+            detail.photochemistry.unwrap().haze_regime,
+            HazeRegime::OzoneShielded
+        );
         assert!(matches!(
             detail.climate_regulation.unwrap().regime,
             ClimateRegime::CarbonateSilicate | ClimateRegime::WeatheringBalanced

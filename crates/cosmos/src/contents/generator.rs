@@ -1,8 +1,8 @@
-use crate::internal::*;
-use crate::prelude::*;
 use crate::contents::get_next_id;
 use crate::contents::zones::collect_all_zones;
+use crate::internal::*;
 use crate::orbital_point::utils::sort_orbital_points_by_average_distance;
+use crate::prelude::*;
 
 pub fn generate_stars_systems(
     system_gen_try: u32,
@@ -17,7 +17,7 @@ pub fn generate_stars_systems(
     let all_zones = collect_all_zones(all_objects);
 
     let mut number_of_bodies_per_star =
-        collect_number_of_bodies_per_star(all_objects, &system_index, &coord, &*seed);
+        collect_number_of_bodies_per_star(all_objects, &system_index, &coord, &seed);
     let primary_star_mass = all_objects
         .iter()
         .filter_map(|o| {
@@ -100,7 +100,7 @@ fn generate_orbits_and_bodies(
     primary_star_mass: f64,
     mut next_id: &mut u32,
 ) -> Vec<OrbitalPoint> {
-    let initial_number_of_bodies = major_bodies_left.clone();
+    let initial_number_of_bodies = *major_bodies_left;
     let star_orbital_point = &mut all_objects[*star_index];
     let mut result: Vec<OrbitalPoint> = Vec::new();
     if let AstronomicalObject::Star(star) = &star_orbital_point.object {
@@ -109,9 +109,10 @@ fn generate_orbits_and_bodies(
         let star_age = star.age;
         let star_mass = star.mass;
         let star_luminosity = star.luminosity;
-        let star_type = star.spectral_type.clone();
-        let star_class = star.luminosity_class.clone();
+        let star_type = star.spectral_type;
+        let star_class = star.luminosity_class;
         let star_traits = star.special_traits.clone();
+        let star_population = star.population;
         let gas_giant_arrangement = generate_gas_giant_arrangement(
             *major_bodies_left,
             star.orbital_point_id,
@@ -130,7 +131,7 @@ fn generate_orbits_and_bodies(
         );
 
         let mut reference_orbit_radius =
-            generate_reference_orbit_radius(system_index, coord, galaxy, major_bodies_left, &star);
+            generate_reference_orbit_radius(system_index, coord, galaxy, major_bodies_left, star);
 
         let mut generated_proto_giant_id = None;
         if let Some(orbit_radius) = generate_proto_gas_giant_position(
@@ -141,7 +142,7 @@ fn generate_orbits_and_bodies(
             galaxy,
         ) {
             let (orbit_radius, orbit, point, mut moons) = handle_proto_gas_giant_placement(
-                &all_zones,
+                all_zones,
                 system_traits,
                 system_index,
                 star_orbital_point.id,
@@ -158,7 +159,7 @@ fn generate_orbits_and_bodies(
                 &galaxy,
                 seed.clone(),
                 major_bodies_left,
-                &mut next_id,
+                next_id,
                 star.orbit.clone(),
                 gas_giant_arrangement,
                 reference_orbit_radius,
@@ -182,7 +183,7 @@ fn generate_orbits_and_bodies(
             system_index,
             coord,
             galaxy,
-            &star_orbital_point,
+            star_orbital_point,
             star,
             &mut reference_orbit_radius,
         );
@@ -193,7 +194,7 @@ fn generate_orbits_and_bodies(
             .orbits
             .sort_by(|a, b| a.average_distance.partial_cmp(&b.average_distance).unwrap());
 
-        let spawn_chances = if star_orbital_point.orbits.len() == 0 || initial_number_of_bodies == 0
+        let spawn_chances = if star_orbital_point.orbits.is_empty() || initial_number_of_bodies == 0
         {
             0
         } else {
@@ -215,13 +216,14 @@ fn generate_orbits_and_bodies(
                 &star_type,
                 &star_class,
                 &star_traits,
+                star_population,
                 primary_star_mass,
                 coord,
                 galaxy,
                 seed.clone(),
                 new_objects,
                 major_bodies_left,
-                &mut next_id,
+                next_id,
                 star_orbital_point,
                 gas_giant_arrangement,
                 spawn_chances,
@@ -247,7 +249,7 @@ fn generate_orbits_and_bodies(
                 seed.clone(),
                 new_objects,
                 major_bodies_left,
-                &mut next_id,
+                next_id,
                 star_orbital_point,
                 gas_giant_arrangement,
                 spawn_chances,
@@ -338,7 +340,7 @@ fn generate_orbits(
         star_id,
         &star_orbit,
         &mut rng,
-        &mut last_orbit,
+        last_orbit,
     );
     last_orbit = &mut *reference_orbit_radius;
     generate_outer_orbits(
@@ -347,7 +349,7 @@ fn generate_orbits(
         star_id,
         &star_orbit,
         &mut rng,
-        &mut last_orbit,
+        last_orbit,
     );
     orbits
 }
@@ -386,21 +388,19 @@ fn generate_inner_orbits(
 }
 
 fn get_orbit_multiplier(rng: &mut SeededDiceRoller) -> f64 {
-    let multiplier = rng
-        .get_result(&CopyableRollToProcess::new(
-            vec![
-                CopyableWeightedResult::new(1.4, 1),
-                CopyableWeightedResult::new(1.5, 7),
-                CopyableWeightedResult::new(1.6, 16),
-                CopyableWeightedResult::new(1.7, 48),
-                CopyableWeightedResult::new(1.8, 16),
-                CopyableWeightedResult::new(1.9, 7),
-                CopyableWeightedResult::new(2.0, 1),
-            ],
-            RollMethod::SimpleRoll,
-        ))
-        .expect("A multiplier should have been picked.");
-    multiplier
+    rng.get_result(&CopyableRollToProcess::new(
+        vec![
+            CopyableWeightedResult::new(1.4, 1),
+            CopyableWeightedResult::new(1.5, 7),
+            CopyableWeightedResult::new(1.6, 16),
+            CopyableWeightedResult::new(1.7, 48),
+            CopyableWeightedResult::new(1.8, 16),
+            CopyableWeightedResult::new(1.9, 7),
+            CopyableWeightedResult::new(2.0, 1),
+        ],
+        RollMethod::SimpleRoll,
+    ))
+    .expect("A multiplier should have been picked.")
 }
 
 fn generate_outer_orbits(
@@ -482,6 +482,7 @@ fn place_body_stubs(
     star_type: &StarSpectralType,
     star_class: &StarLuminosityClass,
     star_traits: &Vec<StarPeculiarity>,
+    star_population: StellarEvolution,
     primary_star_mass: f64,
     coord: SpaceCoordinates,
     galaxy: &mut Galaxy,
@@ -557,7 +558,7 @@ fn place_body_stubs(
                                         ..settings.clone()
                                     };
 
-                                    let body_type = generate_inner_body_type(&mut rng, settings);
+                                    let body_type = generate_inner_body_type(&mut rng, settings, star_population);
                                     let mut body_orbital_point = generate_new_body_and_moons(
                                         body_id,
                                         system_traits,
@@ -611,7 +612,7 @@ fn place_body_stubs(
                                     };
 
                                     let body_type =
-                                        generate_outer_body_type(&mut rng, settings.clone());
+                                        generate_outer_body_type(&mut rng, settings.clone(), star_population);
                                     let mut body_orbital_point = generate_new_body_and_moons(
                                         body_id,
                                         system_traits,
@@ -666,7 +667,7 @@ fn place_body_stubs(
                                         ..settings.clone()
                                     };
 
-                                    let body_type = generate_inner_body_type(&mut rng, settings);
+                                    let body_type = generate_inner_body_type(&mut rng, settings, star_population);
                                     let mut body_orbital_point = generate_new_body_and_moons(
                                         body_id,
                                         system_traits,
@@ -725,7 +726,7 @@ fn place_body_stubs(
                                         ..settings.clone()
                                     };
 
-                                    let body_type = generate_outer_body_type(&mut rng, settings);
+                                    let body_type = generate_outer_body_type(&mut rng, settings, star_population);
                                     let mut body_orbital_point = generate_new_body_and_moons(
                                         body_id,
                                         system_traits,
@@ -786,7 +787,7 @@ fn place_body_stubs(
                                         ..settings.clone()
                                     };
 
-                                    let body_type = generate_inner_body_type(&mut rng, settings);
+                                    let body_type = generate_inner_body_type(&mut rng, settings, star_population);
                                     let mut body_orbital_point = generate_new_body_and_moons(
                                         body_id,
                                         system_traits,
@@ -844,7 +845,7 @@ fn place_body_stubs(
                                         ..settings.clone()
                                     };
 
-                                    let body_type = generate_outer_body_type(&mut rng, settings);
+                                    let body_type = generate_outer_body_type(&mut rng, settings, star_population);
                                     let mut body_orbital_point = generate_new_body_and_moons(
                                         body_id,
                                         system_traits,
@@ -1117,11 +1118,37 @@ fn replace_telluric_stubs(
         .collect::<Vec<u32>>();
 
     sort_orbital_points_by_average_distance(&mut non_finished_objects);
-    // TODO: Tidal heating should also happen when eccentric orbit near to parent
-    let tidal_heating_array = OrbitalHarmonicsUtils::calculate_gravitational_harmonics(
+    let mut tidal_heating_array = OrbitalHarmonicsUtils::calculate_gravitational_harmonics(
         &OrbitalHarmonicsUtils::prepare_harmonics_array(&non_finished_objects, false),
         0.03,
     );
+
+    // Add eccentricity-driven tidal heating contribution from the host star.
+    let star_mass_solar = if let AstronomicalObject::Star(star) = &star_orbital_point.object {
+        star.mass
+    } else {
+        0.0
+    };
+    if star_mass_solar > 0.0 {
+        for (i, point) in non_finished_objects.iter().enumerate() {
+            let (radius_earth, body_eccentricity, sma_au) = match (&point.object, &point.own_orbit)
+            {
+                (AstronomicalObject::TelluricBody(b), Some(orbit))
+                | (AstronomicalObject::IcyBody(b), Some(orbit))
+                | (AstronomicalObject::GaseousBody(b), Some(orbit)) => {
+                    (b.radius, orbit.eccentricity, orbit.average_distance)
+                }
+                _ => continue,
+            };
+            let contribution = OrbitalHarmonicsUtils::eccentric_tidal_heating(
+                star_mass_solar,
+                radius_earth,
+                body_eccentricity,
+                sma_au,
+            );
+            tidal_heating_array[i] = tidal_heating_array[i].saturating_add(contribution);
+        }
+    }
 
     new_objects_ids.iter().for_each(|orbit_id| {
         let index_to_replace = non_finished_objects.iter().position(|o| o.id == *orbit_id);
@@ -1136,50 +1163,46 @@ fn replace_telluric_stubs(
                 )
             };
 
-            match stub_body {
-                AstronomicalObject::TelluricBody(stub_body) => {
-                    if (stub_body.clone().is_stub()) {
-                        let moons = finished_objects
-                            .iter_mut()
-                            .filter(|possible_moon_point| {
-                                possible_moon_point.own_orbit.is_some()
-                                    && stub_id
-                                        == possible_moon_point
-                                            .own_orbit
-                                            .clone()
-                                            .unwrap()
-                                            .primary_body_id
-                            })
-                            .map(|o| o.clone())
-                            .collect::<Vec<OrbitalPoint>>();
+            if let AstronomicalObject::TelluricBody(stub_body) = stub_body {
+                if (stub_body.clone().is_stub()) {
+                    let moons = finished_objects
+                        .iter_mut()
+                        .filter(|possible_moon_point| {
+                            possible_moon_point.own_orbit.is_some()
+                                && stub_id
+                                    == possible_moon_point
+                                        .own_orbit
+                                        .clone()
+                                        .unwrap()
+                                        .primary_body_id
+                        })
+                        .map(|o| o.clone())
+                        .collect::<Vec<OrbitalPoint>>();
 
-                        // TODO: Tidal heating should also happen when eccentric orbit near to parent
-                        let tidal_heating = tidal_heating_array[new_object_index];
-                        let generated = WorldGenerator::generate_world(
-                            coord,
-                            system_traits,
-                            system_index,
-                            star_orbital_point.id,
-                            star_age,
-                            star_type,
-                            star_class,
-                            star_traits,
-                            stub_orbit.clone().unwrap().average_distance,
-                            populated_orbit_index,
-                            stub_id,
-                            stub_orbit.unwrap_or_default(),
-                            stub_orbits,
-                            stub_body,
-                            false,
-                            &moons,
-                            tidal_heating,
-                            seed.clone(),
-                            galaxy.settings.clone(),
-                        );
-                        non_finished_objects[new_object_index] = generated;
-                    }
+                    let tidal_heating = tidal_heating_array[new_object_index];
+                    let generated = WorldGenerator::generate_world(
+                        coord,
+                        system_traits,
+                        system_index,
+                        star_orbital_point.id,
+                        star_age,
+                        star_type,
+                        star_class,
+                        star_traits,
+                        stub_orbit.clone().unwrap().average_distance,
+                        populated_orbit_index,
+                        stub_id,
+                        stub_orbit.unwrap_or_default(),
+                        stub_orbits,
+                        stub_body,
+                        false,
+                        &moons,
+                        tidal_heating,
+                        seed.clone(),
+                        galaxy.settings.clone(),
+                    );
+                    non_finished_objects[new_object_index] = generated;
                 }
-                _ => {}
             }
         }
     });
@@ -1450,7 +1473,7 @@ fn get_body_size_modifier(
     seed: &Rc<str>,
 ) -> i32 {
     let mut rng = SeededDiceRoller::new(
-        &seed,
+        seed,
         &format!(
             "sys_{}_{}_str_{}_bdy{}_orbit{}_rep",
             coord, system_index, star_id, major_bodies_left, orbit_index
@@ -1657,7 +1680,7 @@ fn handle_proto_gas_giant_placement(
             let gaseous_body_settings = celestial_body_settings.gaseous_body_settings.clone();
             let mut fixed_special_traits = gaseous_body_settings
                 .fixed_special_traits
-                .unwrap_or_else(Vec::new);
+                .unwrap_or_default();
             if !fixed_special_traits.contains(&CelestialBodySpecialTrait::ProtoGiant) {
                 fixed_special_traits.push(CelestialBodySpecialTrait::ProtoGiant);
             }
@@ -1877,7 +1900,7 @@ fn apply_gas_giant_arrangement_modifiers(
     let mut eccentric_chances = 0;
     let mut epistellar_chances = 0;
 
-    if star_traits.len() > 0 {
+    if !star_traits.is_empty() {
         star_traits.iter().for_each(|t| {
             if discriminant(t) == discriminant(&StarPeculiarity::ChaoticOrbits) {
                 conventional_chances += -20;
@@ -2016,7 +2039,7 @@ fn apply_gas_giant_arrangement_modifiers(
             }
         })
     }
-    if system_traits.len() > 0 {
+    if !system_traits.is_empty() {
         system_traits.iter().for_each(|t| {
             if discriminant(t)
                 == discriminant(&SystemPeculiarity::Cataclysm(CataclysmSeverity::Major))
@@ -2216,27 +2239,50 @@ fn should_spawn(mut rng: &mut SeededDiceRoller, spawn_chances: i32) -> bool {
     .expect("A boolean result should have been picked.")
 }
 
+/// Metallicity-weighted composition modifiers keyed by stellar population.
+/// Returns (metallic, rocky, icy, gaseous) multipliers on a 0–100 scale.
+fn population_body_weights(population: StellarEvolution) -> (u32, u32, u32, u32) {
+    match population {
+        // Pop III: primordial, no metals → virtually only H/He gas giants.
+        StellarEvolution::Paleodwarf => (0, 0, 20, 400),
+        // Pop II: low metals → few rocky planets, more gas.
+        StellarEvolution::Subdwarf => (30, 60, 80, 200),
+        // Pop I (Sol-like): baseline.
+        StellarEvolution::Dwarf => (100, 100, 100, 100),
+        // Metal-rich: more rocky/metallic, fewer gas giants.
+        StellarEvolution::Superdwarf => (150, 130, 100, 80),
+        // Extremely metal-rich: rocky/metallic dominate.
+        StellarEvolution::Hyperdwarf => (200, 150, 90, 60),
+    }
+}
+
+/// Applies a metallicity multiplier to a base weight while preserving a
+/// minimum of 1 when the multiplier is non-zero. This keeps the weighted
+/// roll valid even when metallicity strongly suppresses a body type and
+/// the remaining options are also forbidden.
+#[inline]
+fn apply_metallicity(base: u32, mul: u32) -> u32 {
+    if mul == 0 {
+        0
+    } else {
+        (base * mul / 100).max(1)
+    }
+}
+
 pub(crate) fn generate_inner_body_type(
     mut rng: &mut SeededDiceRoller,
     settings: GenerationSettings,
+    population: StellarEvolution,
 ) -> CelestialBodyComposition {
-    // TODO: Add modifier according to star population and metallicity
+    let (m_mul, r_mul, i_mul, g_mul) = population_body_weights(population);
     rng.get_result(&CopyableRollToProcess::new(
         vec![
-            // CopyableWeightedResult::new(
-            //     CelestialBodySubType::Exotic,
-            //     if settings.celestial_body.do_not_generate_exotic {
-            //         0
-            //     } else {
-            //         1
-            //     },
-            // ),
             CopyableWeightedResult::new(
                 CelestialBodyComposition::Metallic,
                 if settings.celestial_body.do_not_generate_metallic {
                     0
                 } else {
-                    2
+                    apply_metallicity(2, m_mul)
                 },
             ),
             CopyableWeightedResult::new(
@@ -2244,7 +2290,7 @@ pub(crate) fn generate_inner_body_type(
                 if settings.celestial_body.do_not_generate_rocky {
                     0
                 } else {
-                    6
+                    apply_metallicity(6, r_mul)
                 },
             ),
             CopyableWeightedResult::new(
@@ -2252,7 +2298,7 @@ pub(crate) fn generate_inner_body_type(
                 if settings.celestial_body.do_not_generate_icy {
                     0
                 } else {
-                    2
+                    apply_metallicity(2, i_mul)
                 },
             ),
             CopyableWeightedResult::new(
@@ -2260,7 +2306,7 @@ pub(crate) fn generate_inner_body_type(
                 if settings.celestial_body.do_not_generate_gaseous {
                     0
                 } else {
-                    1
+                    apply_metallicity(1, g_mul)
                 },
             ),
         ],
@@ -2272,24 +2318,17 @@ pub(crate) fn generate_inner_body_type(
 pub(crate) fn generate_outer_body_type(
     mut rng: &mut SeededDiceRoller,
     settings: GenerationSettings,
+    population: StellarEvolution,
 ) -> CelestialBodyComposition {
-    // TODO: Add modifier according to star population and metallicity
+    let (m_mul, r_mul, i_mul, g_mul) = population_body_weights(population);
     rng.get_result(&CopyableRollToProcess::new(
         vec![
-            // CopyableWeightedResult::new(
-            //     CelestialBodySubType::Exotic,
-            //     if settings.celestial_body.do_not_generate_exotic {
-            //         0
-            //     } else {
-            //         1
-            //     },
-            // ),
             CopyableWeightedResult::new(
                 CelestialBodyComposition::Metallic,
                 if settings.celestial_body.do_not_generate_metallic {
                     0
                 } else {
-                    1
+                    apply_metallicity(1, m_mul)
                 },
             ),
             CopyableWeightedResult::new(
@@ -2297,7 +2336,7 @@ pub(crate) fn generate_outer_body_type(
                 if settings.celestial_body.do_not_generate_rocky {
                     0
                 } else {
-                    3
+                    apply_metallicity(3, r_mul)
                 },
             ),
             CopyableWeightedResult::new(
@@ -2305,7 +2344,7 @@ pub(crate) fn generate_outer_body_type(
                 if settings.celestial_body.do_not_generate_icy {
                     0
                 } else {
-                    6
+                    apply_metallicity(6, i_mul)
                 },
             ),
             CopyableWeightedResult::new(
@@ -2313,7 +2352,7 @@ pub(crate) fn generate_outer_body_type(
                 if settings.celestial_body.do_not_generate_gaseous {
                     0
                 } else {
-                    6
+                    apply_metallicity(6, g_mul)
                 },
             ),
         ],
@@ -2325,6 +2364,53 @@ pub(crate) fn generate_outer_body_type(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn population_body_weights_metallicity_ordering() {
+        // Gas weight should decrease as metallicity rises (Pop III → metal-rich)
+        let (_, _, _, paleo_gas) = population_body_weights(StellarEvolution::Paleodwarf);
+        let (_, _, _, sub_gas) = population_body_weights(StellarEvolution::Subdwarf);
+        let (_, _, _, dwarf_gas) = population_body_weights(StellarEvolution::Dwarf);
+        let (_, _, _, super_gas) = population_body_weights(StellarEvolution::Superdwarf);
+        let (_, _, _, hyper_gas) = population_body_weights(StellarEvolution::Hyperdwarf);
+        assert!(paleo_gas > sub_gas);
+        assert!(sub_gas > dwarf_gas);
+        assert!(dwarf_gas > super_gas);
+        assert!(super_gas > hyper_gas);
+
+        // Metallic & rocky weights should increase with metallicity
+        let (paleo_m, paleo_r, _, _) = population_body_weights(StellarEvolution::Paleodwarf);
+        let (sub_m, sub_r, _, _) = population_body_weights(StellarEvolution::Subdwarf);
+        let (hyper_m, hyper_r, _, _) = population_body_weights(StellarEvolution::Hyperdwarf);
+        assert_eq!(paleo_m, 0);
+        assert_eq!(paleo_r, 0);
+        assert!(sub_m < hyper_m);
+        assert!(sub_r < hyper_r);
+    }
+
+    #[test]
+    fn apply_metallicity_preserves_zero_and_minimum() {
+        assert_eq!(apply_metallicity(2, 0), 0, "zero mul → zero");
+        assert_eq!(apply_metallicity(2, 100), 2, "identity at 100%");
+        assert_eq!(apply_metallicity(1, 10), 1, "rounds up to 1 when mul > 0");
+        assert_eq!(apply_metallicity(6, 30), 1, "small result still ≥ 1");
+        assert_eq!(apply_metallicity(6, 200), 12, "doubles when mul=200");
+    }
+
+    #[test]
+    fn inner_body_never_yields_zero_sum_weights() {
+        // Paleodwarf + do_not_generate_gaseous must still be rollable.
+        let settings = GenerationSettings {
+            celestial_body: CelestialBodySettings {
+                do_not_generate_gaseous: true,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut rng = SeededDiceRoller::new("test", "paleo_inner");
+        // Should not panic even when metallicity zeros most weights.
+        let _ = generate_inner_body_type(&mut rng, settings, StellarEvolution::Paleodwarf);
+    }
 
     #[test]
     fn get_orbit_multiplier_is_deterministic_and_in_range() {
@@ -2343,7 +2429,10 @@ mod tests {
         // Same seed must produce the same sequence
         let mut rng2 = SeededDiceRoller::new("test_seed", "orbit_mult");
         let results2: Vec<f64> = (0..20).map(|_| get_orbit_multiplier(&mut rng2)).collect();
-        assert_eq!(results, results2, "same seed should yield identical multiplier sequence");
+        assert_eq!(
+            results, results2,
+            "same seed should yield identical multiplier sequence"
+        );
     }
 
     #[test]
@@ -2362,7 +2451,8 @@ mod tests {
             let mut rng_neg = SeededDiceRoller::new("spawn_neg", &format!("neg_{}", i));
             assert!(
                 !should_spawn(&mut rng_neg, -10),
-                "negative spawn_chances should always yield false (iteration {})", i
+                "negative spawn_chances should always yield false (iteration {})",
+                i
             );
         }
     }
@@ -2382,7 +2472,10 @@ mod tests {
         );
         // K-type dwarf: only the Dwarf population modifier applies (+10 conventional)
         assert_eq!(n, 0, "nothing modifier for K-dwarf with no traits");
-        assert_eq!(c, 10, "conventional modifier for K-dwarf with Dwarf population");
+        assert_eq!(
+            c, 10,
+            "conventional modifier for K-dwarf with Dwarf population"
+        );
         assert_eq!(e, 0, "eccentric modifier for K-dwarf with no traits");
         assert_eq!(ep, 0, "epistellar modifier for K-dwarf with no traits");
     }

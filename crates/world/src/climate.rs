@@ -1,8 +1,8 @@
 pub use crate::types::{
-    CelestialBodyWorldType, ChemicalComponent, ClimateRegime, ClimateRegulation,
-    GlaciationState, GreenhouseEffect, IceCapLocation, LifeLevel, MagneticFieldStrength,
-    SkyAppearance, SkyColor, TelluricBodyComposition, TerminatorHabitability,
-    TidallyLockedClimate, TidallyLockedClimateRegime, WindProfile,
+    CelestialBodyWorldType, ChemicalComponent, ClimateRegime, ClimateRegulation, GlaciationState,
+    GreenhouseEffect, IceCapLocation, LifeLevel, MagneticFieldStrength, SkyAppearance, SkyColor,
+    TelluricBodyComposition, TerminatorHabitability, TidallyLockedClimate,
+    TidallyLockedClimateRegime, WindProfile,
 };
 
 use crate::atmosphere::AtmosphereProfile;
@@ -201,13 +201,15 @@ fn generate_wind_profile(
     };
     let is_slow = rossby > 5.0;
     let base_wind =
-        (cells as f32 * 3.0 + atmospheric_pressure.sqrt() * 5.0 + context.gravity_g * 2.0).min(200.0);
+        (cells as f32 * 3.0 + atmospheric_pressure.sqrt() * 5.0 + context.gravity_g * 2.0)
+            .min(200.0);
     let internal_boost = if atmospheric_pressure > 10.0 && context.tidal_heating > 0 {
         50.0
     } else {
         0.0
     };
-    let max_wind = (base_wind * (2.0 + if is_slow { 3.0 } else { 1.0 }) + internal_boost).min(600.0);
+    let max_wind =
+        (base_wind * (2.0 + if is_slow { 3.0 } else { 1.0 }) + internal_boost).min(600.0);
 
     Some(WindProfile {
         mean_surface_wind_ms: base_wind,
@@ -222,8 +224,9 @@ fn generate_glaciation(
     ice_over_water: f32,
     ice_over_land: f32,
 ) -> Option<GlaciationState> {
-    let ice_fraction =
-        (ice_over_water * hydrosphere / 100.0 + ice_over_land * (100.0 - hydrosphere) / 100.0) / 100.0;
+    let ice_fraction = (ice_over_water * hydrosphere / 100.0
+        + ice_over_land * (100.0 - hydrosphere) / 100.0)
+        / 100.0;
     let snowball = ice_fraction > 0.9;
     let ice_cap_location = if context.orbit.tidally_locked {
         IceCapLocation::DarkSide
@@ -262,10 +265,9 @@ fn generate_climate_regulation(
     glaciation: Option<&GlaciationState>,
     wind: Option<&WindProfile>,
 ) -> Option<ClimateRegulation> {
-    let outgassing = (volcanism * 0.8
-        + tectonic_activity * 0.5
-        + context.tidal_heating as f32 * 1.4)
-        .clamp(0.0, 100.0);
+    let outgassing =
+        (volcanism * 0.8 + tectonic_activity * 0.5 + context.tidal_heating as f32 * 1.4)
+            .clamp(0.0, 100.0);
     let hydrology_factor = if hydrosphere > 0.0 {
         (hydrosphere / 100.0).clamp(0.0, 1.0)
     } else {
@@ -361,15 +363,13 @@ fn generate_tidally_locked_climate(
     let day_night_temperature_delta_k = ((context.blackbody_temp_k as f32 * 0.85)
         * (1.0 - 0.82 * heat_redistribution_efficiency))
         .clamp(8.0, 500.0);
-    let substellar_cloud_fraction = if has_atmosphere
-        && hydrosphere > 5.0
-        && (220..=400).contains(&context.blackbody_temp_k)
-    {
-        (0.2 + ocean_coupling * 0.35 + wind_coupling * 0.25 + atmospheric_coupling * 0.2)
-            .clamp(0.0, 1.0)
-    } else {
-        0.0
-    };
+    let substellar_cloud_fraction =
+        if has_atmosphere && hydrosphere > 5.0 && (220..=400).contains(&context.blackbody_temp_k) {
+            (0.2 + ocean_coupling * 0.35 + wind_coupling * 0.25 + atmospheric_coupling * 0.2)
+                .clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
     let nightside_cold_traps = !has_atmosphere
         || atmospheric_pressure < 0.08
         || heat_redistribution_efficiency < 0.32
@@ -396,7 +396,9 @@ fn generate_tidally_locked_climate(
     };
     let regime = if !has_atmosphere || atmospheric_pressure < 0.02 {
         TidallyLockedClimateRegime::AtmosphereCollapsed
-    } else if heat_redistribution_efficiency > 0.72 && wind.as_ref().is_some_and(|w| w.superrotation) {
+    } else if heat_redistribution_efficiency > 0.72
+        && wind.as_ref().is_some_and(|w| w.superrotation)
+    {
         TidallyLockedClimateRegime::UniformSuperrotating
     } else if hydrosphere > 15.0
         && substellar_cloud_fraction > 0.45

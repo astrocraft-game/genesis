@@ -44,9 +44,8 @@ pub(crate) fn calculate_radius(mass_earth_masses: f64, density_g_cm3: f64) -> f6
     let density_kg_m3 = density_g_cm3 * 1000.0;
     let volume_m3 = mass_kg / density_kg_m3;
     let radius_meters = ((3.0 * volume_m3) / (4.0 * std::f64::consts::PI)).cbrt();
-    let radius_earth_radii = radius_meters / earth_radius_meters;
 
-    radius_earth_radii
+    radius_meters / earth_radius_meters
 }
 
 /// Returns a value in Gs
@@ -311,7 +310,15 @@ pub(crate) fn detect_orbital_resonance(
         period2 as f64 / period1 as f64
     };
     let resonances: &[(u8, u8)] = &[
-        (2, 1), (3, 2), (4, 3), (5, 3), (5, 2), (3, 1), (4, 1), (5, 4), (7, 4),
+        (2, 1),
+        (3, 2),
+        (4, 3),
+        (5, 3),
+        (5, 2),
+        (3, 1),
+        (4, 1),
+        (5, 4),
+        (7, 4),
     ];
     for &(p, q) in resonances {
         let expected = p as f64 / q as f64;
@@ -348,13 +355,21 @@ pub(crate) fn calculate_tidal_heating_flux(
 
 /// Maps tidal heating flux to a u32 value compatible with existing tidal_heating field.
 pub(crate) fn tidal_heating_flux_to_u32(flux_w_per_m2: f64) -> u32 {
-    if flux_w_per_m2 < 0.001 { 0 }
-    else if flux_w_per_m2 < 0.01 { 1 }
-    else if flux_w_per_m2 < 0.04 { 2 }
-    else if flux_w_per_m2 < 0.1 { 3 }
-    else if flux_w_per_m2 < 0.5 { 5 }
-    else if flux_w_per_m2 < 2.0 { 10 }
-    else { 20 }
+    if flux_w_per_m2 < 0.001 {
+        0
+    } else if flux_w_per_m2 < 0.01 {
+        1
+    } else if flux_w_per_m2 < 0.04 {
+        2
+    } else if flux_w_per_m2 < 0.1 {
+        3
+    } else if flux_w_per_m2 < 0.5 {
+        5
+    } else if flux_w_per_m2 < 2.0 {
+        10
+    } else {
+        20
+    }
 }
 
 /// Computes tidal locking timescale in Gyr.
@@ -471,16 +486,8 @@ mod tests {
     fn test_habitable_zone_sun() {
         let (inner, outer) = calculate_habitable_zone(1.0, 5772);
         // Sun's HZ should be roughly 0.75-1.77 AU (Recent Venus / Early Mars)
-        assert!(
-            inner > 0.7 && inner < 0.85,
-            "Sun inner HZ = {} AU",
-            inner
-        );
-        assert!(
-            outer > 1.7 && outer < 1.9,
-            "Sun outer HZ = {} AU",
-            outer
-        );
+        assert!(inner > 0.7 && inner < 0.85, "Sun inner HZ = {} AU", inner);
+        assert!(outer > 1.7 && outer < 1.9, "Sun outer HZ = {} AU", outer);
     }
 
     #[test]
@@ -496,11 +503,7 @@ mod tests {
     fn test_snow_line_sun() {
         let snow = calculate_snow_line(1.0);
         // Sun's snow line ~2.7 AU
-        assert!(
-            (snow - 2.7).abs() < 0.1,
-            "Sun snow line = {} AU",
-            snow
-        );
+        assert!((snow - 2.7).abs() < 0.1, "Sun snow line = {} AU", snow);
     }
 
     #[test]
@@ -666,7 +669,11 @@ mod tests {
     #[test]
     fn test_trojans_jupiter_like() {
         let pop = estimate_trojan_population(9.545e-4, 1.0, 4.5);
-        assert!(pop > 1000, "Jupiter-like should have thousands of trojans, got {}", pop);
+        assert!(
+            pop > 1000,
+            "Jupiter-like should have thousands of trojans, got {}",
+            pop
+        );
     }
 
     #[test]
@@ -680,7 +687,11 @@ mod tests {
     fn test_haze_titan_like() {
         // Titan: N2+CH4, cold, moderate UV
         let haze = estimate_photochemical_haze(1.5, true, true, 94, 1.0);
-        assert!(haze > 0.3, "Titan-like should have significant haze, got {}", haze);
+        assert!(
+            haze > 0.3,
+            "Titan-like should have significant haze, got {}",
+            haze
+        );
     }
 
     #[test]
@@ -775,7 +786,12 @@ mod tests {
     fn test_tidal_heating_closer_means_more() {
         let close = calculate_tidal_heating_flux(0.01, 0.002, 0.29, 0.001, false);
         let far = calculate_tidal_heating_flux(0.01, 0.01, 0.29, 0.001, false);
-        assert!(close > far, "closer orbit should heat more: {} vs {}", close, far);
+        assert!(
+            close > far,
+            "closer orbit should heat more: {} vs {}",
+            close,
+            far
+        );
     }
 
     #[test]

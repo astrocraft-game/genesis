@@ -393,8 +393,19 @@ pub struct TidallyLockedClimate {
 #[derive(Clone, PartialEq, PartialOrd, Debug, Default)]
 pub struct Photochemistry {
     pub haze_regime: HazeRegime,
+    /// Dominant activity level across the whole atmosphere (legacy).
     pub activity: PhotochemicalActivity,
+    /// UV-driven photolysis in the upper atmosphere. Scales with stellar
+    /// XUV flux and stellar age.
+    pub stratospheric_activity: PhotochemicalActivity,
+    /// Thermochemical reactions in the lower atmosphere. Driven by surface
+    /// temperature, pressure, and oxidizer/reducer content.
+    pub tropospheric_activity: PhotochemicalActivity,
     pub ozone_column_relative: f32,
+    /// Ozone-equivalent shielding: effective O3 column scaled by whether the
+    /// atmosphere can actually support long-lived ozone (O2-rich + cold
+    /// stratosphere). For non-O2 atmospheres this is zero.
+    pub ozone_equivalent_shielding: f32,
     pub uv_shielding_fraction: f32,
     pub smog_level: SmogLevel,
 }
@@ -492,6 +503,15 @@ pub struct Hydrography {
     pub major_river_count: u32,
     pub longest_river_km: f32,
     pub mean_precipitation_mm: f32,
+    /// Zonal precipitation bands: [equatorial, mid-latitude, polar] in mm/yr.
+    /// Derived from a simple Hadley-cell redistribution of the global mean
+    /// precipitation, scaled by axial tilt. The sum of these three values
+    /// (weighted by zonal area) approximates `mean_precipitation_mm`.
+    pub zonal_precipitation_mm: [f32; 3],
+    /// Number of atmospheric circulation cells per hemisphere (Hadley +
+    /// Ferrel + Polar). Drops to 1 on low-tilt, high-insolation worlds and
+    /// becomes chaotic above ~54° tilt.
+    pub hadley_cells_per_hemisphere: u8,
     pub dominant_delta_type: DeltaType,
 }
 

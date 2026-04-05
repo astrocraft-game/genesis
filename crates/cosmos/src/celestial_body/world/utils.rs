@@ -4,7 +4,7 @@ use crate::prelude::{
 };
 
 pub fn get_category_from_temperature(blackbody_temperature: u32) -> WorldTemperatureCategory {
-    let climate = {
+    {
         if blackbody_temperature < 244 {
             WorldTemperatureCategory::Frozen
         } else if blackbody_temperature < 255 {
@@ -28,8 +28,7 @@ pub fn get_category_from_temperature(blackbody_temperature: u32) -> WorldTempera
         } else {
             WorldTemperatureCategory::Infernal
         }
-    };
-    climate
+    }
 }
 
 pub fn has_element_in_normal_amount_or_more(

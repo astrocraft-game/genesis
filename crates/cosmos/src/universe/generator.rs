@@ -52,7 +52,7 @@ fn calculate_age(settings: &GenerationSettings, seed: &Rc<str>) -> f32 {
         min = min.max(era.min);
         max = max.min(era.max);
 
-        max = max - min;
+        max -= min;
         if ((max * 100.0) as u32) == 0 {
             age = (max + min * 100.0).round() / 100.0;
         } else {
@@ -170,30 +170,30 @@ fn generate_era(
 /// Checks if the given **age** and **era** match each other. Panics if the age isn't valid.
 fn are_age_and_era_valid(era: StelliferousEra, age: f32) -> bool {
     let mut result = false;
-    assert!(age >= MIN_ANCIENT_STELLIFEROUS && age < MAX_END_STELLIFEROUS);
+    assert!((MIN_ANCIENT_STELLIFEROUS..MAX_END_STELLIFEROUS).contains(&age));
     match era {
         StelliferousEra::AncientStelliferous => {
-            if age >= MIN_ANCIENT_STELLIFEROUS && age < MIN_EARLY_STELLIFEROUS {
+            if (MIN_ANCIENT_STELLIFEROUS..MIN_EARLY_STELLIFEROUS).contains(&age) {
                 result = true
             }
         }
         StelliferousEra::EarlyStelliferous => {
-            if age >= MIN_EARLY_STELLIFEROUS && age < MIN_MIDDLE_STELLIFEROUS {
+            if (MIN_EARLY_STELLIFEROUS..MIN_MIDDLE_STELLIFEROUS).contains(&age) {
                 result = true
             }
         }
         StelliferousEra::MiddleStelliferous => {
-            if age >= MIN_MIDDLE_STELLIFEROUS && age < MIN_LATE_STELLIFEROUS {
+            if (MIN_MIDDLE_STELLIFEROUS..MIN_LATE_STELLIFEROUS).contains(&age) {
                 result = true
             }
         }
         StelliferousEra::LateStelliferous => {
-            if age >= MIN_LATE_STELLIFEROUS && age < MIN_END_STELLIFEROUS {
+            if (MIN_LATE_STELLIFEROUS..MIN_END_STELLIFEROUS).contains(&age) {
                 result = true
             }
         }
         StelliferousEra::EndStelliferous => {
-            if age >= MIN_END_STELLIFEROUS && age < MAX_END_STELLIFEROUS {
+            if (MIN_END_STELLIFEROUS..MAX_END_STELLIFEROUS).contains(&age) {
                 result = true
             }
         }
@@ -204,15 +204,15 @@ fn are_age_and_era_valid(era: StelliferousEra, age: f32) -> bool {
 /// Returns the [StelliferousEra] matching the given age.
 fn get_era_from_age(age: f32) -> StelliferousEra {
     let mut result = StelliferousEra::MiddleStelliferous;
-    if age >= MIN_ANCIENT_STELLIFEROUS && age < MIN_EARLY_STELLIFEROUS {
+    if (MIN_ANCIENT_STELLIFEROUS..MIN_EARLY_STELLIFEROUS).contains(&age) {
         result = StelliferousEra::AncientStelliferous
-    } else if age >= MIN_EARLY_STELLIFEROUS && age < MIN_MIDDLE_STELLIFEROUS {
+    } else if (MIN_EARLY_STELLIFEROUS..MIN_MIDDLE_STELLIFEROUS).contains(&age) {
         result = StelliferousEra::EarlyStelliferous
-    } else if age >= MIN_MIDDLE_STELLIFEROUS && age < MIN_LATE_STELLIFEROUS {
+    } else if (MIN_MIDDLE_STELLIFEROUS..MIN_LATE_STELLIFEROUS).contains(&age) {
         result = StelliferousEra::MiddleStelliferous
-    } else if age >= MIN_LATE_STELLIFEROUS && age < MIN_END_STELLIFEROUS {
+    } else if (MIN_LATE_STELLIFEROUS..MIN_END_STELLIFEROUS).contains(&age) {
         result = StelliferousEra::LateStelliferous
-    } else if age >= MIN_END_STELLIFEROUS && age < MAX_END_STELLIFEROUS {
+    } else if (MIN_END_STELLIFEROUS..MAX_END_STELLIFEROUS).contains(&age) {
         result = StelliferousEra::EndStelliferous
     }
     result

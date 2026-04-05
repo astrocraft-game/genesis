@@ -46,15 +46,19 @@ pub enum ResourceType {
 
 impl Display for ResourceType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            ResourceType::CommonMetals => "Common Metals",
-            ResourceType::PreciousMetals => "Precious Metals",
-            ResourceType::Radioactives => "Radioactives",
-            ResourceType::IndustrialMinerals => "Industrial Minerals",
-            ResourceType::Volatiles => "Volatiles",
-            ResourceType::OrganicCompounds => "Organic Compounds",
-            ResourceType::ExoticMaterials => "Exotic Materials",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                ResourceType::CommonMetals => "Common Metals",
+                ResourceType::PreciousMetals => "Precious Metals",
+                ResourceType::Radioactives => "Radioactives",
+                ResourceType::IndustrialMinerals => "Industrial Minerals",
+                ResourceType::Volatiles => "Volatiles",
+                ResourceType::OrganicCompounds => "Organic Compounds",
+                ResourceType::ExoticMaterials => "Exotic Materials",
+            }
+        )
     }
 }
 
@@ -73,14 +77,18 @@ pub enum ResourceAbundance {
 
 impl Display for ResourceAbundance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            ResourceAbundance::Absent => "Absent",
-            ResourceAbundance::Trace => "Trace",
-            ResourceAbundance::Poor => "Poor",
-            ResourceAbundance::Average => "Average",
-            ResourceAbundance::Rich => "Rich",
-            ResourceAbundance::Motherlode => "Motherlode",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                ResourceAbundance::Absent => "Absent",
+                ResourceAbundance::Trace => "Trace",
+                ResourceAbundance::Poor => "Poor",
+                ResourceAbundance::Average => "Average",
+                ResourceAbundance::Rich => "Rich",
+                ResourceAbundance::Motherlode => "Motherlode",
+            }
+        )
     }
 }
 
@@ -98,13 +106,17 @@ pub enum ResourceAccessibility {
 
 impl Display for ResourceAccessibility {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            ResourceAccessibility::Inaccessible => "Inaccessible",
-            ResourceAccessibility::Deep => "Deep",
-            ResourceAccessibility::Subsurface => "Subsurface",
-            ResourceAccessibility::Surface => "Surface",
-            ResourceAccessibility::Atmospheric => "Atmospheric",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                ResourceAccessibility::Inaccessible => "Inaccessible",
+                ResourceAccessibility::Deep => "Deep",
+                ResourceAccessibility::Subsurface => "Subsurface",
+                ResourceAccessibility::Surface => "Surface",
+                ResourceAccessibility::Atmospheric => "Atmospheric",
+            }
+        )
     }
 }
 
@@ -147,26 +159,30 @@ pub enum POIType {
 
 impl Display for POIType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            POIType::MassiveCanyon => "Massive Canyon",
-            POIType::SuperVolcano => "Super Volcano",
-            POIType::ImpactCrater => "Impact Crater",
-            POIType::CrystalFormation => "Crystal Formation",
-            POIType::LavaLake => "Lava Lake",
-            POIType::GeyserField => "Geyser Field",
-            POIType::CaveSystem => "Cave System",
-            POIType::SubterraneanOcean => "Subterranean Ocean",
-            POIType::ThermalVents => "Thermal Vents",
-            POIType::IceGeysers => "Ice Geysers",
-            POIType::PermanentStorm => "Permanent Storm",
-            POIType::AuroraField => "Aurora Field",
-            POIType::FossilSite => "Fossil Site",
-            POIType::ExtremeLifeColony => "Extreme Life Colony",
-            POIType::GravityAnomaly => "Gravity Anomaly",
-            POIType::MagneticAnomaly => "Magnetic Anomaly",
-            POIType::RadioactiveZone => "Radioactive Zone",
-            POIType::UnusualMineral => "Unusual Mineral Deposit",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                POIType::MassiveCanyon => "Massive Canyon",
+                POIType::SuperVolcano => "Super Volcano",
+                POIType::ImpactCrater => "Impact Crater",
+                POIType::CrystalFormation => "Crystal Formation",
+                POIType::LavaLake => "Lava Lake",
+                POIType::GeyserField => "Geyser Field",
+                POIType::CaveSystem => "Cave System",
+                POIType::SubterraneanOcean => "Subterranean Ocean",
+                POIType::ThermalVents => "Thermal Vents",
+                POIType::IceGeysers => "Ice Geysers",
+                POIType::PermanentStorm => "Permanent Storm",
+                POIType::AuroraField => "Aurora Field",
+                POIType::FossilSite => "Fossil Site",
+                POIType::ExtremeLifeColony => "Extreme Life Colony",
+                POIType::GravityAnomaly => "Gravity Anomaly",
+                POIType::MagneticAnomaly => "Magnetic Anomaly",
+                POIType::RadioactiveZone => "Radioactive Zone",
+                POIType::UnusualMineral => "Unusual Mineral Deposit",
+            }
+        )
     }
 }
 
@@ -183,12 +199,16 @@ pub enum POISignificance {
 
 impl Display for POISignificance {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            POISignificance::Minor => "Minor",
-            POISignificance::Notable => "Notable",
-            POISignificance::Major => "Major",
-            POISignificance::Unique => "Unique",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                POISignificance::Minor => "Minor",
+                POISignificance::Notable => "Notable",
+                POISignificance::Major => "Major",
+                POISignificance::Unique => "Unique",
+            }
+        )
     }
 }
 
@@ -220,21 +240,25 @@ pub enum BiomeType {
 
 impl Display for BiomeType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            BiomeType::Tundra => "Tundra",
-            BiomeType::Taiga => "Taiga",
-            BiomeType::TemperateForest => "Temperate Forest",
-            BiomeType::TropicalForest => "Tropical Forest",
-            BiomeType::Grassland => "Grassland",
-            BiomeType::Desert => "Desert",
-            BiomeType::Savanna => "Savanna",
-            BiomeType::Wetland => "Wetland",
-            BiomeType::Alpine => "Alpine",
-            BiomeType::Volcanic => "Volcanic",
-            BiomeType::IceCap => "Ice Cap",
-            BiomeType::Ocean => "Ocean",
-            BiomeType::Barren => "Barren",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                BiomeType::Tundra => "Tundra",
+                BiomeType::Taiga => "Taiga",
+                BiomeType::TemperateForest => "Temperate Forest",
+                BiomeType::TropicalForest => "Tropical Forest",
+                BiomeType::Grassland => "Grassland",
+                BiomeType::Desert => "Desert",
+                BiomeType::Savanna => "Savanna",
+                BiomeType::Wetland => "Wetland",
+                BiomeType::Alpine => "Alpine",
+                BiomeType::Volcanic => "Volcanic",
+                BiomeType::IceCap => "Ice Cap",
+                BiomeType::Ocean => "Ocean",
+                BiomeType::Barren => "Barren",
+            }
+        )
     }
 }
 
@@ -262,13 +286,17 @@ pub enum WindIntensity {
 
 impl Display for WindIntensity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            WindIntensity::Calm => "Calm",
-            WindIntensity::Light => "Light",
-            WindIntensity::Moderate => "Moderate",
-            WindIntensity::Strong => "Strong",
-            WindIntensity::Extreme => "Extreme",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                WindIntensity::Calm => "Calm",
+                WindIntensity::Light => "Light",
+                WindIntensity::Moderate => "Moderate",
+                WindIntensity::Strong => "Strong",
+                WindIntensity::Extreme => "Extreme",
+            }
+        )
     }
 }
 
@@ -286,13 +314,17 @@ pub enum CraterDensity {
 
 impl Display for CraterDensity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            CraterDensity::Pristine => "Pristine",
-            CraterDensity::Light => "Light",
-            CraterDensity::Moderate => "Moderate",
-            CraterDensity::Heavy => "Heavy",
-            CraterDensity::Saturated => "Saturated",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                CraterDensity::Pristine => "Pristine",
+                CraterDensity::Light => "Light",
+                CraterDensity::Moderate => "Moderate",
+                CraterDensity::Heavy => "Heavy",
+                CraterDensity::Saturated => "Saturated",
+            }
+        )
     }
 }
 

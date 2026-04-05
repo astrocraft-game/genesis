@@ -44,7 +44,8 @@ pub fn generate_ocean_chemistry(
     let salinity_g_per_kg = if liquid == LiquidType::Brine {
         140.0 + hydrosphere.min(20.0) * 2.0 + volcanism * 0.3
     } else {
-        (18.0 + volcanism * 0.35 + tectonic_activity * 0.15 + land_fraction * 20.0).clamp(10.0, 70.0)
+        (18.0 + volcanism * 0.35 + tectonic_activity * 0.15 + land_fraction * 20.0)
+            .clamp(10.0, 70.0)
     };
 
     let ph = if liquid == LiquidType::Water {
@@ -61,8 +62,14 @@ pub fn generate_ocean_chemistry(
 
     let alkalinity_meq_l = if liquid == LiquidType::Water || liquid == LiquidType::Brine {
         let carbonate_buffer = if tectonic_activity > 10.0 { 1.4 } else { 1.0 };
-        let evaporative_boost = if liquid == LiquidType::Brine { 2.0 } else { 1.0 };
-        (1.2 + salinity_g_per_kg / 40.0 + hydrosphere / 140.0 + carbonate_buffer * evaporative_boost)
+        let evaporative_boost = if liquid == LiquidType::Brine {
+            2.0
+        } else {
+            1.0
+        };
+        (1.2 + salinity_g_per_kg / 40.0
+            + hydrosphere / 140.0
+            + carbonate_buffer * evaporative_boost)
             .clamp(0.5, 12.0)
     } else {
         0.0
@@ -119,10 +126,14 @@ pub fn generate_ocean_chemistry(
 
     let dissolved_volatile_load = (atmospheric_pressure * 0.8
         + volcanism * 0.35
-        + if liquid == LiquidType::Brine { 8.0 } else { 0.0 }
+        + if liquid == LiquidType::Brine {
+            8.0
+        } else {
+            0.0
+        }
         + if has_methane { 4.0 } else { 0.0 }
         + if has_ammonia { 3.0 } else { 0.0 })
-        .clamp(0.0, 100.0);
+    .clamp(0.0, 100.0);
 
     Some(OceanChemistry {
         liquid_type: liquid,

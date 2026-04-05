@@ -92,13 +92,48 @@ impl OrbitalHarmonicsUtils {
         0.0
     }
 
+    /// Tidal heating contribution from an eccentric orbit around a primary.
+    ///
+    /// Uses the classical tidal heating proportionality:
+    ///     H ∝ (M_primary)² × R_body⁵ × e² / a⁶
+    ///
+    /// The returned integer is on the same heuristic scale as
+    /// `calculate_gravitational_harmonics`, empirically tuned so that:
+    ///   - Circular or distant orbits contribute 0
+    ///   - Io-like moons (e≈0.004, close to a gas giant) contribute ~1–2
+    ///   - Earth-size world with e=0.1 at 0.05 AU contributes ~3
+    ///   - Super-Earths with e=0.2 at a<0.03 AU contribute ~6+
+    ///
+    /// `primary_mass_solar` is in solar masses, `body_radius_earth` in Earth
+    /// radii, `semi_major_axis_au` in AU.
+    pub fn eccentric_tidal_heating(
+        primary_mass_solar: f64,
+        body_radius_earth: f64,
+        eccentricity: f32,
+        semi_major_axis_au: f64,
+    ) -> u32 {
+        if eccentricity < 0.01 || semi_major_axis_au < 1e-4 || body_radius_earth <= 0.0 {
+            return 0;
+        }
+        let e = eccentricity as f64;
+        let score = primary_mass_solar.powi(2) * body_radius_earth.powi(5) * e.powi(2)
+            / semi_major_axis_au.powi(6);
+        if score <= 1.0 {
+            return 0;
+        }
+        // Log-scaled with an offset so low scores round to 0 and
+        // extreme hot-eccentric worlds saturate near 10.
+        let log_score = score.log10() - 3.0;
+        log_score.clamp(0.0, 10.0).round() as u32
+    }
+
     pub fn prepare_harmonics_array(
         orbital_points: &[OrbitalPoint],
         are_moons: bool,
     ) -> Vec<(f64, f64)> {
         orbital_points
             .iter()
-            .filter_map(|orbital_point| {
+            .map(|orbital_point| {
                 if let Some(own_orbit) = &orbital_point.own_orbit {
                     let distance_multiplier = if are_moons { 1.0 } else { 0.3 };
                     let size_multiplier = match orbital_point.object {
@@ -117,12 +152,12 @@ impl OrbitalHarmonicsUtils {
                         _ => 0.0,
                     };
 
-                    Some((
+                    (
                         own_orbit.orbital_period as f64,
                         distance_multiplier * size_multiplier,
-                    ))
+                    )
                 } else {
-                    Some((0.0, 0.0))
+                    (0.0, 0.0)
                 }
             })
             .collect()
@@ -145,7 +180,7 @@ mod tests {
     fn test_simple_gravitational_harmonics() {
         let orbits = vec![(1.0, 1.0), (2.0, 1.0), (4.0, 1.0)]; // Simple 1:2:4 resonance pattern
         let tolerance = 0.03;
-        let expected_harmonics = vec![7, 6, 2];
+        let expected_harmonics = [7, 6, 2];
 
         let calculated_harmonics =
             OrbitalHarmonicsUtils::calculate_gravitational_harmonics(&orbits, tolerance);
@@ -164,7 +199,7 @@ mod tests {
     fn test_complex_gravitational_harmonics() {
         let orbits = vec![(1.0, 1.0), (2.0, 1.0), (5.6895, 1.0), (6.0, 1.0)]; // Simple 1:2:4 resonance pattern
         let tolerance = 0.03;
-        let expected_harmonics = vec![6, 4, 2, 1];
+        let expected_harmonics = [6, 4, 2, 1];
 
         let calculated_harmonics =
             OrbitalHarmonicsUtils::calculate_gravitational_harmonics(&orbits, tolerance);
@@ -180,10 +215,45 @@ mod tests {
     }
 
     #[test]
+    fn eccentric_tidal_heating_zero_for_circular_orbits() {
+        // Earth (e=0.017) around Sun at 1 AU
+        let h = OrbitalHarmonicsUtils::eccentric_tidal_heating(1.0, 1.0, 0.017, 1.0);
+        assert_eq!(h, 0);
+    }
+
+    #[test]
+    fn eccentric_tidal_heating_zero_for_distant_orbits() {
+        // Eccentric outer world — too far to matter
+        let h = OrbitalHarmonicsUtils::eccentric_tidal_heating(1.0, 1.5, 0.2, 30.0);
+        assert_eq!(h, 0);
+    }
+
+    #[test]
+    fn eccentric_tidal_heating_significant_for_hot_eccentric() {
+        // Super-Earth with high eccentricity close to star
+        let h = OrbitalHarmonicsUtils::eccentric_tidal_heating(1.0, 2.0, 0.2, 0.03);
+        assert!(h >= 6, "got {}", h);
+    }
+
+    #[test]
+    fn eccentric_tidal_heating_moderate_for_hot_earth() {
+        // Earth-size world with e=0.1 at 0.05 AU
+        let h = OrbitalHarmonicsUtils::eccentric_tidal_heating(1.0, 1.0, 0.1, 0.05);
+        assert!((2..=4).contains(&h), "got {}", h);
+    }
+
+    #[test]
+    fn eccentric_tidal_heating_saturates() {
+        // Extreme case
+        let h = OrbitalHarmonicsUtils::eccentric_tidal_heating(2.0, 3.0, 0.5, 0.01);
+        assert_eq!(h, 10);
+    }
+
+    #[test]
     fn test_no_resonance_gravitational_harmonics() {
         let orbits: Vec<(f64, f64)> = vec![(1.0, 1.0), (10.0, 1.0), (100.0, 1.0), (1000.0, 1.0)];
         let tolerance = 0.03;
-        let expected_harmonics = vec![0, 0, 0, 0];
+        let expected_harmonics = [0, 0, 0, 0];
 
         let calculated_harmonics =
             OrbitalHarmonicsUtils::calculate_gravitational_harmonics(&orbits, tolerance);

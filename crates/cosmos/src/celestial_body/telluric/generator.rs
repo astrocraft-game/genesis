@@ -1,14 +1,12 @@
-use crate::internal::types::MoonDistance;
-use crate::internal::*;
-use crate::prelude::*;
-use crate::celestial_body::generator::{
-    generate_acceptable_telluric_parameters, get_world_type,
-};
+use crate::celestial_body::generator::{generate_acceptable_telluric_parameters, get_world_type};
 use crate::contents::utils::{calculate_blackbody_temperature, calculate_surface_gravity};
 use crate::contents::zones::get_orbit_with_updated_zone;
+use crate::internal::types::MoonDistance;
+use crate::internal::*;
 use crate::orbital_point::generator::{
     complete_orbit_with_orbital_period, complete_orbit_with_rotation_and_axis,
 };
+use crate::prelude::*;
 
 impl TelluricBodyDetails {
     /// Generates a barebone rocky body to use in system generation.
@@ -268,29 +266,29 @@ impl TelluricBodyDetails {
         } else if rolled_size <= 21 {
             // Debris disk
             to_return = Self::make_debris_disk(
-                &star_name,
+                star_name,
                 populated_orbit_index,
                 orbital_point_id,
-                &own_orbit,
-                &orbits,
+                own_orbit,
+                orbits,
             );
         } else if rolled_size <= 86 {
             // Asteroid belt
             to_return = Self::make_asteroid_belt(
-                &star_name,
+                star_name,
                 populated_orbit_index,
                 orbital_point_id,
-                &own_orbit,
-                &orbits,
+                own_orbit,
+                orbits,
             );
         } else if rolled_size <= 96 {
             // Ash belt
             to_return = Self::make_ash_belt(
-                &star_name,
+                star_name,
                 populated_orbit_index,
                 orbital_point_id,
-                &own_orbit,
-                &orbits,
+                own_orbit,
+                orbits,
             );
         } else if rolled_size <= 161 {
             // Rock dwarf
@@ -595,29 +593,29 @@ impl TelluricBodyDetails {
         } else if rolled_size <= 61 {
             // Dust belt
             to_return = Self::make_dust_belt(
-                &star_name,
+                star_name,
                 populated_orbit_index,
                 orbital_point_id,
-                &own_orbit,
-                &orbits,
+                own_orbit,
+                orbits,
             );
         } else if rolled_size <= 131 {
             // Meteoroid belt
             to_return = Self::make_meteoroid_belt(
-                &star_name,
+                star_name,
                 populated_orbit_index,
                 orbital_point_id,
-                &own_orbit,
-                &orbits,
+                own_orbit,
+                orbits,
             );
         } else if rolled_size <= 141 {
             // Ore belt
             to_return = Self::make_ore_belt(
-                &star_name,
+                star_name,
                 populated_orbit_index,
                 orbital_point_id,
-                &own_orbit,
-                &orbits,
+                own_orbit,
+                orbits,
             );
         } else if rolled_size <= 221 {
             // Metal tiny
@@ -1314,7 +1312,8 @@ fn generate_magnetic_field_difference(
     rng: &mut SeededDiceRoller,
 ) -> TelluricMagneticFieldDifference {
     let magnetic_field_roll = rng.roll(1, 4, 0);
-    let magnetic_field = if magnetic_field_roll <= 1 {
+
+    if magnetic_field_roll <= 1 {
         TelluricMagneticFieldDifference::MuchWeaker
     } else if magnetic_field_roll <= 2 {
         TelluricMagneticFieldDifference::Weaker
@@ -1322,6 +1321,5 @@ fn generate_magnetic_field_difference(
         TelluricMagneticFieldDifference::Stronger
     } else {
         TelluricMagneticFieldDifference::MuchStronger
-    };
-    magnetic_field
+    }
 }

@@ -43,7 +43,7 @@ impl MathUtils {
     }
 
     pub fn get_difference_percentage(number: f64, compare_to: f64) -> f64 {
-        let result = if compare_to <= 0.0 && number >= 0.0 {
+        if compare_to <= 0.0 && number >= 0.0 {
             (number - compare_to) / compare_to.abs()
         } else if compare_to <= 0.0 && compare_to <= number {
             (number.abs() - compare_to.abs()) / compare_to
@@ -57,8 +57,7 @@ impl MathUtils {
             (number - compare_to) / number
         } else {
             -((compare_to - number) / compare_to)
-        };
-        result
+        }
     }
 }
 #[cfg(test)]

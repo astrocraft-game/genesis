@@ -5,6 +5,14 @@ edition = "2021"
 description = "[WIP] Generates data for galaxies, sectors, solar systems, planets and their inhabitants."
 license = "MIT"
 
+[workspace]
+members = [
+    "crates/cosmos",
+    "crates/world",
+    "crates/life",
+    "crates/crafting",
+]
+
 [dependencies]
 cosmos = { path = "crates/cosmos" }
 world = { path = "crates/world" }

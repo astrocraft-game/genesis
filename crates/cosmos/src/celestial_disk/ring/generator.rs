@@ -70,20 +70,35 @@ mod tests {
             let ring = CelestialRingDetails::generate(
                 &format!("seed{}", i),
                 SpaceCoordinates::new(0, 0, 0),
-                0, 0, 300.0, 11.0, 1.3, 120,
+                0,
+                0,
+                300.0,
+                11.0,
+                1.3,
+                120,
             );
             if ring.is_some() {
                 has_ring = true;
                 break;
             }
         }
-        assert!(has_ring, "At least one gas giant should have rings in 50 tries");
+        assert!(
+            has_ring,
+            "At least one gas giant should have rings in 50 tries"
+        );
     }
 
     #[test]
     fn small_body_no_rings() {
         let ring = CelestialRingDetails::generate(
-            "seed", SpaceCoordinates::new(0, 0, 0), 0, 0, 1.0, 1.0, 5.5, 288,
+            "seed",
+            SpaceCoordinates::new(0, 0, 0),
+            0,
+            0,
+            1.0,
+            1.0,
+            5.5,
+            288,
         );
         assert!(ring.is_none());
     }

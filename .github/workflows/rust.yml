@@ -11,10 +11,61 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4.2.1
-    - name: Build
-      run: cargo build --verbose
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Build workspace
+      run: cargo build --workspace --verbose
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --workspace --verbose
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4.2.1
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+    - name: Run clippy
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4.2.1
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+  isolation:
+    name: Per-crate standalone build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate: [cosmos, world, life, crafting]
+    steps:
+    - uses: actions/checkout@v4.2.1
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-iso-${{ matrix.crate }}-${{ hashFiles('**/Cargo.lock') }}
+    - name: Build ${{ matrix.crate }} standalone
+      run: cargo build -p ${{ matrix.crate }}
+    - name: Test ${{ matrix.crate }} standalone
+      run: cargo test -p ${{ matrix.crate }}
 
   sonarcloud:
     name: SonarCloud

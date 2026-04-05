@@ -77,7 +77,7 @@ pub fn complete_orbit_with_orbital_period(
         gas_giant_arrangement,
         orbital_point_id,
         orbit_distance,
-        &settings,
+        settings,
         blackbody_temp,
         size,
         is_gas_giant,
@@ -269,7 +269,7 @@ fn generate_inclination(
         7
     };
 
-    if system_traits.len() > 0 {
+    if !system_traits.is_empty() {
         system_traits.iter().for_each(|t| {
             if discriminant(t)
                 == discriminant(&SystemPeculiarity::Cataclysm(CataclysmSeverity::Major))
@@ -398,12 +398,12 @@ fn calculate_day_length(
     } else {
         this_orbit.orbital_period
     };
-    let day_length = if sidereal_period == this_orbit.rotation {
+
+    if sidereal_period == this_orbit.rotation {
         f32::INFINITY
     } else {
         (sidereal_period * this_orbit.rotation) / (sidereal_period - this_orbit.rotation)
-    };
-    day_length
+    }
 }
 
 fn generate_rotation_period(
@@ -572,12 +572,9 @@ fn tide_lock_given_body(
         CelestialBodySpecialTrait::TideLocked(TideLockTarget::Orbited)
     };
 
-    if eccentricity >= 0.1 {
-        if rng.roll(3, 6, 0) >= 16 {
-            to_add =
-                CelestialBodySpecialTrait::UnusualRotation(TelluricRotationDifference::Resonant);
-            *rotation = 2.0 / 3.0 * orbital_period;
-        }
+    if eccentricity >= 0.1 && rng.roll(3, 6, 0) >= 16 {
+        to_add = CelestialBodySpecialTrait::UnusualRotation(TelluricRotationDifference::Resonant);
+        *rotation = 2.0 / 3.0 * orbital_period;
     }
 
     if to_add == CelestialBodySpecialTrait::TideLocked(TideLockTarget::Satellite) {
@@ -700,15 +697,15 @@ pub fn calculate_planet_orbit_eccentricity(
         0.01 * (-2.0 * (1.0 - u).ln()).sqrt()
     } else if is_gas_giant {
         // Gas giants: Beta(1.0, 2.79) approximation via power transform
-        u.powf(1.0 / 1.0) * (1.0 - u.powf(1.0 / 2.79))
+        u * (1.0 - u.powf(1.0 / 2.79))
     } else {
         // Small planets: Rayleigh(sigma=0.08)
         0.08 * (-2.0 * (1.0 - u).ln()).sqrt()
     };
     // Apply arrangement modifiers
     let modifier_shift = eccentricity_modifier as f64 * 0.03;
-    let eccentricity = (base_ecc + modifier_shift + rng.roll(1, 11, -6) as f64 * 0.005)
-        .clamp(0.0, 0.8);
+    let eccentricity =
+        (base_ecc + modifier_shift + rng.roll(1, 11, -6) as f64 * 0.005).clamp(0.0, 0.8);
     let min_separation = if eccentricity < 0.001 {
         orbit_distance
     } else {

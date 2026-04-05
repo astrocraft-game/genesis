@@ -1,6 +1,6 @@
 pub use crate::types::{
-    CelestialBodyWorldType, CryovolcanicTransport, EnclosedOceanHabitability, PlumeActivity,
-    PlanetSimulationInput, SubsurfaceOcean, TelluricBodyComposition,
+    CelestialBodyWorldType, CryovolcanicTransport, EnclosedOceanHabitability,
+    PlanetSimulationInput, PlumeActivity, SubsurfaceOcean, TelluricBodyComposition,
 };
 
 pub fn generate_subsurface_ocean(
@@ -12,10 +12,16 @@ pub fn generate_subsurface_ocean(
     tectonic_activity: f32,
 ) -> Option<SubsurfaceOcean> {
     let candidate_icy = body_type == TelluricBodyComposition::Icy
-        || matches!(world_type, CelestialBodyWorldType::Ice | CelestialBodyWorldType::Ammonia);
-    let enough_internal_heat = context.tidal_heating > 0 || volcanism > 5.0 || tectonic_activity > 8.0;
-    let present =
-        candidate_icy && context.blackbody_temp_k <= 240 && hydrosphere > 0.0 && enough_internal_heat;
+        || matches!(
+            world_type,
+            CelestialBodyWorldType::Ice | CelestialBodyWorldType::Ammonia
+        );
+    let enough_internal_heat =
+        context.tidal_heating > 0 || volcanism > 5.0 || tectonic_activity > 8.0;
+    let present = candidate_icy
+        && context.blackbody_temp_k <= 240
+        && hydrosphere > 0.0
+        && enough_internal_heat;
 
     if !present {
         return None;
@@ -32,9 +38,17 @@ pub fn generate_subsurface_ocean(
         .clamp(1.0, 80.0);
     let ocean_depth_km = (hydrosphere * 0.22
         + context.tidal_heating as f32 * 0.9
-        + if world_type == CelestialBodyWorldType::Ammonia { 6.0 } else { 0.0 }
-        + if context.blackbody_temp_k < 180 { 4.0 } else { 0.0 })
-        .clamp(1.0, 120.0);
+        + if world_type == CelestialBodyWorldType::Ammonia {
+            6.0
+        } else {
+            0.0
+        }
+        + if context.blackbody_temp_k < 180 {
+            4.0
+        } else {
+            0.0
+        })
+    .clamp(1.0, 120.0);
 
     let plume_activity = if context.tidal_heating > 12 || volcanism > 40.0 {
         PlumeActivity::Extreme

@@ -50,10 +50,18 @@ mod tests {
     #[test]
     fn belt_generation_deterministic() {
         let b1 = CelestialBeltDetails::generate(
-            "seed42", SpaceCoordinates::new(0, 0, 0), 0, 0, ZoneType::BioZone,
+            "seed42",
+            SpaceCoordinates::new(0, 0, 0),
+            0,
+            0,
+            ZoneType::BioZone,
         );
         let b2 = CelestialBeltDetails::generate(
-            "seed42", SpaceCoordinates::new(0, 0, 0), 0, 0, ZoneType::BioZone,
+            "seed42",
+            SpaceCoordinates::new(0, 0, 0),
+            0,
+            0,
+            ZoneType::BioZone,
         );
         assert_eq!(b1.composition, b2.composition);
     }
@@ -63,12 +71,22 @@ mod tests {
         let mut frost_count = 0;
         for i in 0..50 {
             let belt = CelestialBeltDetails::generate(
-                &format!("s{}", i), SpaceCoordinates::new(0, 0, 0), 0, 0, ZoneType::OuterZone,
+                &format!("s{}", i),
+                SpaceCoordinates::new(0, 0, 0),
+                0,
+                0,
+                ZoneType::OuterZone,
             );
-            if belt.composition == CelestialBeltType::Frost || belt.composition == CelestialBeltType::Comet {
+            if belt.composition == CelestialBeltType::Frost
+                || belt.composition == CelestialBeltType::Comet
+            {
                 frost_count += 1;
             }
         }
-        assert!(frost_count > 10, "Outer zone should favor icy belts, got {}/50", frost_count);
+        assert!(
+            frost_count > 10,
+            "Outer zone should favor icy belts, got {}/50",
+            frost_count
+        );
     }
 }

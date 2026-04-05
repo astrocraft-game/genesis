@@ -79,7 +79,7 @@ impl GalacticNeighborhood {
                     },
                     // Major galaxies
                     if universe.era == StelliferousEra::EndStelliferous {
-                        0.max(rng.roll(1, 2, 0) as u8)
+                        rng.roll(1, 2, 0) as u8
                     } else if universe.era == StelliferousEra::LateStelliferous {
                         1.max(galaxies / 2)
                     } else {
@@ -189,7 +189,7 @@ mod tests {
                 ..Default::default()
             };
             let neighborhood =
-                GalacticNeighborhood::generate(Universe::generate(&settings), &settings);
+                GalacticNeighborhood::generate(Universe::generate(settings), settings);
             assert_eq!(neighborhood.density, fixed_neighborhood);
         }
     }

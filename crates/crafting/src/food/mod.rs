@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub mod biological;
 pub mod cheese;

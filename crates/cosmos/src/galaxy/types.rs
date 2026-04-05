@@ -28,16 +28,16 @@ impl Display for GalaxySettings {
         },
         if self.fixed_category.is_some() { format!("{}", self.fixed_category.unwrap()) } else { "None".to_string()},
         if self.fixed_sub_category.is_some() { format!("{}", self.fixed_sub_category.unwrap()) } else { "None".to_string() },
-        if self.fixed_special_traits.is_some() { format!("{}", self.fixed_special_traits.as_ref().unwrap()
+        if self.fixed_special_traits.is_some() { self.fixed_special_traits.as_ref().unwrap()
         .iter()
         .map(|t| format!("{}", t))
         .collect::<Vec<String>>()
-        .join(", ")) } else { "None".to_string() },
-        if self.forbidden_special_traits.is_some() { format!("{}", self.forbidden_special_traits.as_ref().unwrap()
+        .join(", ").to_string() } else { "None".to_string() },
+        if self.forbidden_special_traits.is_some() { self.forbidden_special_traits.as_ref().unwrap()
         .iter()
         .map(|t| format!("{}", t))
         .collect::<Vec<String>>()
-        .join(", ")) } else { "None".to_string() },
+        .join(", ").to_string() } else { "None".to_string() },
         if self.fixed_age.is_some() { format!("{}", self.fixed_age.unwrap()) } else { "None".to_string() },
         self.use_ours)
     }

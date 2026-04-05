@@ -9,7 +9,9 @@ impl GalacticHex {
             galaxy.settings.seed, coord
         );
         let contents = Vec::new();
-        let neighborhood = StellarNeighborhood { age: StellarNeighborhoodAge::Mature };
+        let neighborhood = StellarNeighborhood {
+            age: StellarNeighborhoodAge::Mature,
+        };
         let mut generated = Self {
             index,
             neighborhood,
@@ -20,18 +22,20 @@ impl GalacticHex {
         for i in 0..number_of_systems_to_generate {
             let sys_hex = GalacticHex {
                 index: coord,
-                neighborhood: StellarNeighborhood { age: StellarNeighborhoodAge::Mature },
+                neighborhood: StellarNeighborhood {
+                    age: StellarNeighborhoodAge::Mature,
+                },
                 contents: vec![],
             };
-            let sys_div = galaxy.get_division_at_level(coord, 1).expect("Should return a subsector.");
+            let sys_div = galaxy
+                .get_division_at_level(coord, 1)
+                .expect("Should return a subsector.");
 
-            generated.contents.push(crate::system_generator::generate_star_system(
-                i,
-                coord,
-                &sys_hex,
-                &sys_div,
-                galaxy,
-            ));
+            generated
+                .contents
+                .push(crate::system_generator::generate_star_system(
+                    i, coord, &sys_hex, &sys_div, galaxy,
+                ));
         }
 
         debug!("generated: {}", generated);
@@ -62,27 +66,58 @@ fn get_number_of_systems_to_generate(
         .expect("Should return a subsector.")
         .region;
     match region {
-        GalacticRegion::Void => { to_roll = PreparedRoll::new(1, 50, 0); success_on = 1; }
-        GalacticRegion::Aura => { to_roll = PreparedRoll::new(1, 20, 0); success_on = 1; }
-        GalacticRegion::Halo | GalacticRegion::Exile => { to_roll = PreparedRoll::new(1, 10, 0); success_on = 1; }
-        GalacticRegion::Stream | GalacticRegion::Association => { to_roll = PreparedRoll::new(1, 5, 0); success_on = 1; }
-        GalacticRegion::Ellipse | GalacticRegion::Disk | GalacticRegion::Multiple => { to_roll = PreparedRoll::new(1, 2, 0); success_on = 1; }
-        GalacticRegion::Arm | GalacticRegion::OpenCluster => { to_roll = PreparedRoll::new(1, 4, 0); success_on = 3; }
-        GalacticRegion::Bar => { to_roll = PreparedRoll::new(1, 20, 0); success_on = 19; }
-        GalacticRegion::Bulge | GalacticRegion::GlobularCluster => { to_roll = PreparedRoll::new(1, 100, 0); success_on = 99; }
-        GalacticRegion::Core | GalacticRegion::Nucleus => { to_roll = PreparedRoll::new(1, 500, 0); success_on = 499; }
+        GalacticRegion::Void => {
+            to_roll = PreparedRoll::new(1, 50, 0);
+            success_on = 1;
+        }
+        GalacticRegion::Aura => {
+            to_roll = PreparedRoll::new(1, 20, 0);
+            success_on = 1;
+        }
+        GalacticRegion::Halo | GalacticRegion::Exile => {
+            to_roll = PreparedRoll::new(1, 10, 0);
+            success_on = 1;
+        }
+        GalacticRegion::Stream | GalacticRegion::Association => {
+            to_roll = PreparedRoll::new(1, 5, 0);
+            success_on = 1;
+        }
+        GalacticRegion::Ellipse | GalacticRegion::Disk | GalacticRegion::Multiple => {
+            to_roll = PreparedRoll::new(1, 2, 0);
+            success_on = 1;
+        }
+        GalacticRegion::Arm | GalacticRegion::OpenCluster => {
+            to_roll = PreparedRoll::new(1, 4, 0);
+            success_on = 3;
+        }
+        GalacticRegion::Bar => {
+            to_roll = PreparedRoll::new(1, 20, 0);
+            success_on = 19;
+        }
+        GalacticRegion::Bulge | GalacticRegion::GlobularCluster => {
+            to_roll = PreparedRoll::new(1, 100, 0);
+            success_on = 99;
+        }
+        GalacticRegion::Core | GalacticRegion::Nucleus => {
+            to_roll = PreparedRoll::new(1, 500, 0);
+            success_on = 499;
+        }
     };
 
     for _ in 0..turns {
         let roll = rng.roll_prepared(&to_roll);
-        if roll <= success_on { number_of_systems_to_generate += roll; }
+        if roll <= success_on {
+            number_of_systems_to_generate += roll;
+        }
     }
 
     rng = SeededDiceRoller::new(&galaxy.settings.seed, &format!("hex_{}_nbr_brwn", index));
     let mut number_of_brown_dwarfs = 0;
     for _ in 0..turns {
         let roll = rng.roll_prepared(&to_roll);
-        if roll <= success_on { number_of_brown_dwarfs += roll; }
+        if roll <= success_on {
+            number_of_brown_dwarfs += roll;
+        }
     }
     number_of_systems_to_generate += number_of_brown_dwarfs / 5;
 

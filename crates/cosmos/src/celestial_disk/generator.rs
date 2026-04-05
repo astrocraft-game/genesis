@@ -23,11 +23,7 @@ impl CelestialDisk {
     }
 
     /// Generate an Oort cloud shell.
-    pub fn generate_shell(
-        orbit: Option<Orbit>,
-        orbital_point_id: u32,
-        name: Rc<str>,
-    ) -> Self {
+    pub fn generate_shell(orbit: Option<Orbit>, orbital_point_id: u32, name: Rc<str>) -> Self {
         Self::new(orbit, orbital_point_id, name, CelestialDiskType::Shell)
     }
 }

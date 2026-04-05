@@ -1,12 +1,12 @@
-use crate::internal::generator::get_major_moons;
-use crate::internal::*;
-use crate::prelude::*;
 use crate::celestial_body::world::utils::{
     get_category_from_temperature, has_element_in_normal_amount_or_more,
 };
 use crate::contents::elements::ALL_ELEMENTS;
 use crate::contents::elements::MOST_COMMON_ELEMENTS;
 use crate::contents::zones::get_orbit_with_updated_zone;
+use crate::internal::generator::get_major_moons;
+use crate::internal::*;
+use crate::prelude::*;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
@@ -302,7 +302,8 @@ impl WorldGenerator {
             land_area_percentage,
         );
 
-        // TODO: Planetary imbalances
+        // Star-driven element imbalances: rerolls body composition based on the
+        // host star's unusual-element peculiarities.
         {
             let mut rng = SeededDiceRoller::new(
                 &settings.seed,
@@ -359,7 +360,9 @@ impl WorldGenerator {
             }
         }
 
-        // TODO: Atmospheric composition
+        // Atmospheric composition generation. Produces the species list fed
+        // into the `world` crate's atmosphere simulation. Future work: move
+        // this block entirely into `world` so cosmos only supplies body facts.
         let atmospheric_composition = {
             // Adjust planet magnetic field with strength of radiation from the star
             let adjusted_magnetic_field = {
@@ -689,7 +692,7 @@ impl WorldGenerator {
                     let mut presence = ChemicalComponentPresence::Dominant;
 
                     // Add default compounds ejected by volcanism if the list was empty
-                    if ejected_by_volcanism.len() < 1 {
+                    if ejected_by_volcanism.is_empty() {
                         if body_type == TelluricBodyComposition::Icy
                             && rng.roll(1, 3, 0) < 3
                             && has_element_in_normal_amount_or_more(
@@ -1531,14 +1534,24 @@ impl WorldGenerator {
             // Ice sublimation: add trace gases to thin atmospheres on icy bodies
             if body_type == TelluricBodyComposition::Icy && atmospheric_pressure < 0.1 {
                 if blackbody_temperature > 40 && blackbody_temperature < 200 {
-                    guess_composition.push((ChemicalComponentPresence::Traces, ChemicalComponent::CarbonDioxide));
-                    guess_composition.push((ChemicalComponentPresence::Traces, ChemicalComponent::Nitrogen));
+                    guess_composition.push((
+                        ChemicalComponentPresence::Traces,
+                        ChemicalComponent::CarbonDioxide,
+                    ));
+                    guess_composition.push((
+                        ChemicalComponentPresence::Traces,
+                        ChemicalComponent::Nitrogen,
+                    ));
                 }
                 if blackbody_temperature > 100 {
-                    guess_composition.push((ChemicalComponentPresence::Traces, ChemicalComponent::Water));
+                    guess_composition
+                        .push((ChemicalComponentPresence::Traces, ChemicalComponent::Water));
                 }
                 if blackbody_temperature > 50 && blackbody_temperature < 150 {
-                    guess_composition.push((ChemicalComponentPresence::Traces, ChemicalComponent::Methane));
+                    guess_composition.push((
+                        ChemicalComponentPresence::Traces,
+                        ChemicalComponent::Methane,
+                    ));
                 }
             }
 
@@ -1577,9 +1590,7 @@ impl WorldGenerator {
                                 guess_composition[already_present] = (updated_presence, component);
                                 guess_composition.remove(index);
                                 // Reduce index since we removed an element
-                                if index > 0 {
-                                    index -= 1;
-                                }
+                                index = index.saturating_sub(1);
                                 continue;
                             }
                         }
@@ -1638,54 +1649,103 @@ impl WorldGenerator {
             // System age: +1 per 2 Gyr
             score += (star_age / 2.0).min(5.0) as i32;
             // Liquid water: +1 to +3 scaled by hydrosphere
-            if hydrosphere > 0.0 { score += 1; }
-            if hydrosphere > 20.0 { score += 1; }
-            if hydrosphere > 50.0 { score += 1; }
+            if hydrosphere > 0.0 {
+                score += 1;
+            }
+            if hydrosphere > 20.0 {
+                score += 1;
+            }
+            if hydrosphere > 50.0 {
+                score += 1;
+            }
             // Yellow/orange/red star (F/G/K/M)
-            if matches!(star_type, StarSpectralType::F(_) | StarSpectralType::G(_)
-                | StarSpectralType::K(_) | StarSpectralType::M(_)) {
+            if matches!(
+                star_type,
+                StarSpectralType::F(_)
+                    | StarSpectralType::G(_)
+                    | StarSpectralType::K(_)
+                    | StarSpectralType::M(_)
+            ) {
                 score += 1;
             }
             // Magnetic field
-            if magnetic_field != MagneticFieldStrength::None { score += 1; }
-            if matches!(magnetic_field, MagneticFieldStrength::Moderate
-                | MagneticFieldStrength::Strong | MagneticFieldStrength::VeryStrong) {
+            if magnetic_field != MagneticFieldStrength::None {
+                score += 1;
+            }
+            if matches!(
+                magnetic_field,
+                MagneticFieldStrength::Moderate
+                    | MagneticFieldStrength::Strong
+                    | MagneticFieldStrength::VeryStrong
+            ) {
                 score += 1;
             }
             // Moderate atmosphere
-            if atmospheric_pressure > 0.1 && atmospheric_pressure < 5.0 { score += 1; }
+            if atmospheric_pressure > 0.1 && atmospheric_pressure < 5.0 {
+                score += 1;
+            }
 
             // Maluses
             // Not in biozone
-            if own_orbit.zone != ZoneType::BioZone { score -= 3; }
+            if own_orbit.zone != ZoneType::BioZone {
+                score -= 3;
+            }
             // Star not main sequence
-            if *star_class != StarLuminosityClass::V { score -= 2; }
+            if *star_class != StarLuminosityClass::V {
+                score -= 2;
+            }
             // Key atmospheric components missing
-            let has_life_gas = atmospheric_composition.iter().any(|(_, c)| matches!(c,
-                ChemicalComponent::Oxygen | ChemicalComponent::CarbonDioxide
-                | ChemicalComponent::Methane));
-            if !has_life_gas { score -= 2; }
+            let has_life_gas = atmospheric_composition.iter().any(|(_, c)| {
+                matches!(
+                    c,
+                    ChemicalComponent::Oxygen
+                        | ChemicalComponent::CarbonDioxide
+                        | ChemicalComponent::Methane
+                )
+            });
+            if !has_life_gas {
+                score -= 2;
+            }
             // No magnetosphere
-            if magnetic_field == MagneticFieldStrength::None { score -= 2; }
+            if magnetic_field == MagneticFieldStrength::None {
+                score -= 2;
+            }
             // No/trace atmosphere
-            if atmospheric_pressure < 0.01 { score -= 3; }
+            if atmospheric_pressure < 0.01 {
+                score -= 3;
+            }
             // Carbon-rich system
-            if system_traits.iter().any(|t| matches!(t, SystemPeculiarity::CarbonRich)) {
+            if system_traits
+                .iter()
+                .any(|t| matches!(t, SystemPeculiarity::CarbonRich))
+            {
                 score -= 1;
             }
             // Age thresholds (star_age in Gyr)
-            if star_age < 0.1 { score -= 4; }
-            else if star_age < 0.5 { score -= 3; }
-            else if star_age < 2.0 { score -= 2; }
-            else if star_age < 4.0 { score -= 1; }
+            if star_age < 0.1 {
+                score -= 4;
+            } else if star_age < 0.5 {
+                score -= 3;
+            } else if star_age < 2.0 {
+                score -= 2;
+            } else if star_age < 4.0 {
+                score -= 1;
+            }
             // Variable/flare star
-            if star_traits.iter().any(|t| matches!(t, StarPeculiarity::VariableStar(_))) {
+            if star_traits
+                .iter()
+                .any(|t| matches!(t, StarPeculiarity::VariableStar(_)))
+            {
                 score -= 1;
             }
             // High debris
-            if system_traits.iter().any(|t| matches!(t,
-                SystemPeculiarity::UnusualDebrisDensity(DebrisDensity::Higher)
-                | SystemPeculiarity::UnusualDebrisDensity(DebrisDensity::MuchHigher))) {
+            if system_traits.iter().any(|t| {
+                matches!(
+                    t,
+                    SystemPeculiarity::UnusualDebrisDensity(DebrisDensity::Higher)
+                        | SystemPeculiarity::UnusualDebrisDensity(DebrisDensity::MuchHigher)
+                )
+            }) {
                 score -= 1;
             }
 
@@ -1712,7 +1772,8 @@ impl WorldGenerator {
             is_moon,
             life_level,
         );
-        let mut result = OrbitalPoint::new(
+
+        OrbitalPoint::new(
             orbital_point_id,
             Some(get_orbit_with_updated_zone(
                 own_orbit.clone(),
@@ -1739,8 +1800,28 @@ impl WorldGenerator {
                     special_traits,
                     core_heat,
                     magnetic_field,
-                    Self::generate_resources(body_type, volcanism, size, &seed, coord, system_index, star_id, orbital_point_id),
-                    Self::generate_points_of_interest(volcanism, hydrosphere, atmospheric_pressure, life_level, size, &seed, coord, system_index, star_id, orbital_point_id),
+                    Self::generate_resources(
+                        body_type,
+                        volcanism,
+                        size,
+                        &seed,
+                        coord,
+                        system_index,
+                        star_id,
+                        orbital_point_id,
+                    ),
+                    Self::generate_points_of_interest(
+                        volcanism,
+                        hydrosphere,
+                        atmospheric_pressure,
+                        life_level,
+                        size,
+                        &seed,
+                        coord,
+                        system_index,
+                        star_id,
+                        orbital_point_id,
+                    ),
                     {
                         // Magnetopause: R_mp ~ R * (B / B_earth)^(1/3) * (d_AU / d_earth)^(1/3)
                         let b_ratio: f32 = match magnetic_field {
@@ -1752,12 +1833,17 @@ impl WorldGenerator {
                             MagneticFieldStrength::Extreme => 30.0,
                         };
                         if b_ratio > 0.0 {
-                            (b_ratio.powf(1.0 / 3.0) * (distance_from_star as f32).powf(1.0 / 3.0) * 6.0_f32).max(1.5)
-                        } else { 0.0 }
+                            (b_ratio.powf(1.0 / 3.0)
+                                * (distance_from_star as f32).powf(1.0 / 3.0)
+                                * 6.0_f32)
+                                .max(1.5)
+                        } else {
+                            0.0
+                        }
                     },
                     {
                         magnetic_field != MagneticFieldStrength::None
-                        && magnetic_field != MagneticFieldStrength::Weak
+                            && magnetic_field != MagneticFieldStrength::Weak
                     },
                     {
                         let mp = match magnetic_field {
@@ -1773,14 +1859,16 @@ impl WorldGenerator {
                                 b_ratio.powf(1.0 / 3.0) * 6.0
                             }
                         };
-                        if mp > 1.0 { (1.0_f32 / mp).sqrt().acos().to_degrees() } else { 0.0 }
+                        if mp > 1.0 {
+                            (1.0_f32 / mp).sqrt().acos().to_degrees()
+                        } else {
+                            0.0
+                        }
                     },
                 )),
             )),
             orbits.clone(),
-        );
-
-        result
+        )
     }
 
     fn add_gas_methane_and_oxygen(
@@ -1801,7 +1889,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Oxygen,
@@ -1809,27 +1897,27 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 4 && roll <= 7 {
+        if (4..=7).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Water,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
-        } else if roll >= 8 && roll <= 9 {
+        } else if (8..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Water,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
             Self::add_gas_as(
                 ChemicalComponent::Ammonia,
@@ -1837,7 +1925,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -1862,7 +1950,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Oxygen,
@@ -1870,7 +1958,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
@@ -1881,7 +1969,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -1902,7 +1990,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
@@ -1913,7 +2001,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -1938,7 +2026,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Nitrogen,
@@ -1946,18 +2034,18 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 8 && roll <= 9 {
+        if (8..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Methane,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -1982,7 +2070,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Water,
@@ -1990,7 +2078,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Nitrogen,
@@ -1998,27 +2086,27 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 5 && roll <= 6 {
+        if (5..=6).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Methane,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
-        } else if roll >= 7 && roll <= 8 {
+        } else if (7..=8).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Ammonia,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll <= 9 {
             Self::add_gas_as(
@@ -2027,7 +2115,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
             Self::add_gas_as(
                 ChemicalComponent::Ammonia,
@@ -2035,7 +2123,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2060,7 +2148,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Oxygen,
@@ -2068,18 +2156,18 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 7 && roll <= 9 {
+        if (7..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Nitrogen,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2104,7 +2192,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::CarbonDioxide,
@@ -2112,7 +2200,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Nitrogen,
@@ -2120,18 +2208,18 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 8 && roll <= 9 {
+        if (8..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Methane,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2156,7 +2244,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Water,
@@ -2164,18 +2252,18 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 7 && roll <= 9 {
+        if (7..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Ammonia,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2196,27 +2284,27 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 4 && roll <= 7 {
+        if (4..=7).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Water,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
-        } else if roll >= 8 && roll <= 9 {
+        } else if (8..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Water,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
             Self::add_gas_as(
                 ChemicalComponent::Ammonia,
@@ -2224,7 +2312,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2249,7 +2337,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::CarbonMonoxide,
@@ -2257,18 +2345,18 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 8 && roll <= 9 {
+        if (8..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Methane,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2289,18 +2377,18 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 8 && roll <= 9 {
+        if (8..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Methane,
                 ChemicalComponentPresence::Minor,
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2321,11 +2409,11 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 2 && roll <= 9 {
+        if (2..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Helium,
                 if rng.gen_bool() {
@@ -2336,7 +2424,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
             Self::add_gas_as(
                 ChemicalComponent::Hydrogen,
@@ -2348,7 +2436,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2369,11 +2457,11 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         let roll = rng.roll(1, 10, 0);
-        if roll >= 2 && roll <= 9 {
+        if (2..=9).contains(&roll) {
             Self::add_gas_as(
                 ChemicalComponent::Hydrogen,
                 if rng.gen_bool() {
@@ -2384,7 +2472,7 @@ impl WorldGenerator {
                 blackbody_temperature,
                 atmospheric_pressure,
                 magnetic_field,
-                &mut composition,
+                composition,
             );
         } else if roll >= 10 {
             *add_other = true;
@@ -2409,7 +2497,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
         Self::add_gas_as(
             ChemicalComponent::Helium,
@@ -2417,7 +2505,7 @@ impl WorldGenerator {
             blackbody_temperature,
             atmospheric_pressure,
             magnetic_field,
-            &mut composition,
+            composition,
         );
 
         if rng.roll(1, 10, 0) >= 10 {
@@ -2531,17 +2619,16 @@ impl WorldGenerator {
         orbital_point_id: u32,
     ) -> Option<PlanetSurfaceMap> {
         // Only generate maps for worlds with meaningful surfaces
-        if matches!(
-            climate,
-            WorldClimateType::Dead
-        ) && hydrosphere < 0.01 && volcanism < 0.01
-        {
+        if matches!(climate, WorldClimateType::Dead) && hydrosphere < 0.01 && volcanism < 0.01 {
             return None;
         }
 
         let mut rng = SeededDiceRoller::new(
             seed,
-            &format!("sys_{}_{}_str_{}_bdy{}_map", coord, system_index, star_id, orbital_point_id),
+            &format!(
+                "sys_{}_{}_str_{}_bdy{}_map",
+                coord, system_index, star_id, orbital_point_id
+            ),
         );
 
         let continent_count = if hydrosphere > 95.0 {
@@ -2581,7 +2668,10 @@ impl WorldGenerator {
 
         let mut biomes: Vec<(BiomeType, f32)> = Vec::new();
         if ocean_fraction > 0.01 {
-            biomes.push((BiomeType::Ocean, ocean_fraction * (1.0 - ice_over_water / 100.0)));
+            biomes.push((
+                BiomeType::Ocean,
+                ocean_fraction * (1.0 - ice_over_water / 100.0),
+            ));
         }
         if ice_fraction > 0.01 {
             biomes.push((BiomeType::IceCap, ice_fraction));
@@ -2643,8 +2733,8 @@ impl WorldGenerator {
 
         // Seasonal temperature range from axial tilt and eccentricity
         let tilt_rad = axial_tilt.to_radians();
-        let temperature_range_k = blackbody_temperature as f32 * tilt_rad.sin().abs() * 0.4
-            * (1.0 + eccentricity * 2.0);
+        let temperature_range_k =
+            blackbody_temperature as f32 * tilt_rad.sin().abs() * 0.4 * (1.0 + eccentricity * 2.0);
 
         // Seasonal frost: check if any major atmospheric gas condenses at minimum temperature
         let t_min = blackbody_temperature as f32 - temperature_range_k * 0.5;
@@ -2672,7 +2762,8 @@ impl WorldGenerator {
             CraterDensity::Heavy => 0.2,
             CraterDensity::Saturated => 0.3,
         };
-        let largest_crater_km = (body_diameter_km * age_factor + rng.roll(1, 100, 0) as f32).min(body_diameter_km * 0.4);
+        let largest_crater_km = (body_diameter_km * age_factor + rng.roll(1, 100, 0) as f32)
+            .min(body_diameter_km * 0.4);
 
         Some(PlanetSurfaceMap {
             continent_count,
@@ -2702,7 +2793,10 @@ impl WorldGenerator {
     ) -> Vec<PointOfInterest> {
         let mut rng = SeededDiceRoller::new(
             seed,
-            &format!("sys_{}_{}_str_{}_bdy{}_poi", coord, system_index, star_id, orbital_point_id),
+            &format!(
+                "sys_{}_{}_str_{}_bdy{}_poi",
+                coord, system_index, star_id, orbital_point_id
+            ),
         );
         let mut pois = Vec::new();
         let max_pois = match size {
@@ -2724,18 +2818,50 @@ impl WorldGenerator {
             (POIType::SuperVolcano, if volcanism > 30.0 { 20 } else { 2 }),
             (POIType::LavaLake, if volcanism > 50.0 { 15 } else { 1 }),
             (POIType::GeyserField, if volcanism > 15.0 { 15 } else { 3 }),
-            (POIType::CrystalFormation, if volcanism > 10.0 { 12 } else { 5 }),
+            (
+                POIType::CrystalFormation,
+                if volcanism > 10.0 { 12 } else { 5 },
+            ),
             // Hydro-dependent
-            (POIType::ThermalVents, if hydrosphere > 20.0 { 15 } else { 1 }),
-            (POIType::SubterraneanOcean, if hydrosphere < 5.0 { 8 } else { 2 }),
+            (
+                POIType::ThermalVents,
+                if hydrosphere > 20.0 { 15 } else { 1 },
+            ),
+            (
+                POIType::SubterraneanOcean,
+                if hydrosphere < 5.0 { 8 } else { 2 },
+            ),
             (POIType::IceGeysers, if hydrosphere > 0.0 { 10 } else { 2 }),
-            (POIType::MassiveCanyon, if hydrosphere < 30.0 { 15 } else { 5 }),
+            (
+                POIType::MassiveCanyon,
+                if hydrosphere < 30.0 { 15 } else { 5 },
+            ),
             // Atmosphere-dependent
-            (POIType::PermanentStorm, if atmospheric_pressure > 0.5 { 12 } else { 1 }),
-            (POIType::AuroraField, if atmospheric_pressure > 0.1 { 10 } else { 2 }),
+            (
+                POIType::PermanentStorm,
+                if atmospheric_pressure > 0.5 { 12 } else { 1 },
+            ),
+            (
+                POIType::AuroraField,
+                if atmospheric_pressure > 0.1 { 10 } else { 2 },
+            ),
             // Life-dependent
-            (POIType::FossilSite, if life_level.as_u8() >= LifeLevel::PluriCellular.as_u8() { 15 } else { 0 }),
-            (POIType::ExtremeLifeColony, if life_level.as_u8() >= LifeLevel::UniCellular.as_u8() { 10 } else { 0 }),
+            (
+                POIType::FossilSite,
+                if life_level.as_u8() >= LifeLevel::PluriCellular.as_u8() {
+                    15
+                } else {
+                    0
+                },
+            ),
+            (
+                POIType::ExtremeLifeColony,
+                if life_level.as_u8() >= LifeLevel::UniCellular.as_u8() {
+                    10
+                } else {
+                    0
+                },
+            ),
         ];
 
         for (poi_type, chance) in candidates {
@@ -2768,7 +2894,10 @@ impl WorldGenerator {
     ) -> Vec<PlanetaryResource> {
         let mut rng = SeededDiceRoller::new(
             seed,
-            &format!("sys_{}_{}_str_{}_bdy{}_res", coord, system_index, star_id, orbital_point_id),
+            &format!(
+                "sys_{}_{}_str_{}_bdy{}_res",
+                coord, system_index, star_id, orbital_point_id
+            ),
         );
 
         let size_mod: i32 = match size {
@@ -2778,7 +2907,13 @@ impl WorldGenerator {
             CelestialBodySize::Large => 1,
             _ => 2,
         };
-        let volc_mod: i32 = if volcanism > 50.0 { 2 } else if volcanism > 20.0 { 1 } else { 0 };
+        let volc_mod: i32 = if volcanism > 50.0 {
+            2
+        } else if volcanism > 20.0 {
+            1
+        } else {
+            0
+        };
 
         let resource_types = [
             ResourceType::CommonMetals,
@@ -2855,10 +2990,8 @@ impl WorldGenerator {
             climate = Some(WorldClimateType::Dead)
         }
 
-        if climate.is_none() {
-            if is_ribbon_world && !is_moon {
-                climate = Some(WorldClimateType::Ribbon);
-            }
+        if climate.is_none() && is_ribbon_world && !is_moon {
+            climate = Some(WorldClimateType::Ribbon);
         }
 
         if climate.is_none() {
@@ -2924,23 +3057,26 @@ impl WorldGenerator {
                         climate = Some(WorldClimateType::MudBall);
                     }
                 }
-                if climate.is_none() && hydrosphere_rating <= 1 {
-                    if cryosphere_rating <= 0 && life_level.as_u8() >= LifeLevel::PlantLike.as_u8()
-                    {
-                        climate = Some(WorldClimateType::Jungle);
-                    }
+                if climate.is_none()
+                    && hydrosphere_rating <= 1
+                    && cryosphere_rating <= 0
+                    && life_level.as_u8() >= LifeLevel::PlantLike.as_u8()
+                {
+                    climate = Some(WorldClimateType::Jungle);
                 }
-                if climate.is_none() && hydrosphere_rating <= 2 {
-                    if cryosphere_rating <= 0 && life_level.as_u8() >= LifeLevel::PlantLike.as_u8()
-                    {
-                        climate = Some(WorldClimateType::Tropical);
-                    }
+                if climate.is_none()
+                    && hydrosphere_rating <= 2
+                    && cryosphere_rating <= 0
+                    && life_level.as_u8() >= LifeLevel::PlantLike.as_u8()
+                {
+                    climate = Some(WorldClimateType::Tropical);
                 }
-                if climate.is_none() && hydrosphere_rating <= 3 {
-                    if cryosphere_rating <= 1 && life_level.as_u8() >= LifeLevel::PlantLike.as_u8()
-                    {
-                        climate = Some(WorldClimateType::Rainforest);
-                    }
+                if climate.is_none()
+                    && hydrosphere_rating <= 3
+                    && cryosphere_rating <= 1
+                    && life_level.as_u8() >= LifeLevel::PlantLike.as_u8()
+                {
+                    climate = Some(WorldClimateType::Rainforest);
                 }
                 if climate.is_none() && blackbody_temperature <= 263 {
                     climate = Some(WorldClimateType::Arctic);
@@ -3256,7 +3392,7 @@ impl WorldGenerator {
             let water_prop = hydrosphere / 100.0;
             ice_over_land = cryosphere * land_prop;
             ice_over_water = cryosphere * water_prop;
-            hydrosphere = hydrosphere - ice_over_water;
+            hydrosphere -= ice_over_water;
         }
 
         (hydrosphere, ice_over_water, ice_over_land)
@@ -4368,10 +4504,7 @@ mod tests {
         );
         // Non-terrestrial type is unchanged
         assert_eq!(
-            WorldGenerator::set_as_ocean_if_too_much_water(
-                CelestialBodyWorldType::Rock,
-                95.0
-            ),
+            WorldGenerator::set_as_ocean_if_too_much_water(CelestialBodyWorldType::Rock, 95.0),
             CelestialBodyWorldType::Rock,
         );
     }
@@ -4384,38 +4517,78 @@ mod tests {
 
         // Tiny size always returns FrozenCore regardless of other params
         let result = WorldGenerator::generate_core_heat(
-            coord, 0, 0, 5.0, 1, &orbit,
-            CelestialBodySize::Tiny, 4.0,
+            coord,
+            0,
+            0,
+            5.0,
+            1,
+            &orbit,
+            CelestialBodySize::Tiny,
+            4.0,
             TelluricBodyComposition::Rocky,
             CelestialBodyWorldType::Rock,
-            &vec![], 0, 1.0, &settings, 1.0,
+            &vec![],
+            0,
+            1.0,
+            &settings,
+            1.0,
         );
         assert_eq!(result, CelestialBodyCoreHeat::FrozenCore);
 
         // ProtoWorld always returns IntenseCore
         let result = WorldGenerator::generate_core_heat(
-            coord, 0, 0, 5.0, 1, &orbit,
-            CelestialBodySize::Standard, 4.0,
+            coord,
+            0,
+            0,
+            5.0,
+            1,
+            &orbit,
+            CelestialBodySize::Standard,
+            4.0,
             TelluricBodyComposition::Rocky,
             CelestialBodyWorldType::ProtoWorld,
-            &vec![], 0, 1.0, &settings, 1.0,
+            &vec![],
+            0,
+            1.0,
+            &settings,
+            1.0,
         );
         assert_eq!(result, CelestialBodyCoreHeat::IntenseCore);
 
         // Determinism: same inputs produce same output
         let result_a = WorldGenerator::generate_core_heat(
-            coord, 1, 2, 3.0, 10, &orbit,
-            CelestialBodySize::Standard, 5.5,
+            coord,
+            1,
+            2,
+            3.0,
+            10,
+            &orbit,
+            CelestialBodySize::Standard,
+            5.5,
             TelluricBodyComposition::Metallic,
             CelestialBodyWorldType::Terrestrial,
-            &vec![], 2, 0.8, &settings, 1.0,
+            &vec![],
+            2,
+            0.8,
+            &settings,
+            1.0,
         );
         let result_b = WorldGenerator::generate_core_heat(
-            coord, 1, 2, 3.0, 10, &orbit,
-            CelestialBodySize::Standard, 5.5,
+            coord,
+            1,
+            2,
+            3.0,
+            10,
+            &orbit,
+            CelestialBodySize::Standard,
+            5.5,
             TelluricBodyComposition::Metallic,
             CelestialBodyWorldType::Terrestrial,
-            &vec![], 2, 0.8, &settings, 1.0,
+            &vec![],
+            2,
+            0.8,
+            &settings,
+            1.0,
         );
         assert_eq!(result_a, result_b);
     }

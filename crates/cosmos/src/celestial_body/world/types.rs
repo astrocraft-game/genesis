@@ -327,14 +327,18 @@ pub enum LifeLevel {
 
 impl Display for LifeLevel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            LifeLevel::None => "None",
-            LifeLevel::UniCellular => "UniCellular",
-            LifeLevel::PluriCellular => "PluriCellular",
-            LifeLevel::PlantLike => "PlantLike",
-            LifeLevel::AnimalLike => "AnimalLike",
-            LifeLevel::Sentient => "Sentient",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                LifeLevel::None => "None",
+                LifeLevel::UniCellular => "UniCellular",
+                LifeLevel::PluriCellular => "PluriCellular",
+                LifeLevel::PlantLike => "PlantLike",
+                LifeLevel::AnimalLike => "AnimalLike",
+                LifeLevel::Sentient => "Sentient",
+            }
+        )
     }
 }
 

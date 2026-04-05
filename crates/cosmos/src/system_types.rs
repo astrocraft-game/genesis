@@ -191,18 +191,31 @@ impl StarSystem {
         all_objects: Vec<OrbitalPoint>,
         special_traits: Vec<SystemPeculiarity>,
     ) -> Self {
-        let gas_giant_mass_sum: f64 = all_objects.iter().map(|o| {
-            if let AstronomicalObject::TelluricBody(body) = &o.object {
-                if body.mass > 10.0 { body.mass } else { 0.0 }
-            } else { 0.0 }
-        }).sum();
+        let gas_giant_mass_sum: f64 = all_objects
+            .iter()
+            .map(|o| {
+                if let AstronomicalObject::TelluricBody(body) = &o.object {
+                    if body.mass > 10.0 {
+                        body.mass
+                    } else {
+                        0.0
+                    }
+                } else {
+                    0.0
+                }
+            })
+            .sum();
         let has_gas_giants = gas_giant_mass_sum > 10.0;
         let oort_cloud_mass = if has_gas_giants {
             (gas_giant_mass_sum as f32 / 300.0 * 10.0).clamp(1.0, 100.0)
-        } else { 0.0 };
+        } else {
+            0.0
+        };
         let kuiper_belt_mass = if has_gas_giants {
             (gas_giant_mass_sum as f32 / 300.0 * 0.1).clamp(0.001, 0.5)
-        } else { 0.0 };
+        } else {
+            0.0
+        };
         let comet_injection_rate = oort_cloud_mass * 0.5;
 
         Self {

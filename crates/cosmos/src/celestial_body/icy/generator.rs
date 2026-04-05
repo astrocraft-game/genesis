@@ -1,17 +1,15 @@
-use crate::internal::types::MoonDistance;
-use crate::internal::*;
-use crate::prelude::*;
-use crate::celestial_body::generator::{
-    generate_acceptable_telluric_parameters, get_world_type,
-};
+use crate::celestial_body::generator::{generate_acceptable_telluric_parameters, get_world_type};
 use crate::celestial_body::telluric::generator::generate_peculiarities;
 use crate::contents::utils::{
     calculate_blackbody_temperature, calculate_radius, calculate_surface_gravity,
 };
 use crate::contents::zones::get_orbit_with_updated_zone;
+use crate::internal::types::MoonDistance;
+use crate::internal::*;
 use crate::orbital_point::generator::{
     complete_orbit_with_orbital_period, complete_orbit_with_rotation_and_axis,
 };
+use crate::prelude::*;
 
 impl IcyBodyDetails {
     pub(crate) fn generate_icy_body_stub(orbital_point_id: u32) -> CelestialBody {
@@ -387,57 +385,57 @@ impl IcyBodyDetails {
             // Frost belt
             to_return = if blackbody_temp >= 170 {
                 TelluricBodyDetails::make_dust_belt(
-                    &star_name,
+                    star_name,
                     populated_orbit_index,
                     orbital_point_id,
-                    &own_orbit,
-                    &orbits,
+                    own_orbit,
+                    orbits,
                 )
             } else {
                 Self::make_frost_belt(
-                    &star_name,
+                    star_name,
                     populated_orbit_index,
                     orbital_point_id,
-                    &own_orbit,
-                    &orbits,
+                    own_orbit,
+                    orbits,
                 )
             };
         } else if rolled_size <= 61 {
             // Comet belt
             to_return = if blackbody_temp >= 170 {
                 TelluricBodyDetails::make_debris_disk(
-                    &star_name,
+                    star_name,
                     populated_orbit_index,
                     orbital_point_id,
-                    &own_orbit,
-                    &orbits,
+                    own_orbit,
+                    orbits,
                 )
             } else {
                 Self::make_comet_belt(
-                    &star_name,
+                    star_name,
                     populated_orbit_index,
                     orbital_point_id,
-                    &own_orbit,
-                    &orbits,
+                    own_orbit,
+                    orbits,
                 )
             };
         } else if rolled_size <= 65 {
             // Comet cloud
             to_return = if blackbody_temp >= 170 {
                 TelluricBodyDetails::make_asteroid_belt(
-                    &star_name,
+                    star_name,
                     populated_orbit_index,
                     orbital_point_id,
-                    &own_orbit,
-                    &orbits,
+                    own_orbit,
+                    orbits,
                 )
             } else {
                 Self::make_comet_cloud(
-                    &star_name,
+                    star_name,
                     populated_orbit_index,
                     orbital_point_id,
-                    &own_orbit,
-                    &orbits,
+                    own_orbit,
+                    orbits,
                 )
             };
         } else if rolled_size <= 105 {

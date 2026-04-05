@@ -198,10 +198,7 @@ fn generate_ice_over_water(temperature: WorldTemperatureCategory, hydrosphere: f
     coverage.min(hydrosphere)
 }
 
-fn generate_land_area_percentage(
-    profile: &PlanetGenerationProfile,
-    hydrosphere: f32,
-) -> f32 {
+fn generate_land_area_percentage(profile: &PlanetGenerationProfile, hydrosphere: f32) -> f32 {
     let base = (100.0 - hydrosphere).clamp(0.0, 100.0);
     match profile.world_type {
         CelestialBodyWorldType::Ocean => base.min(20.0),
@@ -223,7 +220,8 @@ fn generate_ice_over_land(
         _ => 0.0,
     };
 
-    base.min(land_area_percentage.max(0.0)).min(100.0 - hydrosphere + land_area_percentage)
+    base.min(land_area_percentage.max(0.0))
+        .min(100.0 - hydrosphere + land_area_percentage)
 }
 
 fn generate_volcanism(context: &PlanetSimulationInput, profile: &PlanetGenerationProfile) -> f32 {
@@ -354,7 +352,10 @@ fn generate_surface_map(
             (BiomeType::Ocean, hydrosphere / 100.0),
         ],
         WorldClimateType::Arctic => vec![
-            (BiomeType::IceCap, ((ice_over_water + ice_over_land) / 100.0).clamp(0.2, 0.8)),
+            (
+                BiomeType::IceCap,
+                ((ice_over_water + ice_over_land) / 100.0).clamp(0.2, 0.8),
+            ),
             (BiomeType::Tundra, 0.15),
         ],
         WorldClimateType::Dead => vec![(BiomeType::Barren, 0.8)],
@@ -371,7 +372,8 @@ fn generate_surface_map(
         highest_elevation_km: (4.0 + tectonic_activity * 0.09 + volcanism * 0.04).clamp(1.0, 18.0),
         deepest_ocean_km: (2.0 + hydrosphere * 0.06).clamp(0.0, 12.0),
         tectonic_plate_count: (3.0 + tectonic_activity / 10.0).round().clamp(1.0, 16.0) as u8,
-        temperature_range_k: (context.orbit.axial_tilt_deg * 0.8 + context.orbit.eccentricity * 120.0)
+        temperature_range_k: (context.orbit.axial_tilt_deg * 0.8
+            + context.orbit.eccentricity * 120.0)
             .clamp(2.0, 90.0),
         seasonal_frost: matches!(
             climate,
@@ -449,6 +451,9 @@ mod tests {
         let interior = generate_planet_interior(&context, &profile);
         assert!(interior.atmospheric_pressure > 0.5);
         assert!(interior.hydrosphere > 20.0);
-        assert_eq!(interior.temperature_category, WorldTemperatureCategory::Temperate);
+        assert_eq!(
+            interior.temperature_category,
+            WorldTemperatureCategory::Temperate
+        );
     }
 }
