@@ -193,6 +193,144 @@ impl SurfaceGrid {
         let frac = (c as f32 + 0.5) / self.width as f32;
         -180.0 + frac * 360.0
     }
+
+    /// (width, height) in tiles — convenient for passing to image crates.
+    #[inline]
+    pub fn dimensions(&self) -> (u16, u16) {
+        (self.width, self.height)
+    }
+
+    // -----------------------------------------------------------------------
+    // Texture export helpers
+    //
+    // Produce raw byte buffers suitable for feeding directly to game engine
+    // textures or to the `image` crate. All RGB outputs are packed
+    // row-major, top-to-bottom (row 0 = north pole).
+    // -----------------------------------------------------------------------
+
+    /// Pack the biome layer as W×H×3 RGB bytes using a fixed palette.
+    pub fn export_biome_rgb(&self) -> Vec<u8> {
+        use crate::types::BiomeType;
+        let n = self.tile_count();
+        let mut buf = Vec::with_capacity(n * 3);
+        for &biome in &self.layers.biome {
+            let (r, g, b) = match biome {
+                BiomeType::Tundra => (180, 190, 200),
+                BiomeType::Taiga => (40, 90, 60),
+                BiomeType::TemperateForest => (60, 120, 60),
+                BiomeType::TropicalForest => (20, 100, 40),
+                BiomeType::Grassland => (150, 200, 100),
+                BiomeType::Desert => (220, 200, 130),
+                BiomeType::Savanna => (200, 180, 100),
+                BiomeType::Wetland => (100, 130, 80),
+                BiomeType::Alpine => (200, 200, 220),
+                BiomeType::Volcanic => (80, 40, 40),
+                BiomeType::IceCap => (240, 250, 255),
+                BiomeType::Ocean => (20, 80, 180),
+                BiomeType::Barren => (140, 130, 120),
+                _ => (255, 0, 255), // magenta for unknown future variants
+            };
+            buf.push(r);
+            buf.push(g);
+            buf.push(b);
+        }
+        buf
+    }
+
+    /// Pack elevation as W×H grayscale bytes. Sea level maps to 128;
+    /// deepest ocean → 0, highest peak → 255.
+    pub fn export_elevation_grayscale(&self) -> Vec<u8> {
+        let (min_e, max_e) = self
+            .layers
+            .elevation_m
+            .iter()
+            .copied()
+            .fold((f32::INFINITY, f32::NEG_INFINITY), |(lo, hi), e| {
+                (lo.min(e), hi.max(e))
+            });
+        let sl = self.sea_level_m;
+        // Split scaling: 0..128 covers min_e..sea_level, 128..255 covers sea_level..max_e.
+        let below_span = (sl - min_e).max(1.0);
+        let above_span = (max_e - sl).max(1.0);
+        self.layers
+            .elevation_m
+            .iter()
+            .map(|&e| {
+                if e < sl {
+                    let t = ((e - min_e) / below_span).clamp(0.0, 1.0);
+                    (t * 128.0) as u8
+                } else {
+                    let t = ((e - sl) / above_span).clamp(0.0, 1.0);
+                    (128.0 + t * 127.0) as u8
+                }
+            })
+            .collect()
+    }
+
+    /// Pack temperature as W×H×3 RGB bytes using a blue-white-red colormap.
+    /// Range: −40 °C → deep blue, 0 °C → white, +40 °C → red.
+    pub fn export_temperature_rgb(&self) -> Vec<u8> {
+        let n = self.tile_count();
+        let mut buf = Vec::with_capacity(n * 3);
+        for &t in &self.layers.temperature_c {
+            let (r, g, b) = temperature_color(t);
+            buf.push(r);
+            buf.push(g);
+            buf.push(b);
+        }
+        buf
+    }
+
+    /// Pack precipitation as W×H×3 RGB bytes using a tan-to-blue colormap.
+    /// Range: 0 mm → tan, 3000 mm → deep blue.
+    pub fn export_precipitation_rgb(&self) -> Vec<u8> {
+        let n = self.tile_count();
+        let mut buf = Vec::with_capacity(n * 3);
+        for &p in &self.layers.precipitation_mm {
+            let (r, g, b) = precipitation_color(p);
+            buf.push(r);
+            buf.push(g);
+            buf.push(b);
+        }
+        buf
+    }
+
+    /// Pack the is_ocean mask as W×H grayscale bytes (0 = land, 255 = ocean).
+    pub fn export_ocean_mask(&self) -> Vec<u8> {
+        self.layers
+            .is_ocean
+            .iter()
+            .map(|&o| if o { 255 } else { 0 })
+            .collect()
+    }
+}
+
+fn lerp_u8(a: u8, b: u8, t: f32) -> u8 {
+    (a as f32 + (b as f32 - a as f32) * t.clamp(0.0, 1.0)) as u8
+}
+
+fn temperature_color(t_c: f32) -> (u8, u8, u8) {
+    // Cold (-40°C) = deep blue, cool (0°C) = white, hot (40°C) = red.
+    if t_c < 0.0 {
+        let t = ((t_c + 40.0) / 40.0).clamp(0.0, 1.0);
+        (lerp_u8(0, 240, t), lerp_u8(0, 240, t), lerp_u8(180, 240, t))
+    } else {
+        let t = (t_c / 40.0).clamp(0.0, 1.0);
+        (
+            lerp_u8(240, 200, t),
+            lerp_u8(240, 30, t),
+            lerp_u8(240, 30, t),
+        )
+    }
+}
+
+fn precipitation_color(mm: f32) -> (u8, u8, u8) {
+    let t = (mm / 3000.0).clamp(0.0, 1.0);
+    (
+        lerp_u8(220, 40, t),
+        lerp_u8(200, 80, t),
+        lerp_u8(130, 200, t),
+    )
 }
 
 #[cfg(test)]
@@ -384,6 +522,156 @@ mod pipeline_tests {
             "seed_b",
         );
         assert_ne!(a.layers.elevation_m, b.layers.elevation_m);
+    }
+}
+
+#[cfg(test)]
+mod texture_tests {
+    use super::*;
+    use crate::types::{OrbitContext, PlanetSimulationInput, StarContext};
+
+    fn earth_grid() -> SurfaceGrid {
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        generate_surface_grid(&input, 33.0, 1.0, 71.0, GridResolution::Fast, "tex")
+    }
+
+    #[test]
+    fn biome_rgb_has_correct_size() {
+        let g = earth_grid();
+        let buf = g.export_biome_rgb();
+        assert_eq!(buf.len(), g.tile_count() * 3);
+    }
+
+    #[test]
+    fn ocean_tiles_colored_blue() {
+        let g = earth_grid();
+        let buf = g.export_biome_rgb();
+        // Find first ocean tile and confirm its RGB matches the Ocean palette.
+        for idx in 0..g.tile_count() {
+            if g.layers.is_ocean[idx] {
+                let r = buf[idx * 3];
+                let g_ = buf[idx * 3 + 1];
+                let b = buf[idx * 3 + 2];
+                assert_eq!((r, g_, b), (20, 80, 180));
+                return;
+            }
+        }
+        panic!("no ocean tile found in test grid");
+    }
+
+    #[test]
+    fn elevation_grayscale_has_correct_size() {
+        let g = earth_grid();
+        let buf = g.export_elevation_grayscale();
+        assert_eq!(buf.len(), g.tile_count());
+    }
+
+    #[test]
+    fn deep_ocean_is_black_peaks_are_white() {
+        let g = earth_grid();
+        let buf = g.export_elevation_grayscale();
+        let min = *buf.iter().min().unwrap();
+        let max = *buf.iter().max().unwrap();
+        assert!(min < 30, "deepest pixel should be near 0, got {}", min);
+        assert!(max > 200, "highest pixel should be near 255, got {}", max);
+    }
+
+    #[test]
+    fn temperature_rgb_has_correct_size() {
+        let g = earth_grid();
+        let buf = g.export_temperature_rgb();
+        assert_eq!(buf.len(), g.tile_count() * 3);
+    }
+
+    #[test]
+    fn warm_tiles_redder_than_cold_tiles() {
+        // Unit test of the color function.
+        let (r_cold, _, _) = super::temperature_color(-30.0);
+        let (r_warm, _, _) = super::temperature_color(30.0);
+        assert!(r_warm > r_cold);
+        let (_, _, b_cold) = super::temperature_color(-30.0);
+        let (_, _, b_warm) = super::temperature_color(30.0);
+        assert!(b_cold > b_warm);
+    }
+
+    #[test]
+    fn precipitation_rgb_has_correct_size() {
+        let g = earth_grid();
+        let buf = g.export_precipitation_rgb();
+        assert_eq!(buf.len(), g.tile_count() * 3);
+    }
+
+    #[test]
+    fn dry_tiles_tan_wet_tiles_blue() {
+        let (r_dry, _, b_dry) = super::precipitation_color(0.0);
+        let (r_wet, _, b_wet) = super::precipitation_color(3000.0);
+        assert!(r_dry > r_wet);
+        assert!(b_wet > b_dry);
+    }
+
+    #[test]
+    fn ocean_mask_matches_is_ocean() {
+        let g = earth_grid();
+        let mask = g.export_ocean_mask();
+        assert_eq!(mask.len(), g.tile_count());
+        for (idx, &byte) in mask.iter().enumerate() {
+            let expected = if g.layers.is_ocean[idx] { 255 } else { 0 };
+            assert_eq!(byte, expected);
+        }
+    }
+
+    #[test]
+    fn dimensions_match_grid() {
+        let g = earth_grid();
+        assert_eq!(g.dimensions(), (72, 36));
+    }
+
+    #[test]
+    fn all_biome_variants_have_colors() {
+        use crate::types::BiomeType;
+        // Manually construct a grid with one of each biome, verify no
+        // magenta fallback pixels (indicating an unmapped variant).
+        let biomes = [
+            BiomeType::Tundra,
+            BiomeType::Taiga,
+            BiomeType::TemperateForest,
+            BiomeType::TropicalForest,
+            BiomeType::Grassland,
+            BiomeType::Desert,
+            BiomeType::Savanna,
+            BiomeType::Wetland,
+            BiomeType::Alpine,
+            BiomeType::Volcanic,
+            BiomeType::IceCap,
+            BiomeType::Ocean,
+            BiomeType::Barren,
+        ];
+        let mut g = SurfaceGrid::empty(GridResolution::Custom(biomes.len() as u16, 1));
+        for (i, b) in biomes.iter().enumerate() {
+            g.layers.biome[i] = *b;
+        }
+        let buf = g.export_biome_rgb();
+        // Magenta fallback is (255, 0, 255). None should hit it.
+        for chunk in buf.chunks(3) {
+            let (r, g_, b) = (chunk[0], chunk[1], chunk[2]);
+            assert!(
+                !(r == 255 && g_ == 0 && b == 255),
+                "magenta fallback triggered"
+            );
+        }
     }
 }
 
