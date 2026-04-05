@@ -107,11 +107,13 @@ fn thermal_factor(temp_c: f32) -> f32 {
 /// even with ample thermal + moisture headroom.
 fn biome_vegetation_modifier(biome: Biome) -> f32 {
     match biome {
-        Biome::TropicalForest | Biome::TemperateForest => 1.0,
+        Biome::TropicalForest | Biome::TemperateForest | Biome::Mangrove => 1.0,
         Biome::Taiga | Biome::Savanna | Biome::Wetland => 0.85,
-        Biome::Grassland => 0.65,
+        Biome::MediterraneanShrubland | Biome::Chaparral => 0.7,
+        Biome::Grassland | Biome::Steppe => 0.65,
+        Biome::XericShrubland => 0.4,
         Biome::Tundra | Biome::Alpine => 0.3,
-        Biome::Desert => 0.1,
+        Biome::Desert | Biome::ColdDesert => 0.1,
         Biome::Volcanic | Biome::Barren => 0.05,
         Biome::IceCap => 0.0,
         Biome::Ocean => 0.0,
@@ -258,13 +260,13 @@ fn biome_affinity(species: &Species, biome: Biome) -> f32 {
             Mollusk => 0.4,
             _ => 0.6,
         },
-        Biome::Grassland | Biome::Savanna => match plan {
+        Biome::Grassland | Biome::Savanna | Biome::Steppe => match plan {
             Vertebrate | Arthropod => 1.0,
             PlantLike => 0.8,
             Mollusk => 0.3,
             _ => 0.5,
         },
-        Biome::Wetland => match plan {
+        Biome::Wetland | Biome::Mangrove => match plan {
             Mollusk | Amorphous | Arthropod => 1.0,
             Vertebrate | PlantLike => 0.7,
             _ => 0.5,
@@ -274,6 +276,17 @@ fn biome_affinity(species: &Species, biome: Biome) -> f32 {
             Vertebrate => 0.6,
             Crystalline => 0.9,
             _ => 0.3,
+        },
+        Biome::ColdDesert | Biome::XericShrubland => match plan {
+            Arthropod => 0.7,
+            Vertebrate => 0.5,
+            Crystalline => 0.8,
+            _ => 0.2,
+        },
+        Biome::MediterraneanShrubland | Biome::Chaparral => match plan {
+            Vertebrate | Arthropod | PlantLike => 0.9,
+            Mollusk => 0.3,
+            _ => 0.5,
         },
         Biome::Tundra | Biome::Alpine => match plan {
             Vertebrate => 0.7,

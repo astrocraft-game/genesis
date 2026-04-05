@@ -68,9 +68,10 @@ pub fn compute_settlement_suitability(
 fn moderation_score(biome: Biome) -> f32 {
     match biome {
         Biome::TemperateForest | Biome::Grassland => 1.0,
-        Biome::Savanna | Biome::TropicalForest => 0.85,
-        Biome::Taiga | Biome::Wetland => 0.6,
-        Biome::Desert | Biome::Tundra => 0.35,
+        Biome::MediterraneanShrubland | Biome::Chaparral | Biome::Steppe => 0.9,
+        Biome::Savanna | Biome::TropicalForest | Biome::Mangrove => 0.85,
+        Biome::Taiga | Biome::Wetland | Biome::XericShrubland => 0.6,
+        Biome::Desert | Biome::ColdDesert | Biome::Tundra => 0.35,
         Biome::Alpine => 0.25,
         Biome::IceCap | Biome::Volcanic | Biome::Barren | Biome::Ocean => 0.0,
     }

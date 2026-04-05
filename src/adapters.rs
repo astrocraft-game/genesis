@@ -233,6 +233,7 @@ fn map_biome(b: BiomeType) -> Biome {
         BiomeType::TropicalForest => Biome::TropicalForest,
         BiomeType::Grassland => Biome::Grassland,
         BiomeType::Desert => Biome::Desert,
+        BiomeType::ColdDesert => Biome::ColdDesert,
         BiomeType::Savanna => Biome::Savanna,
         BiomeType::Wetland => Biome::Wetland,
         BiomeType::Alpine => Biome::Alpine,
@@ -240,6 +241,11 @@ fn map_biome(b: BiomeType) -> Biome {
         BiomeType::IceCap => Biome::IceCap,
         BiomeType::Ocean => Biome::Ocean,
         BiomeType::Barren => Biome::Barren,
+        BiomeType::MediterraneanShrubland => Biome::MediterraneanShrubland,
+        BiomeType::XericShrubland => Biome::XericShrubland,
+        BiomeType::Mangrove => Biome::Mangrove,
+        BiomeType::Chaparral => Biome::Chaparral,
+        BiomeType::Steppe => Biome::Steppe,
         // Future variants in BiomeType default to a safe fallback.
         _ => Biome::Barren,
     }

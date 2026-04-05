@@ -190,6 +190,7 @@ pub enum BiomeType {
     #[default]
     Grassland,
     Desert,
+    ColdDesert,
     Savanna,
     Wetland,
     Alpine,
@@ -197,6 +198,11 @@ pub enum BiomeType {
     IceCap,
     Ocean,
     Barren,
+    MediterraneanShrubland,
+    XericShrubland,
+    Mangrove,
+    Chaparral,
+    Steppe,
 }
 
 /// Köppen-Geiger climate classification. A simplified subset using the

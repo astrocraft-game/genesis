@@ -53,19 +53,16 @@ Goal: deepen the existing surface-maps pipeline without adding new subsystems.
 - [x] Tests: monthly mean brackets annual, monthly sum equals annual,
       tilt=0 flattens precipitation seasonality.
 
-### A4 — Biome palette expansion
+### A4 — Biome palette expansion ✅
 
-- [ ] Add new `BiomeType` variants (behind `#[non_exhaustive]` which
-      we already have):
-      - `MediterraneanShrubland` (Csa/Csb climates)
-      - `XericShrubland` (arid but not full desert)
-      - `Mangrove` (tropical coastal wetland)
-      - `Chaparral` / `Maquis`
-      - `Steppe` (mid-lat dry grassland)
-      - `ColdDesert` (e.g. Gobi, Patagonia)
-- [ ] Refine Whittaker lookup with secondary axes (humidity, continentality).
-- [ ] Mirror additions to life's `Biome` enum + adapter map.
-- [ ] Update biome affinity tables in life/habitat.rs.
+- [x] Add new `BiomeType` variants: MediterraneanShrubland, XericShrubland,
+      Mangrove, Chaparral, Steppe, ColdDesert.
+- [x] Refine Whittaker lookup with secondary axes (Köppen class for
+      Mediterranean, humidity + coastal for Mangrove, precipitation bands
+      for Steppe vs Grassland).
+- [x] Mirror additions to life's `Biome` enum + adapter map.
+- [x] Update biome affinity + vegetation modifier tables in life/habitat.rs
+      and settlement moderation scores in life/settlement.rs.
 
 ### A5 — Refined ocean dynamics
 

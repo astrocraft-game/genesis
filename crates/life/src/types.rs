@@ -110,6 +110,7 @@ pub enum Biome {
     #[default]
     Grassland,
     Desert,
+    ColdDesert,
     Savanna,
     Wetland,
     Alpine,
@@ -117,6 +118,11 @@ pub enum Biome {
     IceCap,
     Ocean,
     Barren,
+    MediterraneanShrubland,
+    XericShrubland,
+    Mangrove,
+    Chaparral,
+    Steppe,
 }
 
 /// High-level classification of a homeworld. Only the broad class matters for

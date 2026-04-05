@@ -1290,7 +1290,28 @@ use crate::types::{BiomeType, KoppenClass};
 /// Populate biome + koppen_class layers on a grid that has temperature,
 /// precipitation, and geology populated.
 pub fn generate_biomes(grid: &mut SurfaceGrid) {
-    for idx in 0..grid.tile_count() {
+    // Pre-compute coastal flags: a land tile is "coastal" if any
+    // 4-neighbour is ocean.
+    let w = grid.width as usize;
+    let h = grid.height as usize;
+    let coastal: Vec<bool> = (0..grid.tile_count())
+        .map(|idx| {
+            if grid.layers.is_ocean[idx] {
+                return false;
+            }
+            let r = idx / w;
+            let c = idx % w;
+            let neighbours = [
+                r.saturating_sub(1) * w + c,
+                (r + 1).min(h - 1) * w + c,
+                r * w + (c + w - 1) % w,
+                r * w + (c + 1) % w,
+            ];
+            neighbours.iter().any(|&ni| grid.layers.is_ocean[ni])
+        })
+        .collect();
+
+    for (idx, &is_coastal) in coastal.iter().enumerate() {
         if grid.layers.is_ocean[idx] {
             grid.layers.biome[idx] = BiomeType::Ocean;
             grid.layers.koppen_class[idx] = KoppenClass::Ocean;
@@ -1300,17 +1321,18 @@ pub fn generate_biomes(grid: &mut SurfaceGrid) {
         let temp_summer = grid.layers.temperature_summer_c[idx];
         let temp_winter = grid.layers.temperature_winter_c[idx];
         let precip = grid.layers.precipitation_mm[idx];
+        let humidity = grid.layers.humidity_relative[idx];
         let elev = grid.layers.elevation_m[idx];
         let sea_level = grid.sea_level_m;
         let height_m = elev - sea_level;
 
         // Köppen classification first (pure climate).
         let monthly_p = &grid.layers.precipitation_monthly_mm[idx];
-        grid.layers.koppen_class[idx] =
-            classify_koppen(temp_summer, temp_winter, precip, monthly_p);
+        let koppen = classify_koppen(temp_summer, temp_winter, precip, monthly_p);
+        grid.layers.koppen_class[idx] = koppen;
 
-        // Whittaker biome.
-        let mut biome = classify_biome(temp_c, precip);
+        // Whittaker biome with secondary axes.
+        let mut biome = classify_biome(temp_c, precip, koppen, humidity, is_coastal);
 
         // Elevation overrides.
         if height_m > 4500.0 {
@@ -1322,36 +1344,66 @@ pub fn generate_biomes(grid: &mut SurfaceGrid) {
     }
 }
 
-/// Whittaker biome classification from annual mean temperature (°C)
-/// and annual precipitation (mm).
-pub fn classify_biome(temp_c: f32, precipitation_mm: f32) -> BiomeType {
+/// Whittaker biome classification from annual mean temperature (°C),
+/// annual precipitation (mm), and optional secondary axes (humidity,
+/// Köppen class) for finer differentiation.
+pub fn classify_biome(
+    temp_c: f32,
+    precipitation_mm: f32,
+    koppen: KoppenClass,
+    humidity: f32,
+    is_coastal: bool,
+) -> BiomeType {
     if temp_c > 20.0 {
         // Tropical
         if precipitation_mm > 2000.0 {
-            BiomeType::TropicalForest
+            if is_coastal && humidity > 0.7 {
+                BiomeType::Mangrove
+            } else {
+                BiomeType::TropicalForest
+            }
         } else if precipitation_mm > 500.0 {
             BiomeType::Savanna
+        } else if precipitation_mm > 150.0 {
+            BiomeType::XericShrubland
         } else {
             BiomeType::Desert
         }
     } else if temp_c > 5.0 {
         // Temperate
-        if precipitation_mm > 750.0 {
-            BiomeType::TemperateForest
-        } else if precipitation_mm > 250.0 {
-            BiomeType::Grassland
-        } else {
-            BiomeType::Desert
+        match koppen {
+            KoppenClass::Csa | KoppenClass::Csb => {
+                if precipitation_mm > 600.0 {
+                    BiomeType::MediterraneanShrubland
+                } else {
+                    BiomeType::Chaparral
+                }
+            }
+            _ => {
+                if precipitation_mm > 750.0 {
+                    BiomeType::TemperateForest
+                } else if precipitation_mm >= 400.0 {
+                    BiomeType::Grassland
+                } else if precipitation_mm > 200.0 {
+                    BiomeType::Steppe
+                } else {
+                    BiomeType::XericShrubland
+                }
+            }
         }
     } else if temp_c > -5.0 {
         // Boreal
         if precipitation_mm > 200.0 {
             BiomeType::Taiga
         } else {
-            BiomeType::Grassland
+            BiomeType::Steppe
         }
     } else if temp_c > -15.0 {
-        BiomeType::Tundra
+        if precipitation_mm < 200.0 {
+            BiomeType::ColdDesert
+        } else {
+            BiomeType::Tundra
+        }
     } else {
         BiomeType::IceCap
     }
@@ -1544,44 +1596,114 @@ mod biome_tests {
         }
     }
 
+    /// Default args for legacy Whittaker tests (no Mediterranean climate,
+    /// not coastal, 0 humidity).
+    const K: KoppenClass = KoppenClass::Ocean;
+
     #[test]
     fn tropical_rainforest_classification() {
-        assert_eq!(classify_biome(26.0, 2500.0), BiomeType::TropicalForest);
+        assert_eq!(
+            classify_biome(26.0, 2500.0, K, 0.0, false),
+            BiomeType::TropicalForest
+        );
     }
 
     #[test]
     fn hot_desert_classification() {
-        assert_eq!(classify_biome(28.0, 100.0), BiomeType::Desert);
+        assert_eq!(
+            classify_biome(28.0, 100.0, K, 0.0, false),
+            BiomeType::Desert
+        );
     }
 
     #[test]
     fn savanna_classification() {
-        assert_eq!(classify_biome(25.0, 800.0), BiomeType::Savanna);
+        assert_eq!(
+            classify_biome(25.0, 800.0, K, 0.0, false),
+            BiomeType::Savanna
+        );
     }
 
     #[test]
     fn temperate_forest_classification() {
-        assert_eq!(classify_biome(12.0, 1100.0), BiomeType::TemperateForest);
+        assert_eq!(
+            classify_biome(12.0, 1100.0, K, 0.0, false),
+            BiomeType::TemperateForest
+        );
     }
 
     #[test]
     fn grassland_classification() {
-        assert_eq!(classify_biome(10.0, 400.0), BiomeType::Grassland);
+        assert_eq!(
+            classify_biome(10.0, 400.0, K, 0.0, false),
+            BiomeType::Grassland
+        );
     }
 
     #[test]
     fn taiga_classification() {
-        assert_eq!(classify_biome(-2.0, 500.0), BiomeType::Taiga);
+        assert_eq!(classify_biome(-2.0, 500.0, K, 0.0, false), BiomeType::Taiga);
     }
 
     #[test]
     fn tundra_classification() {
-        assert_eq!(classify_biome(-10.0, 200.0), BiomeType::Tundra);
+        assert_eq!(
+            classify_biome(-10.0, 200.0, K, 0.0, false),
+            BiomeType::Tundra
+        );
     }
 
     #[test]
     fn ice_cap_classification() {
-        assert_eq!(classify_biome(-25.0, 100.0), BiomeType::IceCap);
+        assert_eq!(
+            classify_biome(-25.0, 100.0, K, 0.0, false),
+            BiomeType::IceCap
+        );
+    }
+
+    #[test]
+    fn mediterranean_shrubland_classification() {
+        assert_eq!(
+            classify_biome(15.0, 700.0, KoppenClass::Csa, 0.5, false),
+            BiomeType::MediterraneanShrubland
+        );
+    }
+
+    #[test]
+    fn chaparral_classification() {
+        assert_eq!(
+            classify_biome(15.0, 400.0, KoppenClass::Csb, 0.3, false),
+            BiomeType::Chaparral
+        );
+    }
+
+    #[test]
+    fn steppe_classification() {
+        assert_eq!(classify_biome(8.0, 300.0, K, 0.0, false), BiomeType::Steppe);
+    }
+
+    #[test]
+    fn xeric_shrubland_classification() {
+        assert_eq!(
+            classify_biome(25.0, 200.0, K, 0.0, false),
+            BiomeType::XericShrubland
+        );
+    }
+
+    #[test]
+    fn cold_desert_classification() {
+        assert_eq!(
+            classify_biome(-10.0, 100.0, K, 0.0, false),
+            BiomeType::ColdDesert
+        );
+    }
+
+    #[test]
+    fn mangrove_classification() {
+        assert_eq!(
+            classify_biome(26.0, 2500.0, K, 0.8, true),
+            BiomeType::Mangrove
+        );
     }
 
     /// No monthly data — fallback to non-seasonal subtypes.
