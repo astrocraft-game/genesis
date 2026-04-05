@@ -456,6 +456,94 @@ fn map_magnetic_field(value: cosmos::prelude::MagneticFieldStrength) -> Magnetic
     }
 }
 
+/// A single trade route between two settlements: the tile path traced
+/// by A*, its movement cost, and a complementarity-based value.
+#[derive(Clone, Debug)]
+pub struct TradeRoute {
+    /// Index into the settlement list.
+    pub from_settlement: usize,
+    pub to_settlement: usize,
+    /// Tile path from source to destination, inclusive.
+    pub tiles: Vec<usize>,
+    /// Total movement cost (sum of per-tile costs).
+    pub total_cost: f32,
+    /// Net trade value: how much each settlement has that the other lacks,
+    /// divided by path cost. Higher = more worth trading.
+    pub value: f32,
+}
+
+/// Compute trade routes between every pair of settlements. Routes with
+/// `value < 0.01` are filtered out (not worth trading).
+///
+/// `routes_per_settlement` caps how many outbound routes each settlement
+/// keeps (to prevent N² explosion for large networks).
+pub fn compute_trade_routes(
+    grid: &SurfaceGrid,
+    resources: &world::resources::ResourceMap,
+    settlements: &[life::Settlement],
+    routes_per_settlement: usize,
+) -> Vec<TradeRoute> {
+    use std::collections::HashSet;
+    let n = settlements.len();
+    if n < 2 {
+        return Vec::new();
+    }
+    let mut all_routes: Vec<TradeRoute> = Vec::new();
+    // Precompute per-settlement resource sets.
+    let resource_sets: Vec<HashSet<world::resources::Resource>> = settlements
+        .iter()
+        .map(|s| {
+            resources
+                .per_tile
+                .get(s.tile_idx)
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .collect()
+        })
+        .collect();
+
+    for i in 0..n {
+        let mut candidates: Vec<(usize, f32, Vec<usize>, f32)> = Vec::new();
+        for j in 0..n {
+            if i == j {
+                continue;
+            }
+            let Some(path) = world::routing::find_path(
+                grid,
+                settlements[i].tile_idx,
+                settlements[j].tile_idx,
+                |idx| world::routing::trade_cost(grid, idx),
+            ) else {
+                continue;
+            };
+            let complementarity = {
+                let a = &resource_sets[i];
+                let b = &resource_sets[j];
+                let a_only = a.difference(b).count();
+                let b_only = b.difference(a).count();
+                (a_only + b_only) as f32
+            };
+            let value = complementarity / (1.0 + path.total_cost);
+            candidates.push((j, path.total_cost, path.tiles, value));
+        }
+        candidates.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap_or(std::cmp::Ordering::Equal));
+        for (j, cost, tiles, value) in candidates.into_iter().take(routes_per_settlement) {
+            if value < 0.01 {
+                continue;
+            }
+            all_routes.push(TradeRoute {
+                from_settlement: i,
+                to_settlement: j,
+                tiles,
+                total_cost: cost,
+                value,
+            });
+        }
+    }
+    all_routes
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -952,5 +1040,83 @@ mod tests {
                 .map(|(n, _)| n.clone())
                 .collect::<Vec<_>>()
         );
+    }
+
+    #[test]
+    fn trade_routes_connect_settlements() {
+        use life::{
+            compute_settlement_suitability, place_settlements, Climate, Habitat, LifeLevel,
+            SpeciesGenerationInput, Temperature,
+        };
+        use world::climate::{generate_biomes, generate_temperature, generate_wind};
+        use world::geology::generate_geology;
+        use world::grid::GridResolution;
+        use world::hydrology::{generate_hydrology, generate_precipitation};
+        use world::ocean::generate_ocean_dynamics;
+        use world::resources::generate_resources;
+        use world::types::StarContext;
+
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mut g = generate_geology(&input, 71.0, GridResolution::Fast, "trade");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_precipitation(&input, 1.0, 71.0, &mut g);
+        generate_ocean_dynamics(&mut g);
+        generate_hydrology(1.0, &mut g);
+        generate_biomes(&mut g);
+        let habitat = surface_grid_to_habitat_grid(&g);
+        let rm = generate_resources(&g);
+
+        // Place a few settlements.
+        let species_input = SpeciesGenerationInput {
+            habitat: Habitat::Terrestrial,
+            climate: Climate::Terrestrial,
+            temperature: Temperature::Temperate,
+            gravity: 1.0,
+            atmospheric_pressure: 1.0,
+            hydrosphere: 71.0,
+            life_level: LifeLevel::Sentient,
+            seed: "trade".into(),
+            scope_key: "gaia".into(),
+        };
+        let species = life::generator::generate_species_from_world(&species_input).unwrap();
+        let range = crate::generate_species_on_surface(&g, &species, 1.0, LifeLevel::Sentient);
+        let water = water_access_from_grid(&g);
+        let res_score = resource_density_from_map(&rm);
+        let suit =
+            compute_settlement_suitability(&habitat, &range.habitability, &water, &res_score);
+        let settlements = place_settlements(&suit, &habitat, species.name.clone(), 6, 5);
+        assert!(settlements.len() >= 3);
+
+        let routes = compute_trade_routes(&g, &rm, &settlements, 2);
+        // Every settlement participates in at least one route as source.
+        let mut has_outbound = vec![false; settlements.len()];
+        for r in &routes {
+            has_outbound[r.from_settlement] = true;
+            assert!(!r.tiles.is_empty());
+            assert_eq!(
+                r.tiles.first(),
+                Some(&settlements[r.from_settlement].tile_idx)
+            );
+            assert_eq!(r.tiles.last(), Some(&settlements[r.to_settlement].tile_idx));
+            assert!(r.total_cost > 0.0);
+            assert!(r.value >= 0.01);
+        }
+        // Expect at least most settlements to participate.
+        let connected = has_outbound.iter().filter(|&&b| b).count();
+        assert!(connected >= settlements.len() - 1);
     }
 }

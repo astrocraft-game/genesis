@@ -30,6 +30,7 @@ pub mod interior;
 pub mod ocean;
 pub mod photochemistry;
 pub mod resources;
+pub mod routing;
 pub mod subsurface;
 pub mod surface;
 pub mod types;

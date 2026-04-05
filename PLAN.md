@@ -134,17 +134,22 @@ civilisations, resources, history, and dynamic events.
 - [x] 10 life tests + 2 adapter tests, including end-to-end Earth-like
       world settlement placement using real SurfaceGrid + ResourceMap.
 
-### B3 — Trade routes
+### B3 — Trade routes ✅
 
-- [ ] A* pathfinding between settlement pairs through the grid.
-- [ ] Cost function: ocean segments cheaper (water trade), mountains
-      and deserts expensive, rivers follow channel downstream.
-- [ ] Per-route value: product of source + destination resource
-      complementarity (what one has, the other lacks).
-- [ ] Output: `TradeRoute { from: SettlementId, to: SettlementId,
-      path: Vec<(u16, u16)>, value: f32 }`.
-- [ ] Tests: coastal settlements route by sea, mountain ranges avoided,
-      closed basins (endorheic) don't reach other basins by water.
+- [x] Added `world/src/routing.rs` with an A* pathfinder on SurfaceGrid,
+      caller-supplied cost function, longitude-wrapped neighbours,
+      Chebyshev-distance heuristic.
+- [x] `trade_cost()` helper: ocean 0.5, flatland 1.0, forest 1.5,
+      wetland 2.5, desert 2.8, alpine/icecap 4-5, volcanic 6, plus
+      elevation penalty of 0.8 per km.
+- [x] Root adapters: `TradeRoute` struct and `compute_trade_routes()`
+      N-to-N pathfinding capped at `routes_per_settlement` outbound
+      routes, ordered by complementarity-based value.
+- [x] Route value = (resources-each-has-that-the-other-lacks) /
+      (1 + path_cost); routes below 0.01 are dropped.
+- [x] 7 world routing tests + 1 end-to-end adapter test covering trivial
+      path, 2-tile pathfinding, ocean preference, mountain penalties,
+      blocked paths, longitude wrap, determinism, and settlement network.
 
 ### B4 — History generation (Dwarf-Fortress-lite)
 
