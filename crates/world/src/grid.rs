@@ -8,6 +8,7 @@
 
 /// Resolution presets for `SurfaceGrid` generation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum GridResolution {
     /// 72×36 tiles (5° cells, ~2.6k tiles). Fast interactive generation.
     Fast,
@@ -39,6 +40,7 @@ impl GridResolution {
 
 /// Classification of a tectonic plate boundary between two adjacent plates.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BoundaryKind {
     /// Not on a boundary (interior tile).
     #[default]
@@ -53,6 +55,7 @@ pub enum BoundaryKind {
 
 /// Classification of a tectonic plate itself.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum PlateKind {
     #[default]
     Continental,
@@ -61,6 +64,7 @@ pub enum PlateKind {
 
 /// Metadata for a single tectonic plate.
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Plate {
     pub id: u8,
     pub kind: PlateKind,
@@ -76,6 +80,7 @@ pub struct Plate {
 /// Physical layers of a surface grid. Row-major order with
 /// `idx = lat_row * width + lon_col`, row 0 at the north pole.
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SurfaceLayers {
     // Geology (Phase 1)
     pub elevation_m: Vec<f32>,
@@ -106,6 +111,7 @@ pub struct SurfaceLayers {
 
 /// A 2D surface grid in equirectangular projection.
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SurfaceGrid {
     pub width: u16,
     pub height: u16,
@@ -378,5 +384,63 @@ mod pipeline_tests {
             "seed_b",
         );
         assert_ne!(a.layers.elevation_m, b.layers.elevation_m);
+    }
+}
+
+#[cfg(all(test, feature = "serde"))]
+mod serde_tests {
+    use super::*;
+    use crate::types::{OrbitContext, PlanetSimulationInput, StarContext};
+
+    fn earth_input() -> PlanetSimulationInput {
+        PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn grid_round_trips_through_json() {
+        let g = generate_surface_grid(
+            &earth_input(),
+            33.0,
+            1.0,
+            71.0,
+            GridResolution::Fast,
+            "serde_test",
+        );
+        let json = serde_json::to_string(&g).expect("serialize");
+        let parsed: SurfaceGrid = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(parsed.width, g.width);
+        assert_eq!(parsed.height, g.height);
+        assert_eq!(parsed.sea_level_m, g.sea_level_m);
+        assert_eq!(parsed.plates.len(), g.plates.len());
+        assert_eq!(parsed.layers.elevation_m, g.layers.elevation_m);
+        assert_eq!(parsed.layers.biome, g.layers.biome);
+        assert_eq!(parsed.layers.koppen_class, g.layers.koppen_class);
+    }
+
+    #[test]
+    fn resolution_round_trips() {
+        for res in [
+            GridResolution::Fast,
+            GridResolution::Standard,
+            GridResolution::Detailed,
+            GridResolution::Custom(200, 100),
+        ] {
+            let json = serde_json::to_string(&res).unwrap();
+            let parsed: GridResolution = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed, res);
+        }
     }
 }

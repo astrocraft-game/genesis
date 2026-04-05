@@ -7,3 +7,10 @@ description = "Planetary interior, atmosphere, climate, ocean, geology, and surf
 [dependencies]
 noise = "0.9"
 seeded_dice_roller = "1.0"
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[features]
+serde = ["dep:serde"]
+
+[dev-dependencies]
+serde_json = "1.0"

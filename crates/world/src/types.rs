@@ -180,6 +180,7 @@ pub enum ChemicalComponent {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum BiomeType {
     Tundra,
@@ -203,6 +204,7 @@ pub enum BiomeType {
 /// the grid computes; fine seasonal subtypes (e.g. Cfa vs Cwa) are not
 /// distinguished since we lack per-month rainfall.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum KoppenClass {
     #[default]
