@@ -345,15 +345,17 @@ Goal: make the crafting system factory-ready — energy, waste, throughput.
       record captures byproducts, processing recipes exist, processing
       reduces pollution.
 
-### I3 — Recipe tech tiers
+### I3 — Recipe tech tiers ✅
 
-- [ ] Explicit `tech_tier: u8` on every recipe (currently implicit via
-      temperature/pressure thresholds).
-- [ ] Tiers: 0=manual, 1=kiln, 2=furnace, 3=blast furnace, 4=electric
-      arc, 5=chemical reactor, 6=plasma, 7=nuclear, 8=exotic.
-- [ ] Player's factory has a current max tier; filters available recipes.
-- [ ] Tests: tier monotonically increases with temperature requirement,
-      all recipes have a tier assigned.
+- [x] `tech_tiers.rs` with `TechTier` enum (9 tiers: Manual, Kiln, Furnace,
+      BlastFurnace, ElectricArc, ChemicalReactor, Plasma, Nuclear, Exotic).
+- [x] `recipe_tier(recipe)` derives tier from min_temp_c and pressure_atm
+      thresholds — no schema change to 750+ static recipes.
+- [x] `recipes_at_tier(max_tier)` filters recipe DB by player's current tier.
+- [x] `tier_distribution()` counts recipes per tier across the database.
+- [x] Tests (8): every recipe has a tier, tier increases with temp, manual
+      is lowest, higher tier unlocks more, distribution covers all, manual
+      has some, exotic includes all, pressure influences tier.
 
 ### I4 — Throughput and logistics model
 

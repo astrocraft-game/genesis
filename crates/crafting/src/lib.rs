@@ -23,6 +23,7 @@ pub mod energy;
 pub mod food;
 pub mod graph;
 pub mod recipes;
+pub mod tech_tiers;
 pub mod waste;
 
 pub use graph::CraftingGraph;
