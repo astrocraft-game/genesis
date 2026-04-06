@@ -888,6 +888,43 @@ mod tests {
         );
     }
 
+    // --- Semiconductor chain tests ---
+
+    #[test]
+    fn microchip_reachable_from_silica() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::SilicaSand, Substance::MicroChip);
+        assert!(
+            chain.is_some(),
+            "MicroChip should be reachable from SilicaSand"
+        );
+        if let Some(c) = &chain {
+            assert!(
+                c.len() >= 3,
+                "SilicaSand→...→Chip should be 3+ steps, got {}",
+                c.len()
+            );
+        }
+    }
+
+    #[test]
+    fn gaas_uses_gallium_not_tin() {
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::GalliumArsenide);
+        let has_gallium = inputs.iter().any(|(s, _)| *s == Substance::Gallium);
+        let has_tin = inputs.iter().any(|(s, _)| *s == Substance::Tin);
+        assert!(has_gallium, "GaAs should use Gallium as input");
+        assert!(!has_tin, "GaAs should NOT use Tin (old placeholder)");
+    }
+
+    #[test]
+    fn gan_uses_gallium() {
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::GalliumNitride);
+        let has_gallium = inputs.iter().any(|(s, _)| *s == Substance::Gallium);
+        assert!(has_gallium, "GaN should use Gallium as input");
+    }
+
     // --- Battery chain tests ---
 
     #[test]

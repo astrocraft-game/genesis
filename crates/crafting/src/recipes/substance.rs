@@ -661,6 +661,11 @@ pub enum Substance {
     PGMConcentrate,
     CatalyticConverter,
     FuelCellMembrane,
+    // Semiconductor materials
+    Arsenic,
+    Polysilicon,
+    SiliconWafer,
+    MicroChip,
     // Battery materials
     Graphite,
     LithiumCarbonate,

@@ -69,14 +69,16 @@ creating natural bottlenecks and trade routes.
 - [x] Tests (3): battery cell reachable from lithium (3+ steps), reachable
       from graphite, needs 3+ direct inputs (multi-zone forcing).
 
-### M4 — Semiconductor materials
+### M4 — Semiconductor materials ✅
 
-- [ ] Add Arsenic substance (Silicon, Gallium, Germanium, Indium exist).
-- [ ] Silicon wafer recipe: quartz → metallurgical Si → polysilicon →
-      Czochralski crystal → wafer (4-step chain, electric arc tier).
-- [ ] GaAs, GaN recipes fixed to use correct Gallium input (currently
-      use Tin as placeholder — was flagged in Z4 audit).
-- [ ] Tests: semiconductor chain reachable from quartz ore.
+- [x] Added 4 new substances: Arsenic, Polysilicon, SiliconWafer, MicroChip.
+- [x] 4-step silicon chain: SilicaSand → metallurgical Si (1900°C) →
+      polysilicon (Siemens, 1100°C) → wafer (Czochralski, 1420°C) →
+      microchip (doping + lithography, vacuum, 72h).
+- [x] Fixed GaAs recipe: Tin→Gallium + Sulfur→Arsenic (correct inputs).
+- [x] Fixed GaN recipe: Tin→Gallium (correct input).
+- [x] Tests (3): microchip reachable from SilicaSand (3+ steps), GaAs
+      uses Gallium not Tin, GaN uses Gallium.
 
 ### M5 — Nuclear fuels
 
