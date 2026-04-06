@@ -257,15 +257,20 @@ Goal: make alien ecosystems feel alive, dangerous, and worth studying.
 - [x] Tests (8): chronological, body plan event, trophic event, locomotion
       events, trait events, descriptions filled, name recorded, autotroph.
 
-### H2 — Mutation and adaptation
+### H2 — Mutation and adaptation ✅
 
-- [ ] When environment changes (pollution, climate shift, disaster),
-      species in affected tiles may mutate.
-- [ ] `Mutation { trait: TraitChange, trigger: EventKind, generation: u32 }`.
-- [ ] Mutations can make species more dangerous (larger, toxic, aggressive)
-      or cause extinction (maladaptive).
-- [ ] Tests: mutation only triggered by environmental change, traits shift
-      in plausible direction.
+- [x] `mutation.rs` with `MutationTrigger` (6: Pollution, ClimateWarming,
+      ClimateCooling, Disaster, RadiationExposure, HabitatLoss),
+      `TraitChange` (7: GainedTrait, LostTrait, SizeIncrease, SizeDecrease,
+      TempToleranceWidened, AggressionIncrease, Maladaptive), `Mutation`,
+      `MutationLog`.
+- [x] `roll_mutations(species, trigger, severity, gen, seed)` — severity
+      scales mutation chance (0–60%). Per-trigger outcome tables.
+- [x] `apply_mutations(species, mutations)` modifies traits/size/temp range.
+- [x] `MutationLog` tracks maladaptive count (extinction risk) and gained traits.
+- [x] Tests (9): zero severity = no mutation, high severity produces mutations,
+      descriptions reference species name, gained trait applies, size shifts,
+      temp tolerance widens, maladaptive count, size bounds, gained trait log.
 
 ### H3 — Ecological competition and niches
 

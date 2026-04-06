@@ -25,6 +25,7 @@ pub mod generator;
 pub mod habitat;
 pub mod history;
 pub mod input;
+pub mod mutation;
 pub mod naming;
 pub mod settlement;
 pub mod species;
