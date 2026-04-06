@@ -602,7 +602,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Rare Earth Extraction (Monazite)",
         category: RecipeCategory::Extraction,
         inputs: &[(S::Monazite, 5.0), (S::SodiumHydroxide, 1.0)],
-        outputs: &[(S::Calcium, 1.0)], // placeholder for REE mix
+        outputs: &[(S::RareEarthMix, 1.0)],
         byproducts: &[(S::Tailings, 3.5), (S::PhosphoricAcid, 0.5)],
         min_temp_c: 150,
         pressure_atm: 3.0,
@@ -662,7 +662,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Antimony Liquation",
         category: RecipeCategory::Extraction,
         inputs: &[(S::StibniteOre, 1.3)],
-        outputs: &[(S::Lead, 1.0)], // Sb placeholder as Lead
+        outputs: &[(S::Antimony, 1.0)],
         byproducts: &[(S::Slag, 0.3)],
         min_temp_c: 560,
         pressure_atm: 1.0,
@@ -693,7 +693,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
             (S::SulfuricAcid, 1.0),
             (S::Magnesium, 0.3),
         ],
-        outputs: &[(S::Magnesium, 0.1)], // Be placeholder
+        outputs: &[(S::Beryllium, 0.1)],
         byproducts: &[(S::Tailings, 2.5)],
         min_temp_c: 1000,
         pressure_atm: 1.0,
@@ -711,7 +711,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
             (S::ChlorineGas, 1.5),
             (S::Magnesium, 0.8),
         ],
-        outputs: &[(S::Titanium, 0.8)], // Zr placeholder
+        outputs: &[(S::Zirconium, 0.8)],
         byproducts: &[(S::TitaniumTetrachloride, 0.2)],
         min_temp_c: 850,
         pressure_atm: 1.0,
@@ -725,7 +725,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Niobium (Aluminothermic)",
         category: RecipeCategory::Extraction,
         inputs: &[(S::Limestone, 2.0), (S::Aluminum, 0.6)],
-        outputs: &[(S::Iron, 1.0)], // FeNb placeholder
+        outputs: &[(S::Niobium, 1.0)],
         byproducts: &[(S::Alumina, 0.6)],
         min_temp_c: 2000,
         pressure_atm: 1.0,
@@ -738,7 +738,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Tantalum Sodium Reduction",
         category: RecipeCategory::Extraction,
         inputs: &[(S::Limestone, 3.0), (S::Sodium, 1.0)],
-        outputs: &[(S::Tungsten, 0.5)], // Ta placeholder
+        outputs: &[(S::Tantalum, 0.5)],
         byproducts: &[(S::Salt, 1.0)],
         min_temp_c: 900,
         pressure_atm: 1.0,
@@ -752,7 +752,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Cadmium from Zinc Refining",
         category: RecipeCategory::Refining,
         inputs: &[(S::Zinc, 100.0)],
-        outputs: &[(S::Zinc, 99.9), (S::Lead, 0.05)], // Cd placeholder as trace
+        outputs: &[(S::Zinc, 99.9), (S::Cadmium, 0.05)],
         byproducts: &[],
         min_temp_c: 770,
         pressure_atm: 0.1,
@@ -766,7 +766,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Indium from Zinc Residues",
         category: RecipeCategory::Extraction,
         inputs: &[(S::Sphalerite, 100.0), (S::HydrochloricAcid, 2.0)],
-        outputs: &[(S::Zinc, 60.0), (S::Tin, 0.01)], // In placeholder
+        outputs: &[(S::Zinc, 60.0), (S::Indium, 0.01)],
         byproducts: &[(S::Tailings, 38.0)],
         min_temp_c: 60,
         pressure_atm: 1.0,
@@ -780,7 +780,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Gallium from Bayer Liquor",
         category: RecipeCategory::Extraction,
         inputs: &[(S::Bauxite, 100.0), (S::SodiumHydroxide, 10.0)],
-        outputs: &[(S::Alumina, 40.0), (S::Tin, 0.005)], // Ga placeholder
+        outputs: &[(S::Alumina, 40.0), (S::Gallium, 0.005)],
         byproducts: &[(S::RedMud, 55.0)],
         min_temp_c: 50,
         pressure_atm: 1.0,
@@ -794,7 +794,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Germanium from Zinc Processing",
         category: RecipeCategory::Extraction,
         inputs: &[(S::Sphalerite, 200.0), (S::HydrochloricAcid, 5.0)],
-        outputs: &[(S::Silicon, 0.01)], // Ge placeholder
+        outputs: &[(S::Germanium, 0.01)],
         byproducts: &[(S::Zinc, 100.0)],
         min_temp_c: 650,
         pressure_atm: 1.0,
@@ -808,7 +808,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Selenium from Copper Anode Slimes",
         category: RecipeCategory::Extraction,
         inputs: &[(S::BlisterCopper, 1000.0), (S::SodaAsh, 2.0)],
-        outputs: &[(S::Sulfur, 0.1)], // Se placeholder
+        outputs: &[(S::Selenium, 0.1)],
         byproducts: &[(S::Copper, 995.0)],
         min_temp_c: 550,
         pressure_atm: 1.0,
@@ -821,7 +821,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Tellurium from Copper Anode Slimes",
         category: RecipeCategory::Extraction,
         inputs: &[(S::BlisterCopper, 1000.0), (S::SulfuricAcid, 1.0)],
-        outputs: &[(S::Sulfur, 0.05)], // Te placeholder
+        outputs: &[(S::Tellurium, 0.05)],
         byproducts: &[(S::Copper, 995.0)],
         min_temp_c: 500,
         pressure_atm: 1.0,
@@ -835,7 +835,7 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         name: "Rhenium from Molybdenum Roasting",
         category: RecipeCategory::Extraction,
         inputs: &[(S::MolybdeniteOre, 100.0), (S::HydrogenGas, 0.5)],
-        outputs: &[(S::Molybdenum, 50.0), (S::Tungsten, 0.001)], // Re placeholder
+        outputs: &[(S::Molybdenum, 50.0), (S::Rhenium, 0.001)],
         byproducts: &[(S::SulfuricAcid, 30.0)],
         min_temp_c: 400,
         pressure_atm: 1.0,

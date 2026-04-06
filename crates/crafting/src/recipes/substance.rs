@@ -38,6 +38,19 @@ pub enum Substance {
     Potassium,
     Thorium,
     Argon,
+    Antimony,
+    Beryllium,
+    Zirconium,
+    Niobium,
+    Tantalum,
+    Cadmium,
+    Indium,
+    Gallium,
+    Germanium,
+    Selenium,
+    Tellurium,
+    Rhenium,
+    Plutonium,
 
     // === ORES (30) ===
     Hematite,
@@ -129,6 +142,11 @@ pub enum Substance {
     SyntheticRubber,
     Formaldehyde,
     HydrogenPeroxide,
+    Polystyrene,
+    AcrylicResin,
+    Aspirin,
+    Penicillin,
+    RareEarthMix,
 
     // === FUELS (15) ===
     Charcoal,
@@ -146,6 +164,11 @@ pub enum Substance {
     LiquidOxygen,
     LiquidHydrogen,
     NuclearFuelRod,
+    Naphtha,
+    LPG,
+    PetroleumCoke,
+    CoalGas,
+    WoodPellets,
 
     // === CONSTRUCTION (20) ===
     PortlandCite,

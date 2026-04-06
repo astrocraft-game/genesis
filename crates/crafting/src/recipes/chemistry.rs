@@ -444,7 +444,7 @@ pub static CHEMISTRY_RECIPES: &[Recipe] = &[
         name: "Polypropylene",
         category: RecipeCategory::ChemicalSynthesis,
         inputs: &[(S::CrudeOil, 1.3)],
-        outputs: &[(S::Polyethylene, 1.0)], // PP placeholder
+        outputs: &[(S::Polypropylene, 1.0)],
         byproducts: &[],
         min_temp_c: 70,
         pressure_atm: 30.0,
@@ -457,7 +457,7 @@ pub static CHEMISTRY_RECIPES: &[Recipe] = &[
         name: "Polystyrene",
         category: RecipeCategory::ChemicalSynthesis,
         inputs: &[(S::Benzene, 0.6), (S::CrudeOil, 0.5)],
-        outputs: &[(S::Polyethylene, 1.0)], // PS placeholder
+        outputs: &[(S::Polystyrene, 1.0)],
         byproducts: &[],
         min_temp_c: 120,
         pressure_atm: 1.0,
@@ -470,7 +470,7 @@ pub static CHEMISTRY_RECIPES: &[Recipe] = &[
         name: "Acrylic Fiber",
         category: RecipeCategory::ChemicalSynthesis,
         inputs: &[(S::CrudeOil, 1.2), (S::Ammonia, 0.2)],
-        outputs: &[(S::NylonFiber, 1.0)], // acrylic placeholder
+        outputs: &[(S::AcrylicResin, 1.0)],
         byproducts: &[],
         min_temp_c: 55,
         pressure_atm: 1.0,
@@ -484,7 +484,7 @@ pub static CHEMISTRY_RECIPES: &[Recipe] = &[
         name: "Aspirin Synthesis",
         category: RecipeCategory::ChemicalSynthesis,
         inputs: &[(S::CrudeOil, 0.5), (S::SulfuricAcid, 0.1)],
-        outputs: &[(S::SoapProduct, 0.9)], // aspirin placeholder
+        outputs: &[(S::Aspirin, 0.9)],
         byproducts: &[(S::Water, 0.1)],
         min_temp_c: 90,
         pressure_atm: 1.0,
@@ -497,7 +497,7 @@ pub static CHEMISTRY_RECIPES: &[Recipe] = &[
         name: "Penicillin Fermentation",
         category: RecipeCategory::FoodBiological,
         inputs: &[(S::Sugar, 2.0), (S::Water, 10.0)],
-        outputs: &[(S::SoapProduct, 0.04)], // penicillin placeholder
+        outputs: &[(S::Penicillin, 0.04)],
         byproducts: &[(S::Water, 10.0)],
         min_temp_c: 26,
         pressure_atm: 1.0,

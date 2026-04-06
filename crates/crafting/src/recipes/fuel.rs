@@ -231,7 +231,7 @@ pub static FUEL_RECIPES: &[Recipe] = &[
         name: "Peat Briquettes",
         category: RecipeCategory::FuelProcessing,
         inputs: &[(S::StrawFiber, 3.0), (S::Water, 1.0)],
-        outputs: &[(S::Charcoal, 1.0)], // peat placeholder
+        outputs: &[(S::Peat, 1.0)],
         byproducts: &[(S::Water, 2.0)],
         min_temp_c: 20,
         pressure_atm: 1.0,
@@ -245,7 +245,7 @@ pub static FUEL_RECIPES: &[Recipe] = &[
         name: "Wood Pellets",
         category: RecipeCategory::FuelProcessing,
         inputs: &[(S::WoodChips, 1.2)],
-        outputs: &[(S::Charcoal, 1.0)], // wood pellets placeholder
+        outputs: &[(S::WoodPellets, 1.0)],
         byproducts: &[(S::Water, 0.2)],
         min_temp_c: 90,
         pressure_atm: 1.0,
@@ -298,7 +298,7 @@ pub static FUEL_RECIPES: &[Recipe] = &[
         name: "Coal Gas (Town Gas)",
         category: RecipeCategory::FuelProcessing,
         inputs: &[(S::Carbon, 2.0)],
-        outputs: &[(S::SynGas, 1.0)], // coal gas placeholder
+        outputs: &[(S::CoalGas, 1.0)],
         byproducts: &[(S::Coke, 0.5), (S::Ammonia, 0.02)],
         min_temp_c: 1000,
         pressure_atm: 1.0,
@@ -422,7 +422,7 @@ pub static FUEL_RECIPES: &[Recipe] = &[
         name: "Naphtha Fraction",
         category: RecipeCategory::Refining,
         inputs: &[(S::CrudeOil, 1.0)],
-        outputs: &[(S::Gasoline, 0.30)], // naphtha as gasoline placeholder
+        outputs: &[(S::Naphtha, 0.30)],
         byproducts: &[(S::FuelOil, 0.40), (S::NaturalGas, 0.05)],
         min_temp_c: 130,
         pressure_atm: 1.0,
@@ -435,7 +435,7 @@ pub static FUEL_RECIPES: &[Recipe] = &[
         name: "LPG Separation",
         category: RecipeCategory::Refining,
         inputs: &[(S::CrudeOil, 1.0)],
-        outputs: &[(S::NaturalGas, 0.15)], // LPG as natural gas placeholder
+        outputs: &[(S::LPG, 0.15)],
         byproducts: &[(S::Gasoline, 0.20), (S::FuelOil, 0.40)],
         min_temp_c: 40,
         pressure_atm: 1.0,
@@ -461,7 +461,7 @@ pub static FUEL_RECIPES: &[Recipe] = &[
         name: "Petroleum Coke",
         category: RecipeCategory::Refining,
         inputs: &[(S::FuelOil, 1.0)],
-        outputs: &[(S::Coke, 0.70)], // petcoke as coke placeholder
+        outputs: &[(S::PetroleumCoke, 0.70)],
         byproducts: &[(S::NaturalGas, 0.10)],
         min_temp_c: 500,
         pressure_atm: 1.0,

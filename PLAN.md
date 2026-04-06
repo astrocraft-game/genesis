@@ -56,12 +56,20 @@ Plus a **Cleanup** section for gaps found in the v0.2 audit.
 - [x] Tests: all 8 styles produce output, body plan selects distinct styles,
       insectoid is consonant-heavy, corpus words are alphabetic.
 
-### Z4 — Recipe placeholder cleanup
+### Z4 — Recipe placeholder cleanup ✅
 
-- [ ] Audit 60+ placeholder recipes in crafting (fuel, construction,
-      chemistry) where distinct materials map to the same output.
-- [ ] Either add proper output substances or document as intentional
-      simplification.
+- [x] Added 24 new `Substance` variants: 13 elements (Antimony, Beryllium,
+      Zirconium, Niobium, Tantalum, Cadmium, Indium, Gallium, Germanium,
+      Selenium, Tellurium, Rhenium, Plutonium), 6 chemicals (Polystyrene,
+      AcrylicResin, Aspirin, Penicillin, RareEarthMix), 5 fuels (Naphtha,
+      LPG, PetroleumCoke, CoalGas, WoodPellets).
+- [x] Fixed 20 critical recipe outputs in extraction.rs (13 metals),
+      chemistry.rs (5: PP, PS, acrylic, aspirin, penicillin),
+      fuel.rs (6: peat, wood pellets, coal gas, naphtha, LPG, petcoke),
+      electrochemistry.rs (1: plutonium breeding).
+- [x] Remaining ~20 minor placeholders (torrefied biomass → charcoal,
+      DME → diesel, etc.) documented as intentional simplification where
+      distinct output would add substance bloat without gameplay value.
 
 ---
 

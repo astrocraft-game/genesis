@@ -142,7 +142,7 @@ pub static ELECTROCHEMISTRY_RECIPES: &[Recipe] = &[
         name: "Pu-239 Breeding (from U-238)",
         category: RecipeCategory::PhaseChange,
         inputs: &[(S::Uranium, 1.0)],
-        outputs: &[(S::Uranium, 0.6)], // Pu placeholder
+        outputs: &[(S::Plutonium, 0.6)],
         byproducts: &[],
         min_temp_c: 500,
         pressure_atm: 1.0,
