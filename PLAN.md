@@ -77,18 +77,21 @@ Plus a **Cleanup** section for gaps found in the v0.2 audit.
 
 Goal: give planets vertical depth — ore veins, cave networks, aquifers.
 
-### E1 — Stratified geological layers
+### E1 — Stratified geological layers ✅
 
-- [ ] Per-tile vertical column: `Vec<RockLayer>` with layer type
-      (sedimentary, metamorphic, igneous, ore vein), thickness, depth.
-- [ ] Layer distribution driven by plate type (continental → thick
-      sedimentary; oceanic → thin crust + basalt; convergent → folded).
-- [ ] Ore placement: deposit type + purity + quantity placed within
-      specific layers (iron in igneous, coal in sedimentary, gems in
-      metamorphic). Uses the existing `Resource` enum.
-- [ ] Deterministic from seed.
-- [ ] Tests: continental tiles have thicker crust, ore deposits match
-      geological context, layers sum to plausible total depth.
+- [x] `strata.rs` module with `RockType` (Sedimentary, Metamorphic, Ignite,
+      Regolith, OreVein), `RockLayer`, `OreDeposit` (resource + purity +
+      quantity_kt), `GeologicalColumn`, `StratifiedGeology`.
+- [x] `generate_strata(grid, seed)` builds per-tile vertical columns.
+- [x] Layer distribution driven by plate type (continental → thick
+      sedimentary + granite; oceanic → thin crust + basalt), boundary
+      kind (convergent → extra metamorphic; divergent → igneous intrusion),
+      and elevation.
+- [x] Ore placement: iron/copper/tin/aluminum/sulfur in igneous, coal/
+      limestone/oil/salt in sedimentary, gems/gold in metamorphic.
+- [x] Tests (8): every tile has column, positive depth, continental thicker
+      than oceanic, ore in correct layers, deterministic, depth-ordered,
+      purity 0–1, grid has >10 ore deposits.
 
 ### E2 — Cave system generation
 
