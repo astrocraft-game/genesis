@@ -791,4 +791,70 @@ mod tests {
             offenders
         );
     }
+
+    // --- Rare earth element chain tests ---
+
+    #[test]
+    fn neodymium_reachable_from_monazite() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::Monazite, Substance::Neodymium);
+        assert!(
+            chain.is_some(),
+            "Neodymium should be reachable from Monazite"
+        );
+        if let Some(c) = &chain {
+            assert!(
+                c.len() >= 2,
+                "REE chain should be at least 2 steps (extract + separate)"
+            );
+        }
+    }
+
+    #[test]
+    fn ndfeb_magnet_reachable_from_monazite() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::Monazite, Substance::NdFeBMagnet);
+        assert!(
+            chain.is_some(),
+            "NdFeB magnet should be reachable from Monazite"
+        );
+        if let Some(c) = &chain {
+            assert!(
+                c.len() >= 3,
+                "Monazite→REEMix→Nd→NdFeB = 3+ steps, got {}",
+                c.len()
+            );
+        }
+    }
+
+    #[test]
+    fn all_individual_rees_reachable() {
+        let g = CraftingGraph::build_all();
+        let rees = [
+            Substance::Neodymium,
+            Substance::Cerium,
+            Substance::Lanthanum,
+            Substance::Praseodymium,
+            Substance::Samarium,
+            Substance::Europium,
+            Substance::Dysprosium,
+            Substance::Gadolinium,
+            Substance::Yttrium,
+            Substance::Scandium,
+        ];
+        for &ree in &rees {
+            let inputs = g.what_do_i_need(ree);
+            assert!(!inputs.is_empty(), "{:?} has no incoming recipe edges", ree);
+        }
+    }
+
+    #[test]
+    fn bastnaesite_also_produces_ree_mix() {
+        let g = CraftingGraph::build_all();
+        let products = g.what_can_i_make(Substance::Bastnaesite);
+        assert!(
+            products.iter().any(|(s, _)| *s == Substance::RareEarthMix),
+            "Bastnaesite should produce RareEarthMix"
+        );
+    }
 }

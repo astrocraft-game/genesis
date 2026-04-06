@@ -38,6 +38,7 @@ pub enum Substance {
     Potassium,
     Thorium,
     Argon,
+    Boron,
     Antimony,
     Beryllium,
     Zirconium,
@@ -69,6 +70,7 @@ pub enum Substance {
     MolybdeniteOre,
     Cinnabar,
     Monazite,
+    Bastnaesite,
     Uraninite,
     Spodumene,
     PyriteOre,
@@ -147,6 +149,17 @@ pub enum Substance {
     Aspirin,
     Penicillin,
     RareEarthMix,
+    // Individual rare earth elements (separated from RareEarthMix)
+    Neodymium,
+    Cerium,
+    Lanthanum,
+    Praseodymium,
+    Samarium,
+    Europium,
+    Dysprosium,
+    Gadolinium,
+    Yttrium,
+    Scandium,
 
     // === FUELS (15) ===
     Charcoal,
@@ -634,6 +647,11 @@ pub enum Substance {
     TiO2Nano,
     IronOxideNano,
     SilicaNano,
+    // REE products
+    NdFeBMagnet,
+    SmCoMagnet,
+    REEPhosphor,
+    AlScAlloy,
 
     // === CHEMISTRY PRODUCTS ===
     SalicylicAcid,

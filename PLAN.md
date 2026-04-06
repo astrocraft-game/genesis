@@ -29,15 +29,22 @@ creating natural bottlenecks and trade routes.
 
 ## Track M — Materials (substances + geological placement)
 
-### M1 — Rare earth elements (individual)
+### M1 — Rare earth elements (individual) ✅
 
-- [ ] Replace `RareEarthMix` with 10 individual REE substances:
-      Neodymium, Cerium, Lanthanum, Praseodymium, Samarium, Europium,
-      Dysprosium, Gadolinium, Yttrium, Scandium.
-- [ ] REE separation recipe: `RareEarthMix` → individual REEs via
-      solvent extraction (high tech tier, chemical reactor).
-- [ ] Place monazite/bastnäsite ore in carbonatite zones and laterite.
-- [ ] Tests: REEs only in appropriate geological zones.
+- [x] Added 10 individual REE substances: Neodymium, Cerium, Lanthanum,
+      Praseodymium, Samarium, Europium, Dysprosium, Gadolinium, Yttrium,
+      Scandium. Plus Boron (element) and Bastnaesite (ore).
+- [x] `RareEarthMix` kept as intermediate — produced by Monazite and
+      Bastnaesite extraction recipes.
+- [x] 3 separation recipes split RareEarthMix into light REEs (La, Ce,
+      Pr, Nd), medium REEs (Sm, Eu, Gd), and heavy REEs (Dy, Y, Sc).
+- [x] 4 REE product recipes: NdFeB magnet, SmCo magnet, REE phosphor,
+      Al-Sc aerospace alloy.
+- [x] 4 new product substances: NdFeBMagnet, SmCoMagnet, REEPhosphor,
+      AlScAlloy.
+- [x] Tests (4): Nd reachable from monazite (2+ steps), NdFeB magnet
+      reachable (3+ steps), all 10 REEs have incoming edges, bastnaesite
+      produces RareEarthMix.
 
 ### M2 — Platinum group metals
 
