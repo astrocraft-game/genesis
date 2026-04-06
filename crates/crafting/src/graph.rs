@@ -888,6 +888,60 @@ mod tests {
         );
     }
 
+    // --- Advanced materials tests ---
+
+    #[test]
+    fn graphene_reachable_from_graphite() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::Graphite, Substance::Graphene);
+        assert!(
+            chain.is_some(),
+            "Graphene should be reachable from Graphite (exfoliation path)"
+        );
+    }
+
+    #[test]
+    fn boron_nitride_needs_boron() {
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::BoronNitride);
+        let has_boron = inputs.iter().any(|(s, _)| *s == Substance::Boron);
+        assert!(has_boron, "BoronNitride should need Boron");
+    }
+
+    #[test]
+    fn silicon_carbide_ceramic_needs_silicon() {
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::SiliconCarbideCeramic);
+        let has_si = inputs.iter().any(|(s, _)| *s == Substance::Silicon);
+        assert!(has_si, "SiliconCarbideCeramic should need Silicon");
+    }
+
+    #[test]
+    fn advanced_materials_are_high_tech_tier() {
+        use crate::tech_tiers::{recipe_tier, TechTier};
+        let all = crate::recipes::all_recipes();
+        // Graphene from graphite is manual tier (25°C), but BN and SiC
+        // are blast furnace+ tier.
+        let bn = all
+            .iter()
+            .find(|r| r.name.contains("Boron Nitride"))
+            .unwrap();
+        let sic = all
+            .iter()
+            .find(|r| r.name.contains("Silicon Carbide Ceramic"))
+            .unwrap();
+        assert!(
+            recipe_tier(bn) >= TechTier::BlastFurnace,
+            "BN should be blast furnace+, got {:?}",
+            recipe_tier(bn)
+        );
+        assert!(
+            recipe_tier(sic) >= TechTier::ElectricArc,
+            "SiC should be electric arc+, got {:?}",
+            recipe_tier(sic)
+        );
+    }
+
     // --- Superalloy chain tests ---
 
     #[test]

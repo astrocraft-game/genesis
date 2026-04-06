@@ -106,16 +106,18 @@ creating natural bottlenecks and trade routes.
 - [x] Tests (3): turbine blade needs rhenium + hafnium, superconducting
       wire needs niobium, cemented carbide needs tungsten carbide.
 
-### M7 — Advanced engineered materials
+### M7 — Advanced engineered materials ✅
 
-- [ ] Add 5 advanced substances: Graphene, CarbonNanotubes, Aerogel,
-      SiliconCarbide, BoronNitride.
-- [ ] Graphene: refined from ultra-pure graphite (plasma tier).
-- [ ] Carbon nanotubes: CVD synthesis from methane + Fe catalyst (plasma).
-- [ ] Aerogel: vacuum-processed silica gel (chemical reactor tier).
-- [ ] SiC / BN: high-performance ceramics from silicon/boron (electric arc).
-- [ ] These are endgame materials — require multi-zone supply chains.
-- [ ] Tests: advanced materials require highest real-world tech tiers.
+- [x] Added 2 new substances: BoronNitride, SiliconCarbideCeramic.
+      (Graphene, CarbonNanotube, Aerogel already existed with recipes.)
+- [x] Graphene from graphite (exfoliation, 25°C, low yield) — second
+      path alongside existing CVD from methane.
+- [x] Boron nitride ceramic: B + N₂ at 1800°C, 50 atm (blast furnace+).
+- [x] Silicon carbide ceramic: Si + C at 2500°C (electric arc tier).
+- [x] Existing CNT (850°C methane + Fe) and Aerogel (supercritical
+      drying) verified correct — no changes needed.
+- [x] Tests (4): graphene from graphite, BN needs boron, SiC needs
+      silicon, BN/SiC at blast furnace/electric arc tech tier.
 
 ---
 

@@ -661,6 +661,9 @@ pub enum Substance {
     PGMConcentrate,
     CatalyticConverter,
     FuelCellMembrane,
+    // Advanced engineered ceramics
+    BoronNitride,
+    SiliconCarbideCeramic,
     // Superalloy / refractory
     Hafnium,
     Bismuth,
