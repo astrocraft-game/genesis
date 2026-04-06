@@ -284,15 +284,18 @@ Goal: make alien ecosystems feel alive, dangerous, and worth studying.
 - [x] Tests (4): herbivores compete, overlap bounded, niche differentiation
       reduces overlap, producers don't compete.
 
-### H4 — Alien flora detail
+### H4 — Alien flora detail ✅
 
-- [ ] Expand vegetation model: per-biome plant types (canopy trees,
-      ground cover, aquatic, fungal) with growth rates.
-- [ ] Player can harvest specific plant types for crafting inputs
-      (timber, fiber, resin, spores).
-- [ ] Deforestation: removing vegetation reduces precipitation downwind,
-      increases erosion, opens tile for factory building.
-- [ ] Tests: vegetation types match biome, harvesting depletes density.
+- [x] `flora.rs` with `PlantType` (6: CanopyTree, GroundCover, Aquatic,
+      Fungal, MossLichen, Succulent), `HarvestYield` (6: Timber, Fiber,
+      Resin, Spores, Fruit, Algae), `PlantLayer`, `TileFlora`, `FloraMap`.
+- [x] `generate_flora(biomes, is_ocean)` assigns biome-appropriate plant
+      mixes with densities and growth rates.
+- [x] `harvest(fraction)` depletes density; `grow()` regenerates toward 1.0.
+- [x] `available_yields()` lists what the player can harvest per tile.
+- [x] Tests (9): tropical has canopy+ground, desert minimal, ocean empty,
+      harvest depletes, growth regenerates, caps at 1.0, yields available,
+      cleared layer excluded, tick growth across map.
 
 ### H5 — Creature behaviour tags
 

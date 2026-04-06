@@ -21,6 +21,7 @@
 pub mod ecosystem;
 pub mod evolution;
 pub mod expansion;
+pub mod flora;
 pub mod generator;
 pub mod habitat;
 pub mod history;
