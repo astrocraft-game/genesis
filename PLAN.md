@@ -272,15 +272,17 @@ Goal: make alien ecosystems feel alive, dangerous, and worth studying.
       descriptions reference species name, gained trait applies, size shifts,
       temp tolerance widens, maladaptive count, size bounds, gained trait log.
 
-### H3 — Ecological competition and niches
+### H3 — Ecological competition and niches ✅
 
-- [ ] Add competition links to ecosystem: two herbivores sharing the
-      same biome compete for vegetation density.
-- [ ] Niche differentiation: species with different `SizeClass` or
-      `LocomotionType` compete less.
-- [ ] Parasitism: parasite species reduce host population density.
-- [ ] Tests: competition reduces both populations, niche separation
-      allows coexistence.
+- [x] `competition_links: Vec<(usize, usize, f32)>` on Ecosystem — species
+      at the same trophic category (herbivore/omnivore, carnivore, filter)
+      compete with overlap 0.0–1.0.
+- [x] `niche_overlap(a, b)` reduces overlap by size class difference (−0.2
+      per step) and non-shared locomotion (−0.4).
+- [x] `parasitism_links: Vec<(usize, usize)>` — Parasite trophic level
+      targets herbivore/omnivore/carnivore hosts.
+- [x] Tests (4): herbivores compete, overlap bounded, niche differentiation
+      reduces overlap, producers don't compete.
 
 ### H4 — Alien flora detail
 

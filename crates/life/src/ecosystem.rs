@@ -33,6 +33,12 @@ pub struct Ecosystem {
     /// Indices (into `all_species()`) of keystone species whose removal
     /// would collapse the food web (disconnect a trophic level).
     pub keystone_species: Vec<usize>,
+    /// Competition links: `(species_a, species_b, overlap)` where overlap
+    /// is 0.0–1.0 (higher = more direct competition for the same niche).
+    /// Only between species at the same trophic level.
+    pub competition_links: Vec<(usize, usize, f32)>,
+    /// Parasitism links: `(parasite_idx, host_idx)`.
+    pub parasitism_links: Vec<(usize, usize)>,
 }
 
 impl Ecosystem {
@@ -184,9 +190,66 @@ fn build_food_web(eco: &mut Ecosystem) {
         }
     }
 
+    // Competition: species at the same trophic level compete. Niche overlap
+    // is reduced when species differ in size class or locomotion type.
+    let all_species: Vec<_> = eco.all_species().cloned().collect();
+    let mut competition = Vec::new();
+    for i in 0..n {
+        for j in (i + 1)..n {
+            // Species compete if they occupy the same trophic category.
+            let same_category = matches!(
+                (species[i], species[j]),
+                (
+                    TrophicLevel::Herbivore | TrophicLevel::Omnivore,
+                    TrophicLevel::Herbivore | TrophicLevel::Omnivore
+                ) | (TrophicLevel::Carnivore, TrophicLevel::Carnivore)
+                    | (TrophicLevel::FilterFeeder, TrophicLevel::FilterFeeder)
+            );
+            if same_category {
+                let overlap = niche_overlap(&all_species[i], &all_species[j]);
+                if overlap > 0.0 {
+                    competition.push((i, j, overlap));
+                }
+            }
+        }
+    }
+
+    // Parasitism: Parasite trophic level species target the closest
+    // trophic level above them (herbivores/omnivores).
+    let mut parasitism = Vec::new();
+    for (i, &level) in species.iter().enumerate() {
+        if level == TrophicLevel::Parasite {
+            for (j, &host_level) in species.iter().enumerate() {
+                if matches!(
+                    host_level,
+                    TrophicLevel::Herbivore | TrophicLevel::Omnivore | TrophicLevel::Carnivore
+                ) {
+                    parasitism.push((i, j));
+                }
+            }
+        }
+    }
+
     eco.predator_prey_links = links;
     eco.trophic_pyramid_valid = valid;
     eco.keystone_species = keystones;
+    eco.competition_links = competition;
+    eco.parasitism_links = parasitism;
+}
+
+/// Compute niche overlap (0.0–1.0) between two species. Same size and
+/// locomotion = full overlap; differences reduce it.
+fn niche_overlap(a: &Species, b: &Species) -> f32 {
+    let mut overlap = 1.0f32;
+    // Size difference reduces overlap.
+    let size_diff = (a.size_class as i32 - b.size_class as i32).unsigned_abs();
+    overlap -= size_diff as f32 * 0.2;
+    // Different locomotion reduces overlap.
+    let shared_loco = a.locomotion.iter().any(|la| b.locomotion.contains(la));
+    if !shared_loco {
+        overlap -= 0.4;
+    }
+    overlap.clamp(0.0, 1.0)
 }
 
 /// Simulate an extinction event: remove species whose habitability drops
@@ -439,5 +502,72 @@ mod tests {
         let (count_b, ext_b) = make();
         assert_eq!(count_a, count_b);
         assert_eq!(ext_a, ext_b);
+    }
+
+    #[test]
+    fn herbivores_compete_with_each_other() {
+        let e = generate_ecosystem_from_world(&input_for(LifeLevel::AnimalLike, 70.0));
+        // If there are ≥2 herbivores/omnivores, there should be competition.
+        if e.herbivores.len() >= 2 {
+            assert!(
+                !e.competition_links.is_empty(),
+                "two herbivores should compete"
+            );
+        }
+    }
+
+    #[test]
+    fn competition_overlap_is_bounded() {
+        let e = generate_ecosystem_from_world(&input_for(LifeLevel::AnimalLike, 70.0));
+        for &(_, _, overlap) in &e.competition_links {
+            assert!(
+                (0.0..=1.0).contains(&overlap),
+                "overlap {} out of range",
+                overlap
+            );
+        }
+    }
+
+    #[test]
+    fn niche_differentiation_reduces_overlap() {
+        use crate::species::{BodyPlan, LocomotionType, SizeClass};
+        use std::rc::Rc;
+        // Two identical species: full overlap.
+        let a = Species {
+            name: Rc::from("A"),
+            size_class: SizeClass::Medium,
+            locomotion: vec![LocomotionType::Walker],
+            trophic_level: TrophicLevel::Herbivore,
+            ..Default::default()
+        };
+        let b = a.clone();
+        let full = niche_overlap(&a, &b);
+
+        // Different size + different locomotion: lower overlap.
+        let c = Species {
+            name: Rc::from("C"),
+            size_class: SizeClass::Tiny,
+            locomotion: vec![LocomotionType::Flyer],
+            trophic_level: TrophicLevel::Herbivore,
+            ..Default::default()
+        };
+        let reduced = niche_overlap(&a, &c);
+        assert!(
+            reduced < full,
+            "differentiated overlap {} should be less than identical {}",
+            reduced,
+            full
+        );
+    }
+
+    #[test]
+    fn producers_dont_compete() {
+        let e = generate_ecosystem_from_world(&input_for(LifeLevel::AnimalLike, 70.0));
+        // Producer is index 0; it should not appear in competition links.
+        for &(a, b, _) in &e.competition_links {
+            let species: Vec<_> = e.all_species().map(|s| s.trophic_level).collect();
+            assert_ne!(species[a], TrophicLevel::Autotroph);
+            assert_ne!(species[b], TrophicLevel::Autotroph);
+        }
     }
 }
