@@ -123,14 +123,19 @@ creating natural bottlenecks and trade routes.
 
 ## Track N — Geological zone placement
 
-### N1 — Zone classification per tile
+### N1 — Zone classification per tile ✅
 
-- [ ] Add `GeologicalZone` enum (10 zones from table above) to strata.
-- [ ] `classify_zone(grid, strata, tile_idx) -> GeologicalZone` using
-      plate type, boundary, biome, elevation, latitude.
-- [ ] `ZoneMap: Vec<GeologicalZone>` parallel to grid tiles.
-- [ ] Tests: carbonatite only at rift/alkaline, laterite only tropical,
-      brine only arid interior, anomaly only at precursor ruin tiles.
+- [x] `zones.rs` with `GeologicalZone` enum (11 variants: CarbonatitePipe,
+      MaficIntrusion, PegmatiteField, PorphyrySubduction, LateriteTropical,
+      SedimentaryBasin, HeavyMineralSands, BrineFlat, VolcanicVent,
+      ImpactCrater, Common).
+- [x] `classify_zones(grid)` assigns each land tile using plate type,
+      boundary, biome, elevation, latitude, and coastal proximity.
+      Priority-based first-match rules.
+- [x] `ZoneMap` with `zone_counts()`, `tiles_in_zone()`, `distinct_zones()`.
+- [x] Tests (9): correct size, ocean=Common, Earth has 4+ zones, no zone
+      dominates, volcanic at divergent, porphyry at convergent+continental,
+      laterite in tropics, brine in arid, tile indices correct.
 
 ### N2 — Zone-aware ore placement
 

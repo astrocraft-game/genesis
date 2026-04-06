@@ -84,6 +84,7 @@ pub mod subsurface;
 pub mod surface;
 pub mod terrain_log;
 pub mod types;
+pub mod zones;
 
 pub mod prelude {
     pub use crate::atmosphere::*;
