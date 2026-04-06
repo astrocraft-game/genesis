@@ -18,6 +18,7 @@
 
 #![allow(dead_code, unused_imports)]
 
+pub mod behaviour;
 pub mod ecosystem;
 pub mod evolution;
 pub mod expansion;

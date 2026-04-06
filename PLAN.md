@@ -297,15 +297,20 @@ Goal: make alien ecosystems feel alive, dangerous, and worth studying.
       harvest depletes, growth regenerates, caps at 1.0, yields available,
       cleared layer excluded, tick growth across map.
 
-### H5 — Creature behaviour tags
+### H5 — Creature behaviour tags ✅
 
-- [ ] Per-species `BehaviourProfile`: territorial, migratory, nocturnal,
-      burrowing, swarming, venomous.
-- [ ] Tags influence: factory defence requirements, resource access
-      (burrowing creatures block mining), seasonal threat patterns.
-- [ ] Generated from body plan + trophic level + biome.
-- [ ] Tests: carnivores tend toward territorial, small arthropods toward
-      swarming, tags consistent with biology.
+- [x] `behaviour.rs` with `BehaviourProfile` (8 flags: territorial,
+      migratory, nocturnal, burrowing, swarming, venomous, ambush, docile).
+- [x] `generate_behaviour(species)` derives tags from body plan, trophic
+      level, size class, locomotion, and special traits.
+- [x] `threat_level()` counts danger tags; `is_dangerous()` threshold.
+- [x] Rules: carnivores→territorial+ambush(large)/swarming(small arthropod),
+      herbivores→migratory(large)/docile(small), venomous trait→venomous,
+      burrower locomotion→burrowing, amorphous/mollusk/bioluminescent→nocturnal.
+- [x] Tests (10): carnivore territorial, small arthropod swarms, large
+      herbivore migratory, small herbivore docile, venomous maps, burrower
+      maps, autotroph docile, amorphous nocturnal, bioluminescent nocturnal,
+      threat level counts.
 
 ---
 
