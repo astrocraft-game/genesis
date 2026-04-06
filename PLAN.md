@@ -137,16 +137,19 @@ creating natural bottlenecks and trade routes.
       dominates, volcanic at divergent, porphyry at convergent+continental,
       laterite in tropics, brine in arid, tile indices correct.
 
-### N2 — Zone-aware ore placement
+### N2 — Zone-aware ore placement ✅
 
-- [ ] Rewrite `strata::generate_strata` ore placement to use zone:
-      each zone has its own ore probability table (replacing the current
-      rock-type-only system).
-- [ ] Zone → ore mapping follows the table above.
-- [ ] Multiple ore types per tile (e.g., mafic intrusion gets PGMs +
-      chromium + nickel together).
-- [ ] Tests: ore types match zone, no REEs outside carbonatite/laterite,
-      PGMs only in mafic intrusions.
+- [x] `zone_ores.rs` with `ZoneOreDeposit`, `ZoneOreMap`, and per-zone
+      probability tables. Layered on top of common strata ores.
+- [x] 10 zone ore tables: carbonatite (REE/Nb hosts), mafic (PGM hosts),
+      pegmatite (Sn/gems), porphyry (Cu/Au/Mo), laterite (Ni/Co/Al),
+      sedimentary (coal/oil/gas/salt), heavy sands (Ti/Zr), brine (salt),
+      volcanic (S/Cu/Au), impact (Ni-Fe/gems). Common = no rare ores.
+- [x] `generate_zone_ores(zone_map, seed)` rolls per-zone table per tile.
+- [x] `deposits_of(resource)` query across entire map.
+- [x] Tests (8): correct size, Common=empty, some deposits exist, zones
+      match, purity bounded, deterministic, filter works, sedimentary
+      has fossil fuels.
 
 ### N3 — Resource scanning integration
 
