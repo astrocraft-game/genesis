@@ -23,7 +23,7 @@ creating natural bottlenecks and trade routes.
 | **Heavy Mineral Sands** | Coastal, beach placer | Zirconium, hafnium, titanium, monazite |
 | **Brine Flat / Evaporite** | Arid continental interior | Lithium (brine), boron, potassium |
 | **Volcanic Vent** | Divergent / hotspot | Sulfur, arsenic, bismuth, geothermal |
-| **Anomaly Zone** | Precursor ruins, impact craters | Exotic: dark matter, precursor alloy, alien biomaterial |
+| **Impact Crater** | Meteorite impact sites | Iridium anomaly, shocked quartz, nickel-iron |
 
 ---
 
@@ -85,17 +85,16 @@ creating natural bottlenecks and trade routes.
       Nb + Ti → superconducting wire, W + C → cemented carbide.
 - [ ] Tests: refractory metals in correct geological zones.
 
-### M7 — Exotic and sci-fi materials
+### M7 — Advanced engineered materials
 
-- [ ] Add 8 exotic substances: Graphene, CarbonNanotubes, Aerogel,
-      MetamaterialLattice, DarkMatterCondensate, ZeroPointCrystal,
-      AlienBiomaterial, NeutroniumFragment.
-- [ ] PrecursorAlloy already exists — tie to precursor ruin sites from
-      `history::PlanetaryTimeline`.
-- [ ] Graphene: refined from ultra-pure graphite (very-rare, plasma tier).
-- [ ] Carbon nanotubes: CVD synthesis from methane + catalyst (plasma tier).
-- [ ] Exotic materials found ONLY at anomaly zones / precursor ruins.
-- [ ] Tests: exotics only at ruins/anomalies, require highest tech tiers.
+- [ ] Add 5 advanced substances: Graphene, CarbonNanotubes, Aerogel,
+      SiliconCarbide, BoronNitride.
+- [ ] Graphene: refined from ultra-pure graphite (plasma tier).
+- [ ] Carbon nanotubes: CVD synthesis from methane + Fe catalyst (plasma).
+- [ ] Aerogel: vacuum-processed silica gel (chemical reactor tier).
+- [ ] SiC / BN: high-performance ceramics from silicon/boron (electric arc).
+- [ ] These are endgame materials — require multi-zone supply chains.
+- [ ] Tests: advanced materials require highest real-world tech tiers.
 
 ---
 
@@ -169,15 +168,15 @@ creating natural bottlenecks and trade routes.
 - [ ] D + T → fusion energy (connects to `Fusion` power source).
 - [ ] Tests: fusion fuel reachable, energy output connects to budget.
 
-### O6 — Exotic material recipes
+### O6 — Advanced material recipes
 
 - [ ] Graphene: graphite → exfoliation at plasma tier → graphene sheet.
 - [ ] Carbon nanotubes: methane + Fe catalyst → CVD at plasma tier.
-- [ ] Metamaterial: precision alloy + graphene → lattice (exotic tier).
-- [ ] Precursor alloy: reverse-engineered from ruin artifacts.
-- [ ] Dark matter / zero-point: harvested at anomaly sites (no recipe,
-      direct extraction from anomaly zone).
-- [ ] Tests: exotic chain lengths are longest in the game.
+- [ ] Aerogel: silica + solvent → supercritical drying (chemical reactor).
+- [ ] SiC: silicon + carbon → Acheson furnace (electric arc).
+- [ ] BN: boron + nitrogen at high temp (blast furnace+).
+- [ ] Tests: advanced material chain lengths are longest in the game,
+      require inputs from multiple geological zones.
 
 ---
 
@@ -206,8 +205,8 @@ creating natural bottlenecks and trade routes.
       - Furnace/Blast: steel alloys, tungsten (rare)
       - Electric Arc: silicon, nickel superalloys (very-rare)
       - Chemical Reactor: REEs, PGMs, lithium (very-rare, multi-zone)
-      - Plasma: graphene, carbon nanotubes (ultra-rare)
-      - Exotic: dark matter, precursor alloy (exotic, anomaly-only)
+      - Plasma: graphene, carbon nanotubes (ultra-rare, multi-zone)
+      - Nuclear: deuterium, tritium, hafnium (requires fusion chain)
 - [ ] Player cannot reach higher tiers without establishing bases in
       the correct geological zones.
 - [ ] Tests: tier N+1 requires at least one material from a new zone.
