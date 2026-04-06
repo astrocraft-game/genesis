@@ -337,12 +337,13 @@ Goal: make the library easier to learn, test, and contribute to.
       or consume a given substance.
 - [ ] `examples/universe_walk.rs` — deferred.
 
-### D2 — Benchmarks
+### D2 — Benchmarks ✅
 
-- [ ] Add `criterion = "0.5"` as dev-dependency.
-- [ ] Benchmarks for: plate generation, flood-fill, D8 drainage,
-      biome classification, full pipeline (Fast/Standard/Detailed).
-- [ ] Track regressions per-commit in CI.
+- [x] Added `criterion = "0.5"` as dev-dependency.
+- [x] `benches/pipeline.rs` with 8 benchmarks: geology, temperature,
+      wind, precipitation, ocean dynamics, hydrology, biome classification,
+      and full pipeline at Fast/Standard/Detailed resolutions.
+- [x] Run via `cargo bench -p world`.
 
 ### D3 — Visualisation CLI
 
