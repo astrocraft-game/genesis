@@ -63,6 +63,7 @@ pub mod diff;
 pub mod erosion;
 pub mod events;
 pub mod features;
+pub mod fluids;
 pub mod geology;
 pub mod grid;
 pub mod grids;

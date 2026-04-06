@@ -142,14 +142,20 @@ requiring multi-step processing.
       extract reduces quantity, extract clamps at zero, global sum correct,
       tile indices correct, planetary ore within plausible bounds.
 
-### F2 — Fluid resources
+### F2 — Fluid resources ✅
 
-- [ ] Tag oil, natural gas, geothermal as fluid resources with
-      `pressure: f32` and `flow_rate: f32`.
-- [ ] Geothermal vents placed as point features near volcanic/convergent
-      tiles. Permanent energy source.
-- [ ] Oil/gas reservoirs: large deposits in sedimentary basins, finite.
-- [ ] Tests: geothermal only near volcanics, oil only in sedimentary.
+- [x] `fluids.rs` with `FluidKind` (Oil, NaturalGas, Geothermal),
+      `FluidNode` (pressure, flow_rate, depth, remaining, permanent flag),
+      `TileFluids`, `FluidMap`.
+- [x] `generate_fluids(grid, strata, seed)` places geothermal vents at
+      convergent/divergent boundaries (~40%), oil in thick sedimentary
+      (~20%), gas co-located (~25%).
+- [x] Geothermal: permanent, infinite supply, never depletes.
+      Oil/gas: finite, pressure-driven depletion (flow rate drops with
+      pressure as reservoir empties).
+- [x] Tests (9): correct size, geothermal only near volcanics, oil only
+      in sedimentary, geothermal is permanent, oil depletes, geothermal
+      doesn't deplete, some tiles have fluids, deterministic, no ocean fluids.
 
 ### F3 — Multi-stage processing chains
 
