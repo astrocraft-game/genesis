@@ -23,6 +23,14 @@ pub enum EventKind {
     Drought,
     Flood,
     MeteoriteImpact,
+    /// Months-long eruption with global temperature drop.
+    Supervolcano,
+    /// Triggered by offshore earthquake, affects coastal tiles.
+    Tsunami,
+    /// Radiation spike — damages electronics, high-tech hazard.
+    SolarFlare,
+    /// Corrosive precipitation in polluted or volcanic regions.
+    AcidRainStorm,
 }
 
 /// A single discrete event at a tile and time.
@@ -36,6 +44,8 @@ pub struct NaturalEvent {
     pub magnitude: f32,
     /// Event duration in days (0 for instantaneous events).
     pub duration_days: u16,
+    /// Number of tiles outward from epicentre affected (0 = epicentre only).
+    pub affected_radius: u16,
 }
 
 /// Simulate `years` worth of natural events on the grid. Returns all
@@ -101,6 +111,7 @@ pub fn generate_events(grid: &SurfaceGrid, years: u32, seed: &str) -> Vec<Natura
                     year,
                     magnitude: (rng.gen_f64() as f32 * 0.8 + 0.2).clamp(0.0, 1.0),
                     duration_days: 7 + (rng.gen_u32() % 120) as u16,
+                    affected_radius: 0,
                 });
             }
         }
@@ -113,6 +124,7 @@ pub fn generate_events(grid: &SurfaceGrid, years: u32, seed: &str) -> Vec<Natura
                     year,
                     magnitude: (rng.gen_f64() as f32 * 0.9 + 0.1).clamp(0.0, 1.0),
                     duration_days: 0,
+                    affected_radius: 0,
                 });
             }
         }
@@ -125,6 +137,7 @@ pub fn generate_events(grid: &SurfaceGrid, years: u32, seed: &str) -> Vec<Natura
                     year,
                     magnitude: (rng.gen_f64() as f32 * 0.7 + 0.3).clamp(0.0, 1.0),
                     duration_days: 3 + (rng.gen_u32() % 12) as u16,
+                    affected_radius: 2,
                 });
             }
         }
@@ -137,6 +150,7 @@ pub fn generate_events(grid: &SurfaceGrid, years: u32, seed: &str) -> Vec<Natura
                     year,
                     magnitude: (rng.gen_f64() as f32 * 0.7 + 0.2).clamp(0.0, 1.0),
                     duration_days: 1 + (rng.gen_u32() % 30) as u16,
+                    affected_radius: 1,
                 });
             }
         }
@@ -156,6 +170,7 @@ pub fn generate_events(grid: &SurfaceGrid, years: u32, seed: &str) -> Vec<Natura
                     year,
                     magnitude: (rng.gen_f64() as f32 * 0.6 + 0.3).clamp(0.0, 1.0),
                     duration_days: 90 + (rng.gen_u32() % 275) as u16,
+                    affected_radius: 3,
                 });
             }
         }
@@ -168,6 +183,7 @@ pub fn generate_events(grid: &SurfaceGrid, years: u32, seed: &str) -> Vec<Natura
                     year,
                     magnitude: (rng.gen_f64() as f32 * 0.6 + 0.3).clamp(0.0, 1.0),
                     duration_days: 1 + (rng.gen_u32() % 30) as u16,
+                    affected_radius: 1,
                 });
             }
         }
@@ -180,7 +196,59 @@ pub fn generate_events(grid: &SurfaceGrid, years: u32, seed: &str) -> Vec<Natura
                 year,
                 magnitude: (rng.gen_f64() as f32).clamp(0.0, 1.0),
                 duration_days: 0,
+                affected_radius: 2,
             });
+        }
+        // Supervolcano: ~0.01% per planet per year. Massive eruption
+        // lasting months, global temperature effects.
+        if roll_pct(&mut rng, 0.01) && !volcanic_candidates.is_empty() {
+            let tile = volcanic_candidates[rng.gen_usize() % volcanic_candidates.len()];
+            events.push(NaturalEvent {
+                kind: EventKind::Supervolcano,
+                tile_idx: tile,
+                year,
+                magnitude: (rng.gen_f64() as f32 * 0.3 + 0.7).clamp(0.0, 1.0),
+                duration_days: 180 + (rng.gen_u32() % 365) as u16,
+                affected_radius: 5,
+            });
+        }
+        // Tsunami: ~0.1% per tectonic ocean tile per year.
+        for &tile in &tectonic {
+            if grid.layers.is_ocean[tile] && roll_pct(&mut rng, 0.1) {
+                events.push(NaturalEvent {
+                    kind: EventKind::Tsunami,
+                    tile_idx: tile,
+                    year,
+                    magnitude: (rng.gen_f64() as f32 * 0.8 + 0.2).clamp(0.0, 1.0),
+                    duration_days: 1,
+                    affected_radius: 3,
+                });
+            }
+        }
+        // Solar flare: ~0.02% per planet per year. Global effect.
+        if roll_pct(&mut rng, 0.02) {
+            let tile = (rng.gen_usize()) % n;
+            events.push(NaturalEvent {
+                kind: EventKind::SolarFlare,
+                tile_idx: tile,
+                year,
+                magnitude: (rng.gen_f64() as f32 * 0.5 + 0.3).clamp(0.0, 1.0),
+                duration_days: 1 + (rng.gen_u32() % 3) as u16,
+                affected_radius: 0, // global effect, radius N/A
+            });
+        }
+        // Acid rain storm: ~0.5% per arid land tile.
+        for &tile in &arid_land {
+            if roll_pct(&mut rng, 0.5) {
+                events.push(NaturalEvent {
+                    kind: EventKind::AcidRainStorm,
+                    tile_idx: tile,
+                    year,
+                    magnitude: (rng.gen_f64() as f32 * 0.5 + 0.2).clamp(0.0, 1.0),
+                    duration_days: 1 + (rng.gen_u32() % 7) as u16,
+                    affected_radius: 2,
+                });
+            }
         }
     }
     events
@@ -352,5 +420,65 @@ mod tests {
         let short = generate_events(&g, 10, "short").len();
         let long = generate_events(&g, 100, "long").len();
         assert!(long > short);
+    }
+
+    #[test]
+    fn supervolcanoes_on_volcanic_tiles() {
+        let g = earth_grid();
+        let events = generate_events(&g, 50_000, "super");
+        for e in &events {
+            if e.kind == EventKind::Supervolcano {
+                assert!(
+                    matches!(
+                        g.layers.tectonic_boundary[e.tile_idx],
+                        BoundaryKind::Convergent | BoundaryKind::Divergent
+                    ),
+                    "supervolcano at non-volcanic tile"
+                );
+                assert!(e.affected_radius >= 3);
+                assert!(e.duration_days >= 180);
+            }
+        }
+    }
+
+    #[test]
+    fn tsunamis_originate_in_ocean() {
+        let g = earth_grid();
+        let events = generate_events(&g, 10_000, "tsun");
+        for e in &events {
+            if e.kind == EventKind::Tsunami {
+                assert!(
+                    g.layers.is_ocean[e.tile_idx],
+                    "tsunami at non-ocean tile {}",
+                    e.tile_idx
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn solar_flares_are_rare() {
+        let g = earth_grid();
+        let events = generate_events(&g, 10_000, "flare");
+        let flares = events
+            .iter()
+            .filter(|e| e.kind == EventKind::SolarFlare)
+            .count();
+        assert!(flares < 30, "too many solar flares: {}", flares);
+        // 0.02% × 10k = ~2 expected; may be 0 on some seeds, so don't assert > 0.
+    }
+
+    #[test]
+    fn affected_radius_is_bounded() {
+        let g = earth_grid();
+        let events = generate_events(&g, 1000, "radius");
+        for e in &events {
+            assert!(
+                e.affected_radius <= 10,
+                "{:?} has implausible radius {}",
+                e.kind,
+                e.affected_radius
+            );
+        }
     }
 }

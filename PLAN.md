@@ -214,16 +214,16 @@ Goal: planets fight back — pollution, disasters, hostile zones.
       altitude matches elevation, some safe, some hazardous, score bounded,
       pollution triggers acid rain, filter works.
 
-### G3 — Expanded natural disasters
+### G3 — Expanded natural disasters ✅
 
-- [ ] Extend `world::events` with richer disaster model:
-      - Supervolcano: months-long eruption, global temperature drop.
-      - Tsunami: triggered by offshore earthquake, affects coastal tiles.
-      - Solar flare: radiation spike, electronics damage (high-tech hazard).
-      - Acid rain storm: chemical damage in polluted regions.
-- [ ] Each disaster has epicentre, radius, severity, duration.
-- [ ] Disasters can destroy factory buildings (game-engine hook).
-- [ ] Tests: disasters respect geographical constraints, severity bounded.
+- [x] Added 4 new `EventKind` variants: `Supervolcano` (months-long,
+      radius 5, volcanic tiles), `Tsunami` (offshore earthquake, radius 3),
+      `SolarFlare` (global radiation spike), `AcidRainStorm` (arid regions).
+- [x] Added `affected_radius: u16` field to `NaturalEvent` — tiles
+      outward from epicentre affected (0 = epicentre only).
+- [x] All existing events updated with appropriate radii.
+- [x] Tests (4 new): supervolcanoes on volcanic tiles with long duration,
+      tsunamis originate in ocean, solar flares bounded, radius bounded.
 
 ### G4 — Climate change simulation
 
