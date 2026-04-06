@@ -17,8 +17,10 @@ pub enum PowerSourceKind {
     FossilFuel,
     /// Photovoltaic — biome-dependent (clear sky = best), no fuel.
     Solar,
-    /// Nuclear fission — tech-gated, very high output, needs fuel rods.
-    Nuclear,
+    /// Nuclear fission — high tech, very high output, needs fuel rods.
+    Fission,
+    /// Nuclear fusion — late-game, extreme output, needs deuterium/tritium.
+    Fusion,
     /// Manual/animal power — very low, always available.
     Manual,
 }
@@ -162,7 +164,7 @@ mod tests {
     #[test]
     fn throughput_capped_at_one() {
         let mut b = EnergyBudget::new(1.0);
-        b.add_source(simple_source(PowerSourceKind::Nuclear, 10000.0));
+        b.add_source(simple_source(PowerSourceKind::Fission, 10000.0));
         b.demand_kj = 50.0;
         assert_eq!(b.throughput_factor(), 1.0);
     }
@@ -275,7 +277,7 @@ mod tests {
     #[test]
     fn surplus_positive_when_oversupplied() {
         let mut b = EnergyBudget::new(1.0);
-        b.add_source(simple_source(PowerSourceKind::Nuclear, 1000.0));
+        b.add_source(simple_source(PowerSourceKind::Fission, 1000.0));
         b.demand_kj = 200.0;
         assert!(b.surplus_kj() > 0.0);
         assert!((b.surplus_kj() - 800.0).abs() < 0.01);
