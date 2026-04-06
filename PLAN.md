@@ -46,11 +46,15 @@ Plus a **Cleanup** section for gaps found in the v0.2 audit.
 - [x] 13 tests covering determinism, chronology, formation first, lifeless
       worlds skip bio events, precursor ruin validity, species history.
 
-### Z3 — Name style variety
+### Z3 — Name style variety ✅
 
-- [ ] History/features should pick `NameStyle` based on species body plan
-      or planet type, not always `FantasyHuman`.
-- [ ] Add 2-3 more styles: `Crystalline`, `Fungal`, `Insectoid`.
+- [x] Added 3 new `NameStyle` variants: `Crystalline` (mineral-sounding),
+      `Fungal` (soft/sibilant), `Insectoid` (clicks/buzzes/staccato).
+- [x] ~40 corpus words per new style.
+- [x] `NameStyle::for_body_plan(BodyPlan)` maps species body plan to an
+      appropriate name style (Arthropod→Insectoid, PlantLike→Fungal, etc.).
+- [x] Tests: all 8 styles produce output, body plan selects distinct styles,
+      insectoid is consonant-heavy, corpus words are alphabetic.
 
 ### Z4 — Recipe placeholder cleanup
 

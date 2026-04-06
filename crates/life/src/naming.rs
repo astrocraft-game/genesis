@@ -12,7 +12,8 @@ const START: char = '^';
 const END: char = '$';
 
 /// Pre-baked phonology style — picks which corpus to train on.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum NameStyle {
     /// Fantasy human names: Latin/Gothic medieval-ish phonology.
     FantasyHuman,
@@ -24,6 +25,27 @@ pub enum NameStyle {
     Norse,
     /// Generic alien: unusual consonant clusters.
     Alien,
+    /// Crystalline: sharp, angular, mineral-sounding.
+    Crystalline,
+    /// Fungal: soft, sibilant, spore-like.
+    Fungal,
+    /// Insectoid: clicks, buzzes, short staccato syllables.
+    Insectoid,
+}
+
+impl NameStyle {
+    /// Pick a name style that fits a species body plan.
+    pub fn for_body_plan(plan: crate::species::BodyPlan) -> Self {
+        use crate::species::BodyPlan;
+        match plan {
+            BodyPlan::Vertebrate => NameStyle::FantasyHuman,
+            BodyPlan::Arthropod => NameStyle::Insectoid,
+            BodyPlan::Mollusk => NameStyle::Elvish,
+            BodyPlan::PlantLike => NameStyle::Fungal,
+            BodyPlan::Amorphous => NameStyle::Alien,
+            BodyPlan::Crystalline => NameStyle::Crystalline,
+        }
+    }
 }
 
 /// An order-2 Markov chain keyed by consecutive character pairs.
@@ -104,6 +126,9 @@ fn bundled_corpus(style: NameStyle) -> &'static [&'static str] {
         NameStyle::Elvish => ELVISH,
         NameStyle::Norse => NORSE,
         NameStyle::Alien => ALIEN,
+        NameStyle::Crystalline => CRYSTALLINE,
+        NameStyle::Fungal => FUNGAL,
+        NameStyle::Insectoid => INSECTOID,
     }
 }
 
@@ -277,6 +302,104 @@ const ALIEN: &[&str] = &[
     "ythra", "tlar", "nzoth",
 ];
 
+const CRYSTALLINE: &[&str] = &[
+    "quarzil",
+    "obsidyn",
+    "crystar",
+    "feldspar",
+    "calcith",
+    "geodik",
+    "prizmor",
+    "silicarn",
+    "amethyn",
+    "topaziel",
+    "zircona",
+    "rutilen",
+    "sphenarc",
+    "corundar",
+    "jadespar",
+    "beryllix",
+    "garneth",
+    "opalar",
+    "fluoryn",
+    "magnetil",
+    "pyrithar",
+    "bismutyl",
+    "galenik",
+    "barytis",
+    "dolomyr",
+    "gypsuran",
+    "apathor",
+    "scheelin",
+    "cassityr",
+    "wolframar",
+    "tantalar",
+    "niobiux",
+    "hafniel",
+    "rhodinyx",
+    "osmiral",
+    "iridiol",
+    "palathar",
+    "rheniol",
+    "terbiar",
+    "yttriax",
+    "scandiel",
+    "cerithyn",
+];
+
+const FUNGAL: &[&str] = &[
+    "mycelith",
+    "sporelin",
+    "hyphis",
+    "shiithen",
+    "trufelis",
+    "chanteril",
+    "agarith",
+    "bolethis",
+    "polyphen",
+    "russulan",
+    "psilokin",
+    "amanith",
+    "clavulis",
+    "morchein",
+    "lichenis",
+    "mossphor",
+    "fernisal",
+    "mosswin",
+    "rhizophen",
+    "saprovil",
+    "mycenith",
+    "cortilyn",
+    "puffelin",
+    "inkylis",
+    "tremelyn",
+    "ascomith",
+    "basidiel",
+    "zygophen",
+    "endomyl",
+    "mucorith",
+    "sporanth",
+    "thalloph",
+    "penicyll",
+    "aspergil",
+    "fusariel",
+    "candidyn",
+    "uredynis",
+    "ustilith",
+    "smutarin",
+    "ergothal",
+    "clavicyl",
+    "pezizal",
+];
+
+const INSECTOID: &[&str] = &[
+    "tikkix", "chrrz", "bzznk", "klkkt", "sktch", "prrzx", "zikkr", "tchkr", "klikka", "bzzrit",
+    "skritz", "chkkt", "vrrzik", "tskka", "krrchz", "zzikkt", "thrrik", "chizzk", "klirtz",
+    "brkkit", "skrrz", "tchikt", "zrrikk", "kchzzt", "prrikk", "tzzich", "skrikk", "chrrkt",
+    "bzzikk", "klrrtz", "vzzikt", "tchirrz", "krzzik", "skkrit", "brrchk", "zzkrit", "tkkich",
+    "chrriz", "kzzirt", "prrzik", "tskriz", "skktch",
+];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -295,6 +418,9 @@ mod tests {
             NameStyle::Elvish,
             NameStyle::Norse,
             NameStyle::Alien,
+            NameStyle::Crystalline,
+            NameStyle::Fungal,
+            NameStyle::Insectoid,
         ] {
             let names = gen_many(style, "seed", 10);
             for name in &names {
@@ -355,6 +481,9 @@ mod tests {
             NameStyle::Elvish,
             NameStyle::Norse,
             NameStyle::Alien,
+            NameStyle::Crystalline,
+            NameStyle::Fungal,
+            NameStyle::Insectoid,
         ] {
             for word in bundled_corpus(style) {
                 assert!(
@@ -374,6 +503,61 @@ mod tests {
         let name = gen.generate(&mut rng, 4, 12);
         // Falls back to "Unnamed".
         assert_eq!(name, "Unnamed");
+    }
+
+    #[test]
+    fn body_plan_selects_distinct_styles() {
+        use crate::species::BodyPlan;
+        let styles: Vec<NameStyle> = [
+            BodyPlan::Vertebrate,
+            BodyPlan::Arthropod,
+            BodyPlan::Mollusk,
+            BodyPlan::PlantLike,
+            BodyPlan::Amorphous,
+            BodyPlan::Crystalline,
+        ]
+        .iter()
+        .map(|&bp| NameStyle::for_body_plan(bp))
+        .collect();
+        // At least 4 distinct styles from 6 body plans.
+        let unique: std::collections::HashSet<_> = styles.iter().collect();
+        assert!(
+            unique.len() >= 4,
+            "expected >= 4 distinct styles, got {}",
+            unique.len()
+        );
+    }
+
+    #[test]
+    fn crystalline_names_sound_mineral() {
+        let names = gen_many(NameStyle::Crystalline, "crystal", 20);
+        for name in &names {
+            assert!(!name.is_empty());
+        }
+    }
+
+    #[test]
+    fn fungal_names_produce_output() {
+        let names = gen_many(NameStyle::Fungal, "fungi", 20);
+        for name in &names {
+            assert!(!name.is_empty());
+        }
+    }
+
+    #[test]
+    fn insectoid_names_are_consonant_heavy() {
+        let insect = gen_many(NameStyle::Insectoid, "bug", 50).join("");
+        let human = gen_many(NameStyle::FantasyHuman, "bug", 50).join("");
+        let vowel_ratio = |s: &str| {
+            let vs = s.chars().filter(|c| "aeiouAEIOU".contains(*c)).count() as f32;
+            vs / s.len().max(1) as f32
+        };
+        assert!(
+            vowel_ratio(&insect) < vowel_ratio(&human),
+            "insectoid vowel ratio {} should be less than human {}",
+            vowel_ratio(&insect),
+            vowel_ratio(&human)
+        );
     }
 
     #[test]
