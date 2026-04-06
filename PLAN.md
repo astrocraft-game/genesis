@@ -373,11 +373,16 @@ Goal: make the library easier to learn, test, and contribute to.
 - [x] Random `PlanetSimulationInput` strategy covers body radius 0.3–3.0,
       blackbody 150–400 K, tilt 0–90°, greenhouse 0–50 K, hydro 0–100%.
 
-### D5 — Grid diff tool
+### D5 — Grid diff tool ✅
 
-- [ ] CLI command: `genesis diff grid_a.bin grid_b.bin`.
-- [ ] Highlights cells where layers differ, summary statistics.
-- [ ] Used for verifying refactors don't silently change output.
+- [x] `world::diff::diff_grids(a, b) -> GridDiff` compares all layers.
+- [x] Per-layer statistics: changed tile count, mean/max absolute diff
+      for 10 continuous layers, changed count for 6 discrete layers.
+- [x] `GridDiff::print_summary()` for human-readable output.
+- [x] `examples/grid_diff.rs`: generate two grids from CLI seeds and
+      print diff (`cargo run --example grid_diff -- seed_a seed_b`).
+- [x] Tests: same seed → identical, different seeds → differences,
+      mismatched dimensions → not comparable, correct layer counts.
 
 ### D6 — Documentation
 
