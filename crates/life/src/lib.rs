@@ -17,7 +17,7 @@ pub use habitat::{
     compute_species_range, distribute_ecosystem, generate_vegetation, HabitatGrid,
     LifeDistribution, SpeciesRange,
 };
-pub use history::HistoricalEra;
+pub use history::{simulate_history, HistoricalEra, History, HistoryParams};
 pub use input::SpeciesGenerationInput;
 pub use naming::{MarkovNameGen, NameStyle};
 pub use settlement::{compute_settlement_suitability, place_settlements, Settlement};

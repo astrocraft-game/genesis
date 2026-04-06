@@ -149,20 +149,21 @@ civilisations, resources, history, and dynamic events.
       path, 2-tile pathfinding, ocean preference, mountain penalties,
       blocked paths, longitude wrap, determinism, and settlement network.
 
-### B4 — History generation (Dwarf-Fortress-lite)
+### B4 — History generation (Dwarf-Fortress-lite) ✅
 
-- [ ] New file `life/src/history_sim.rs` — event-driven sim.
-- [ ] Core event types: `Founding`, `War`, `Migration`, `Discovery`,
+- [x] Extended `history.rs` with world-history simulation.
+- [x] Core event types: `Founding`, `War`, `Migration`, `Discovery`,
       `Catastrophe`, `GoldenAge`, `Contact`, `Schism`, `DynastyChange`.
-- [ ] Entity types: `Civilization`, `Settlement`, `HistoricalFigure`,
-      `Dynasty`, `Artifact`.
-- [ ] Simulate N years of timeline with random events, each event
-      recording participants + cause + effect.
-- [ ] Retroactive rationalisation (Caves-of-Qud style): events generated
-      first, narrative explanations synthesised from context.
-- [ ] Deterministic from seed; produces `History { events, civs, figures }`.
-- [ ] Tests: history length scales with sim years, events have
-      believable causal chains, no time-paradoxes.
+- [x] Entity types: `Civilization`, `HistoricSettlement`, `HistoricalFigure`,
+      `Dynasty`, `Artifact` — all with unique EntityId.
+- [x] `simulate_history(params, seed)` runs N-year timeline with per-civ
+      event rolls, civ collapse, figure aging, dynasty succession.
+- [x] Retroactive rationalisation: `rationalise_events` fills narrative
+      descriptions from participant context after timeline generation.
+- [x] Deterministic from seed; produces `History { events, civs, figures,
+      dynasties, artifacts }`.
+- [x] Tests: determinism, length scales with years, chronological order,
+      descriptions filled, unique IDs, no time-paradoxes.
 
 ### B5 — Name generators (Markov chains) ✅
 
