@@ -10,6 +10,11 @@ pub enum Substance {
     Gold,
     Silver,
     Platinum,
+    Palladium,
+    Rhodium,
+    Iridium,
+    Osmium,
+    Ruthenium,
     Tin,
     Lead,
     Zinc,
@@ -652,6 +657,10 @@ pub enum Substance {
     SmCoMagnet,
     REEPhosphor,
     AlScAlloy,
+    // PGM products
+    PGMConcentrate,
+    CatalyticConverter,
+    FuelCellMembrane,
 
     // === CHEMISTRY PRODUCTS ===
     SalicylicAcid,

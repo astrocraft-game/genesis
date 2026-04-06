@@ -46,13 +46,16 @@ creating natural bottlenecks and trade routes.
       reachable (3+ steps), all 10 REEs have incoming edges, bastnaesite
       produces RareEarthMix.
 
-### M2 — Platinum group metals
+### M2 — Platinum group metals ✅
 
-- [ ] Add 5 PGM substances: Palladium, Rhodium, Iridium, Osmium, Ruthenium.
-      (Platinum already exists.)
-- [ ] Place PGMs in layered mafic intrusion zones (co-occur with nickel).
-- [ ] Extraction recipes: Ni-Cu matte → PGM concentrate → individual PGMs.
-- [ ] Tests: PGMs only at mafic intrusions, co-occur with nickel.
+- [x] Added 5 PGM substances: Palladium, Rhodium, Iridium, Osmium, Ruthenium.
+      Plus PGMConcentrate intermediate, CatalyticConverter, FuelCellMembrane.
+- [x] Extraction chain: Ni + Cu + H₂SO₄ → PGMConcentrate (1200°C, 48h).
+- [x] 3 separation recipes from PGMConcentrate: Pt+Pd, Rh+Ir, Os+Ru.
+- [x] 2 product recipes: three-way catalytic converter (Pt+Pd+Rh),
+      PEM fuel cell membrane (Pt+C+PE).
+- [x] Tests (3): all 6 PGMs have incoming edges, catalytic converter
+      reachable from concentrate, concentrate reachable from nickel.
 
 ### M3 — Battery metals
 

@@ -56,6 +56,41 @@ pub static ADVANCED_MATERIAL_RECIPES: &[Recipe] = &[
         duration_hours: 2.0,
         cross_recipe_group: None,
     },
+    // ===== PGM PRODUCTS =====
+    Recipe {
+        id: 1430,
+        name: "Three-Way Catalytic Converter",
+        category: RecipeCategory::Manufacturing,
+        inputs: &[
+            (S::Platinum, 0.01),
+            (S::Palladium, 0.02),
+            (S::Rhodium, 0.005),
+        ],
+        outputs: &[(S::CatalyticConverter, 1.0)],
+        byproducts: &[],
+        min_temp_c: 800,
+        pressure_atm: 1.0,
+        catalyst: None,
+        duration_hours: 2.0,
+        cross_recipe_group: None,
+    },
+    Recipe {
+        id: 1431,
+        name: "PEM Fuel Cell Membrane",
+        category: RecipeCategory::Manufacturing,
+        inputs: &[
+            (S::Platinum, 0.05),
+            (S::Carbon, 0.2),
+            (S::Polyethylene, 0.3),
+        ],
+        outputs: &[(S::FuelCellMembrane, 1.0)],
+        byproducts: &[],
+        min_temp_c: 200,
+        pressure_atm: 5.0,
+        catalyst: None,
+        duration_hours: 6.0,
+        cross_recipe_group: None,
+    },
     // ===== NANOMATERIALS =====
     Recipe {
         id: 2000,

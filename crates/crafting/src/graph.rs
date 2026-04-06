@@ -848,6 +848,46 @@ mod tests {
         }
     }
 
+    // --- Platinum group metal chain tests ---
+
+    #[test]
+    fn all_pgms_reachable_from_nickel() {
+        let g = CraftingGraph::build_all();
+        let pgms = [
+            Substance::Platinum,
+            Substance::Palladium,
+            Substance::Rhodium,
+            Substance::Iridium,
+            Substance::Osmium,
+            Substance::Ruthenium,
+        ];
+        for &pgm in &pgms {
+            let inputs = g.what_do_i_need(pgm);
+            assert!(!inputs.is_empty(), "{:?} has no incoming recipe edges", pgm);
+        }
+    }
+
+    #[test]
+    fn catalytic_converter_reachable() {
+        let g = CraftingGraph::build_all();
+        // Catalytic converter needs Pt + Pd + Rh, all from PGMConcentrate.
+        let chain = g.production_chain(Substance::PGMConcentrate, Substance::CatalyticConverter);
+        assert!(
+            chain.is_some(),
+            "CatalyticConverter should be reachable from PGMConcentrate"
+        );
+    }
+
+    #[test]
+    fn pgm_concentrate_from_nickel() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::Nickel, Substance::PGMConcentrate);
+        assert!(
+            chain.is_some(),
+            "PGMConcentrate should be reachable from Nickel"
+        );
+    }
+
     #[test]
     fn bastnaesite_also_produces_ree_mix() {
         let g = CraftingGraph::build_all();
