@@ -255,15 +255,16 @@ civilisations, resources, history, and dynamic events.
 
 Goal: make grids trivially consumable by game engines.
 
-### C1 — Alternative grid layouts
+### C1 — Alternative grid layouts ✅
 
-- [ ] Add `HexGrid` using an icosahedron subdivision (offset coords).
-- [ ] Add `CubeSphere` grid with 6 square faces.
-- [ ] Trait `SurfaceSampler` with `sample_xyz(x,y,z) -> TileData`.
-- [ ] Implement the trait for both equirectangular SurfaceGrid AND hex/
-      cube variants.
-- [ ] Conversion helpers: `equirect_to_hex(&SurfaceGrid) -> HexGrid`.
-- [ ] Tests: same seed produces sphere-equivalent coverage across layouts.
+- [x] `HexGrid` via recursive icosahedron subdivision (configurable level).
+- [x] `CubeSphereGrid` with 6 square faces × resolution².
+- [x] `SurfaceSampler` trait with `sample_at(x,y,z) -> TileData`.
+- [x] Implemented for `SurfaceGrid`, `HexGrid`, and `CubeSphereGrid`.
+- [x] Conversion helpers: `equirect_to_hex`, `equirect_to_cube`.
+- [x] Tests: tile counts match formulae, sampler returns valid data,
+      biome coverage preserved across layouts, unit-sphere positions,
+      equivalent elevation at same direction across all three.
 
 ### C2 — Texture export ✅
 

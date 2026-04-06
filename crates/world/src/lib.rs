@@ -27,6 +27,7 @@ pub mod events;
 pub mod features;
 pub mod geology;
 pub mod grid;
+pub mod grids;
 pub mod hydrology;
 pub mod impacts;
 pub mod interior;
