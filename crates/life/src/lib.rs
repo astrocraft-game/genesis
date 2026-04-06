@@ -11,7 +11,7 @@ pub mod settlement;
 pub mod species;
 pub mod types;
 
-pub use ecosystem::{generate_ecosystem_from_world, Ecosystem};
+pub use ecosystem::{apply_extinction, generate_ecosystem_from_world, Ecosystem};
 pub use expansion::{generate_expansion_footprint, ExpansionFootprint};
 pub use habitat::{
     compute_species_range, distribute_ecosystem, generate_vegetation, HabitatGrid,

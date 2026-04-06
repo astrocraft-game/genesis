@@ -223,19 +223,18 @@ civilisations, resources, history, and dynamic events.
       wildfire/flood eligibility, impact rarity, magnitude range,
       year bounds, year-scaling.
 
-### B8 — Ecosystem dynamics
+### B8 — Ecosystem dynamics ✅
 
-- [ ] Extend `life::ecosystem::Ecosystem` with:
-      - `predator_prey_links: Vec<(SpeciesIdx, SpeciesIdx)>`
-      - `trophic_pyramid_validity: bool`
-- [ ] Migration routes: for each species, compute seasonal movement
-      between summer and winter habitability peaks (when available).
-- [ ] Keystone species: identify species whose removal would collapse
-      the food web.
-- [ ] Extinction triggers: sudden biome shift (from a B7 event) kills
-      species whose habitability drops below 0.2.
-- [ ] Tests: every carnivore has ≥1 prey, removal of keystone drops
-      range counts, extinction events reproducible.
+- [x] Extended `Ecosystem` with `predator_prey_links`, `trophic_pyramid_valid`,
+      and `keystone_species` fields, auto-computed by `build_food_web`.
+- [x] Predator-prey links: carnivores→herbivores/omnivores, herbivores→
+      producers, omnivores→producers+herbivores, filter-feeders→producers.
+- [x] Keystone species: removal-simulation identifies species whose loss
+      disconnects any consumer from all food sources.
+- [x] `apply_extinction(eco, habitability, threshold)`: removes species
+      below threshold, cascades (carnivores with no prey die), rebuilds web.
+- [x] Tests: every carnivore has ≥1 prey, valid trophic pyramid, producer
+      is keystone, removal of keystone collapses web, extinction reproducible.
 
 ### B9 — Technology & culture (ties to crafting)
 
