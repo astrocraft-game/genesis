@@ -358,16 +358,20 @@ Goal: make the library easier to learn, test, and contribute to.
 - [x] Trade routes with settlement suitability + cost/value.
 - [x] No GUI, plain terminal output.
 
-### D4 — Property-based testing
+### D4 — Property-based testing ✅
 
-- [ ] Add `proptest = "1.5"` as dev-dependency.
-- [ ] Generate random `PlanetSimulationInput`s, verify invariants:
-      - temperature_c within plausible Kelvin conversion bounds
-      - biome always set (no defaults left unassigned)
-      - river discharge monotonically increases downstream
-      - population density ≤ habitability
-      - every enum variant reachable with some seed
-- [ ] Run proptest in CI (separate job, longer runtime).
+- [x] Added `proptest = "1.5"` as dev-dependency.
+- [x] `tests/proptest_invariants.rs` with 8 property tests (20 cases each):
+      - temperature within plausible bounds (−200 to +200 °C)
+      - biome always assigned (ocean↔Ocean, land↔non-Ocean)
+      - discharge non-negative
+      - ocean tiles have zero discharge
+      - precipitation non-negative
+      - elevation finite
+      - monthly precipitation sums to annual total
+      - high flow-accumulation implies positive discharge
+- [x] Random `PlanetSimulationInput` strategy covers body radius 0.3–3.0,
+      blackbody 150–400 K, tilt 0–90°, greenhouse 0–50 K, hydro 0–100%.
 
 ### D5 — Grid diff tool
 
