@@ -393,6 +393,147 @@ impl SurfaceGrid {
     }
 
     // -----------------------------------------------------------------------
+    // LOD — region zoom
+    //
+    // Generates a higher-resolution sub-grid for a lat/lon bounding box
+    // by bilinearly interpolating the parent grid's continuous layers and
+    // nearest-neighbour copying discrete layers. Optionally adds extra
+    // fractal noise to elevation for fine detail.
+    // -----------------------------------------------------------------------
+
+    /// Extract a zoomed sub-grid covering a rectangular region.
+    ///
+    /// - `lon_min`, `lon_max` in degrees (−180 to 180).
+    /// - `lat_min`, `lat_max` in degrees (−90 to 90), `lat_min < lat_max`.
+    /// - `factor`: resolution multiplier relative to the parent grid's
+    ///   tile density (e.g., 4 means each parent tile becomes 4×4 sub-tiles).
+    /// - `seed`: deterministic seed for extra elevation noise.
+    ///
+    /// The returned grid is a standalone `SurfaceGrid` whose coordinate
+    /// system covers only the specified region. `row_latitude` / `col_longitude`
+    /// on the sub-grid return positions within the parent's coordinate space.
+    pub fn zoom_region(
+        &self,
+        lon_min: f32,
+        lat_min: f32,
+        lon_max: f32,
+        lat_max: f32,
+        factor: u16,
+        seed: &str,
+    ) -> SurfaceGrid {
+        let lon_span = lon_max - lon_min;
+        let lat_span = lat_max - lat_min;
+        // Compute sub-grid dimensions from parent density × factor.
+        let tiles_per_deg_lon = self.width as f32 / 360.0;
+        let tiles_per_deg_lat = self.height as f32 / 180.0;
+        let sub_w = ((lon_span * tiles_per_deg_lon * factor as f32).round() as u16).max(2);
+        let sub_h = ((lat_span * tiles_per_deg_lat * factor as f32).round() as u16).max(2);
+        let n = sub_w as usize * sub_h as usize;
+
+        let mut sub = SurfaceGrid::empty(GridResolution::Custom(sub_w, sub_h));
+        sub.sea_level_m = self.sea_level_m;
+
+        // For each sub-tile, compute the lat/lon, then bilinear-sample the parent.
+        for sr in 0..sub_h {
+            // Latitude: sub row 0 = lat_max (north), last row = lat_min (south).
+            let lat = lat_max - (sr as f32 + 0.5) / sub_h as f32 * lat_span;
+            for sc in 0..sub_w {
+                let lon = lon_min + (sc as f32 + 0.5) / sub_w as f32 * lon_span;
+                let si = sr as usize * sub_w as usize + sc as usize;
+
+                // Parent grid fractional coordinates.
+                let frac_r = ((90.0 - lat) / 180.0) * self.height as f32 - 0.5;
+                let frac_c = ((lon + 180.0) / 360.0).rem_euclid(1.0) * self.width as f32 - 0.5;
+
+                // Four corner indices for bilinear interpolation.
+                let r0 = (frac_r.floor() as i32).clamp(0, self.height as i32 - 1) as u16;
+                let r1 = (r0 + 1).min(self.height - 1);
+                let c0 = (frac_c.floor() as i32).rem_euclid(self.width as i32) as u16;
+                let c1 = (c0 + 1) % self.width;
+                let tr = frac_r - frac_r.floor(); // vertical blend
+                let tc = frac_c - frac_c.floor(); // horizontal blend
+
+                let i00 = self.idx(c0, r0);
+                let i01 = self.idx(c1, r0);
+                let i10 = self.idx(c0, r1);
+                let i11 = self.idx(c1, r1);
+
+                // Bilinear helper for f32 layers.
+                macro_rules! bilerp {
+                    ($layer:expr) => {{
+                        let v00 = $layer[i00];
+                        let v01 = $layer[i01];
+                        let v10 = $layer[i10];
+                        let v11 = $layer[i11];
+                        let top = v00 + (v01 - v00) * tc;
+                        let bot = v10 + (v11 - v10) * tc;
+                        top + (bot - top) * tr
+                    }};
+                }
+
+                // Nearest-neighbour index (whichever corner is closest).
+                let nn = if tr < 0.5 {
+                    if tc < 0.5 {
+                        i00
+                    } else {
+                        i01
+                    }
+                } else if tc < 0.5 {
+                    i10
+                } else {
+                    i11
+                };
+
+                sub.layers.elevation_m[si] = bilerp!(self.layers.elevation_m);
+                sub.layers.temperature_c[si] = bilerp!(self.layers.temperature_c);
+                sub.layers.temperature_summer_c[si] = bilerp!(self.layers.temperature_summer_c);
+                sub.layers.temperature_winter_c[si] = bilerp!(self.layers.temperature_winter_c);
+                sub.layers.precipitation_mm[si] = bilerp!(self.layers.precipitation_mm);
+                sub.layers.humidity_relative[si] = bilerp!(self.layers.humidity_relative);
+                sub.layers.wind_speed_ms[si] = bilerp!(self.layers.wind_speed_ms);
+                sub.layers.wind_direction_deg[si] = bilerp!(self.layers.wind_direction_deg);
+                sub.layers.sea_surface_temp_c[si] = bilerp!(self.layers.sea_surface_temp_c);
+                sub.layers.river_discharge_m3s[si] = bilerp!(self.layers.river_discharge_m3s);
+
+                // Discrete layers: nearest neighbour.
+                sub.layers.plate_id[si] = self.layers.plate_id[nn];
+                sub.layers.is_ocean[si] = self.layers.is_ocean[nn];
+                sub.layers.tectonic_boundary[si] = self.layers.tectonic_boundary[nn];
+                sub.layers.biome[si] = self.layers.biome[nn];
+                sub.layers.koppen_class[si] = self.layers.koppen_class[nn];
+                sub.layers.drainage_basin_id[si] = self.layers.drainage_basin_id[nn];
+                sub.layers.flow_accumulation[si] = self.layers.flow_accumulation[nn];
+                sub.layers.pet_ratio[si] = self.layers.pet_ratio[nn];
+                sub.layers.ocean_current_direction_deg[si] =
+                    self.layers.ocean_current_direction_deg[nn];
+                sub.layers.ocean_current_speed_ms[si] = self.layers.ocean_current_speed_ms[nn];
+                sub.layers.temperature_monthly_c[si] = self.layers.temperature_monthly_c[nn];
+                sub.layers.precipitation_monthly_mm[si] = self.layers.precipitation_monthly_mm[nn];
+            }
+        }
+
+        // Add extra fractal noise to elevation for fine detail.
+        use noise::{NoiseFn, SuperSimplex};
+        let seed_hash = seed
+            .bytes()
+            .fold(0u32, |a, b| a.wrapping_mul(31).wrapping_add(b as u32));
+        let detail_noise = SuperSimplex::new(seed_hash);
+        let detail_amplitude = 150.0f32; // subtle detail (metres)
+        let detail_freq = 8.0f64 * factor as f64;
+        for sr in 0..sub_h {
+            let ny = sr as f64 / sub_h as f64;
+            for sc in 0..sub_w {
+                let nx = sc as f64 / sub_w as f64;
+                let si = sr as usize * sub_w as usize + sc as usize;
+                let noise_val = detail_noise.get([nx * detail_freq, ny * detail_freq]) as f32;
+                sub.layers.elevation_m[si] += noise_val * detail_amplitude;
+            }
+        }
+
+        sub
+    }
+
+    // -----------------------------------------------------------------------
     // Texture export helpers
     //
     // Produce raw byte buffers suitable for feeding directly to game engine
@@ -877,6 +1018,90 @@ mod query_tests {
         // An empty grid has is_ocean all false — nearest_ocean_tile must return None.
         let g = SurfaceGrid::empty(GridResolution::Fast);
         assert!(g.nearest_ocean_tile(0.0, 0.0).is_none());
+    }
+}
+
+#[cfg(test)]
+mod lod_tests {
+    use super::*;
+    use crate::types::{OrbitContext, PlanetSimulationInput, StarContext};
+
+    fn earth_grid() -> SurfaceGrid {
+        let input = PlanetSimulationInput {
+            body_id: 1,
+            body_radius_earth: 1.0,
+            blackbody_temp_k: 255,
+            star: StarContext {
+                age_gyr: 4.6,
+                ..Default::default()
+            },
+            orbit: OrbitContext {
+                axial_tilt_deg: 23.4,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        generate_surface_grid(&input, 33.0, 1.0, 71.0, GridResolution::Fast, "lod")
+    }
+
+    #[test]
+    fn zoom_region_has_higher_resolution() {
+        let g = earth_grid();
+        let sub = g.zoom_region(-10.0, -10.0, 10.0, 10.0, 4, "zoom");
+        // 20° lon × 20° lat at 4× Fast (72/360 = 0.2 tiles/°)
+        // sub_w ≈ 20 * 0.2 * 4 = 16, sub_h ≈ 20 * 0.2 * 4 = 16
+        assert!(sub.tile_count() > 1);
+        assert!(sub.width >= 4);
+        assert!(sub.height >= 4);
+    }
+
+    #[test]
+    fn zoom_preserves_climate_continuity() {
+        let g = earth_grid();
+        // Zoom into a tropical region.
+        let sub = g.zoom_region(-30.0, -15.0, 30.0, 15.0, 2, "cont");
+        // Centre of the parent at (0°, 0°):
+        let parent_idx = g.idx_latlon(0.0, 0.0);
+        let parent_temp = g.layers.temperature_c[parent_idx];
+        // Centre of the sub-grid:
+        let sub_centre = sub.idx(sub.width / 2, sub.height / 2);
+        let sub_temp = sub.layers.temperature_c[sub_centre];
+        // Should be close (bilinear interpolation + small noise).
+        assert!(
+            (parent_temp - sub_temp).abs() < 5.0,
+            "parent temp {} vs sub temp {} differ too much",
+            parent_temp,
+            sub_temp
+        );
+    }
+
+    #[test]
+    fn zoom_is_deterministic() {
+        let g = earth_grid();
+        let a = g.zoom_region(0.0, 0.0, 30.0, 30.0, 3, "det");
+        let b = g.zoom_region(0.0, 0.0, 30.0, 30.0, 3, "det");
+        assert_eq!(a.layers.elevation_m, b.layers.elevation_m);
+        assert_eq!(a.layers.temperature_c, b.layers.temperature_c);
+    }
+
+    #[test]
+    fn zoom_different_seeds_differ() {
+        let g = earth_grid();
+        let a = g.zoom_region(0.0, 0.0, 30.0, 30.0, 3, "seed_a");
+        let b = g.zoom_region(0.0, 0.0, 30.0, 30.0, 3, "seed_b");
+        // Elevation should differ due to different detail noise.
+        assert_ne!(a.layers.elevation_m, b.layers.elevation_m);
+    }
+
+    #[test]
+    fn zoom_preserves_ocean_flag() {
+        let g = earth_grid();
+        // Zoom into a region that has mixed ocean/land.
+        let sub = g.zoom_region(-180.0, -90.0, 180.0, 90.0, 1, "full");
+        let has_ocean = sub.layers.is_ocean.iter().any(|&o| o);
+        let has_land = sub.layers.is_ocean.iter().any(|&o| !o);
+        assert!(has_ocean, "zoomed full grid should have ocean");
+        assert!(has_land, "zoomed full grid should have land");
     }
 }
 

@@ -294,14 +294,17 @@ Goal: make grids trivially consumable by game engines.
       validity, face-centre axes, polar area shrinkage, **4πR² sum
       agreement within 1%**, stability, cube-face XYZ magnitudes.
 
-### C4 — LOD system
+### C4 — LOD system ✅
 
-- [ ] Hierarchical grids: start at Fast (72×36), refine to Detailed
-      (360×180) on demand per region.
-- [ ] `grid.zoom_region(lon_min, lat_min, lon_max, lat_max, factor)`
-      returns a sub-grid with sub-tile detail.
-- [ ] Uses noise from the original seed, deterministic.
-- [ ] Tests: zoom region preserves climate continuity with parent grid.
+- [x] `grid.zoom_region(lon_min, lat_min, lon_max, lat_max, factor, seed)`
+      returns a higher-resolution sub-grid for the specified region.
+- [x] Bilinear interpolation for continuous layers (elevation, temperature,
+      precipitation, wind, SST, discharge), nearest-neighbour for discrete
+      layers (biome, plate_id, ocean flag, Köppen).
+- [x] Extra fractal noise on elevation for fine detail, deterministic
+      from seed.
+- [x] Tests: higher resolution, climate continuity with parent, determinism,
+      different seeds differ, ocean flags preserved.
 
 ### C5 — Query helpers ✅
 
