@@ -888,6 +888,48 @@ mod tests {
         );
     }
 
+    // --- Battery chain tests ---
+
+    #[test]
+    fn battery_cell_reachable_from_lithium() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::Lithium, Substance::BatteryCell);
+        assert!(
+            chain.is_some(),
+            "BatteryCell should be reachable from Lithium"
+        );
+        if let Some(c) = &chain {
+            assert!(
+                c.len() >= 3,
+                "Li→LiCO3→cathode→cell = 3+ steps, got {}",
+                c.len()
+            );
+        }
+    }
+
+    #[test]
+    fn battery_cell_needs_graphite() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::Graphite, Substance::BatteryCell);
+        assert!(
+            chain.is_some(),
+            "BatteryCell should be reachable from Graphite (via anode)"
+        );
+    }
+
+    #[test]
+    fn battery_chain_requires_multiple_inputs() {
+        // BatteryCell needs: LithiumCarbonate (from lithium), Graphite,
+        // Nickel, Cobalt, Manganese — forcing multi-zone supply.
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::BatteryCell);
+        assert!(
+            inputs.len() >= 3,
+            "BatteryCell should need 3+ direct inputs, got {}",
+            inputs.len()
+        );
+    }
+
     #[test]
     fn bastnaesite_also_produces_ree_mix() {
         let g = CraftingGraph::build_all();

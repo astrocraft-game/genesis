@@ -57,13 +57,17 @@ creating natural bottlenecks and trade routes.
 - [x] Tests (3): all 6 PGMs have incoming edges, catalytic converter
       reachable from concentrate, concentrate reachable from nickel.
 
-### M3 — Battery metals
+### M3 — Battery metals ✅
 
-- [ ] Add Lithium, Graphite substances (Cobalt, Nickel, Manganese exist).
-- [ ] Lithium from two sources: pegmatite veins (hard rock) and brine
-      flats (evaporite zone) — different extraction recipes.
-- [ ] Graphite from high-grade metamorphic (granulite facies).
-- [ ] Tests: lithium in pegmatite + brine, graphite in metamorphic.
+- [x] Added 6 new substances: Graphite, LithiumCarbonate, NMCCathodeRaw,
+      GraphiteAnode, BatteryCell, BatteryElectrolyte. (Lithium, Spodumene,
+      Cobalt, Nickel, Manganese already existed.)
+- [x] Graphite extraction from carbon ore (metamorphic).
+- [x] Li → LithiumCarbonate conversion recipe.
+- [x] 4-step battery chain: NMC cathode (Li+Ni+Mn+Co), graphite anode,
+      electrolyte, cell assembly — requires inputs from 4+ geological zones.
+- [x] Tests (3): battery cell reachable from lithium (3+ steps), reachable
+      from graphite, needs 3+ direct inputs (multi-zone forcing).
 
 ### M4 — Semiconductor materials
 

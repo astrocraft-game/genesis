@@ -661,6 +661,13 @@ pub enum Substance {
     PGMConcentrate,
     CatalyticConverter,
     FuelCellMembrane,
+    // Battery materials
+    Graphite,
+    LithiumCarbonate,
+    NMCCathodeRaw,
+    GraphiteAnode,
+    BatteryCell,
+    BatteryElectrolyte,
 
     // === CHEMISTRY PRODUCTS ===
     SalicylicAcid,

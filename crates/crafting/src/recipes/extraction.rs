@@ -541,6 +541,33 @@ pub static EXTRACTION_RECIPES: &[Recipe] = &[
         duration_hours: 8760.0,
         cross_recipe_group: Some(CRG_LITHIUM),
     },
+    // ===== GRAPHITE & LITHIUM CARBONATE =====
+    Recipe {
+        id: 1440,
+        name: "Graphite from Metamorphic Ore",
+        category: RecipeCategory::Extraction,
+        inputs: &[(S::Carbon, 3.0)],
+        outputs: &[(S::Graphite, 1.0)],
+        byproducts: &[(S::Tailings, 1.5)],
+        min_temp_c: 800,
+        pressure_atm: 1.0,
+        catalyst: None,
+        duration_hours: 4.0,
+        cross_recipe_group: None,
+    },
+    Recipe {
+        id: 1441,
+        name: "Lithium Carbonate from Lithium",
+        category: RecipeCategory::ChemicalSynthesis,
+        inputs: &[(S::Lithium, 1.0), (S::CarbonDioxide, 0.5), (S::Water, 1.0)],
+        outputs: &[(S::LithiumCarbonate, 1.5)],
+        byproducts: &[],
+        min_temp_c: 90,
+        pressure_atm: 1.0,
+        catalyst: None,
+        duration_hours: 2.0,
+        cross_recipe_group: None,
+    },
     // ===== MAGNESIUM (2 paths) =====
     Recipe {
         id: 125,
