@@ -67,6 +67,7 @@ pub mod fluids;
 pub mod geology;
 pub mod grid;
 pub mod grids;
+pub mod hazards;
 pub mod hydrology;
 pub mod impacts;
 pub mod interior;

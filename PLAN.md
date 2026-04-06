@@ -201,15 +201,18 @@ Goal: planets fight back — pollution, disasters, hostile zones.
       decays over time, vegetation absorbs, forest→grassland, severe→barren,
       ocean unaffected, correct tile indices, OOB safe.
 
-### G2 — Environmental hazard zones
+### G2 — Environmental hazard zones ✅
 
-- [ ] `HazardMap` parallel to `ResourceMap`: per-tile flags for
-      toxic atmosphere, radiation, acid rain, extreme cold/heat,
-      seismic instability.
-- [ ] Derived from existing layers: `photochemistry` → toxic/radiation,
-      `temperature_c` → extreme cold/heat, `tectonic_boundary` → seismic.
-- [ ] Affects: factory placement cost, equipment wear, species habitability.
-- [ ] Tests: hazard flags consistent with underlying physics layers.
+- [x] `hazards.rs` with `HazardFlags` (7 flags: toxic_atmosphere, radiation,
+      acid_rain, extreme_cold, extreme_heat, seismic, high_altitude) and
+      `HazardMap`.
+- [x] `generate_hazards(grid, pollution)` derives flags from physics layers:
+      tectonic boundary → seismic, temperature → cold/heat, elevation →
+      altitude/radiation, volcanic biome → toxic, pollution → acid rain.
+- [x] `danger_score()` (0.0–1.0), `is_safe()`, `tiles_with(predicate)`.
+- [x] Tests (9): correct size, seismic at boundaries, cold matches temp,
+      altitude matches elevation, some safe, some hazardous, score bounded,
+      pollution triggers acid rain, filter works.
 
 ### G3 — Expanded natural disasters
 
