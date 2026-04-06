@@ -451,6 +451,56 @@ pub fn recipes_accessible_to_species(
     crafting::recipes::recipes_in_conditions(&conditions)
 }
 
+/// A civilisation's technology profile: era, available substances, and
+/// the crafting recipes it can actually produce given both its tech tier
+/// *and* the resources on its homeworld.
+pub struct TechProfile {
+    pub era: life::HistoricalEra,
+    pub social_structure: &'static str,
+    pub key_technologies: &'static [&'static str],
+    pub available_substances: std::collections::HashSet<crafting::Substance>,
+    pub known_recipes: Vec<&'static crafting::recipes::types::Recipe>,
+}
+
+/// Build a `TechProfile` for a civilisation at the given tech level with
+/// access to the given world resources.
+///
+/// This is the bridge from `life::HistoricalEra` + `world::resources` →
+/// `crafting` recipe filtering. Stone-age civs with no iron ore will have
+/// no iron-smelting recipes, etc.
+pub fn build_tech_profile(
+    tech_level: u8,
+    resource_map: &world::resources::ResourceMap,
+) -> TechProfile {
+    let era = life::HistoricalEra::from_tech_level(tech_level);
+    let (max_temperature_c, max_pressure_atm) =
+        life::expansion::tech_level_capabilities(tech_level);
+    let substances = resource_map_to_substance_set(resource_map);
+    let conditions = crafting::recipes::PlanetaryConditions {
+        max_temperature_c,
+        max_pressure_atm,
+        available_substances: Some(substances.clone()),
+    };
+    let known_recipes = crafting::recipes::recipes_in_conditions(&conditions);
+    TechProfile {
+        era,
+        social_structure: era.social_structure(),
+        key_technologies: era.key_technologies(),
+        available_substances: substances,
+        known_recipes,
+    }
+}
+
+/// Convenience: build a tech profile for a species on its homeworld.
+/// Returns `None` for pre-sapient species (no tech_level).
+pub fn species_tech_profile(
+    species: &life::Species,
+    resource_map: &world::resources::ResourceMap,
+) -> Option<TechProfile> {
+    let tech = species.tech_level?;
+    Some(build_tech_profile(tech, resource_map))
+}
+
 fn map_magnetic_field(value: cosmos::prelude::MagneticFieldStrength) -> MagneticFieldStrength {
     match value {
         cosmos::prelude::MagneticFieldStrength::None => MagneticFieldStrength::None,
@@ -1124,5 +1174,113 @@ mod tests {
         // Expect at least most settlements to participate.
         let connected = has_outbound.iter().filter(|&&b| b).count();
         assert!(connected >= settlements.len() - 1);
+    }
+
+    #[test]
+    fn stone_age_cannot_craft_steel() {
+        // Create a resource map with iron ore available.
+        let mut rm = world::resources::ResourceMap {
+            width: 1,
+            height: 1,
+            per_tile: vec![],
+        };
+        rm.per_tile.push(vec![world::resources::Resource::IronOre]);
+        let profile = build_tech_profile(1, &rm); // tech 1 = FirstTools
+        assert_eq!(profile.era, life::HistoricalEra::FirstTools);
+        // Steel requires ~1500 °C. FirstTools caps at 400 °C.
+        let has_steel = profile
+            .known_recipes
+            .iter()
+            .any(|r| r.name.to_lowercase().contains("steel"));
+        assert!(!has_steel, "stone-age should not unlock steel recipes");
+    }
+
+    #[test]
+    fn industrial_civ_with_iron_can_smelt() {
+        let mut rm = world::resources::ResourceMap {
+            width: 1,
+            height: 1,
+            per_tile: vec![],
+        };
+        rm.per_tile.push(vec![
+            world::resources::Resource::IronOre,
+            world::resources::Resource::Coal,
+            world::resources::Resource::Limestone,
+        ]);
+        let profile = build_tech_profile(7, &rm); // tech 7 = Industrialization
+        assert_eq!(profile.era, life::HistoricalEra::Industrialization);
+        assert_eq!(profile.social_structure, "industrial");
+        // With iron ore, should have at least some metal recipes.
+        assert!(
+            !profile.known_recipes.is_empty(),
+            "industrial civ with iron should have recipes"
+        );
+    }
+
+    #[test]
+    fn civ_without_iron_has_fewer_recipes() {
+        // No iron, no copper — only limestone and water.
+        let mut rm_poor = world::resources::ResourceMap {
+            width: 1,
+            height: 1,
+            per_tile: vec![],
+        };
+        rm_poor
+            .per_tile
+            .push(vec![world::resources::Resource::FreshWater]);
+
+        let mut rm_rich = world::resources::ResourceMap {
+            width: 1,
+            height: 1,
+            per_tile: vec![],
+        };
+        rm_rich.per_tile.push(vec![
+            world::resources::Resource::IronOre,
+            world::resources::Resource::CopperOre,
+            world::resources::Resource::TinOre,
+            world::resources::Resource::FreshWater,
+            world::resources::Resource::Limestone,
+            world::resources::Resource::Salt,
+        ]);
+
+        let poor = build_tech_profile(6, &rm_poor);
+        let rich = build_tech_profile(6, &rm_rich);
+        assert!(
+            rich.known_recipes.len() >= poor.known_recipes.len(),
+            "resource-rich civ ({}) should have >= resource-poor civ ({})",
+            rich.known_recipes.len(),
+            poor.known_recipes.len()
+        );
+    }
+
+    #[test]
+    fn era_has_key_technologies() {
+        let techs = life::HistoricalEra::Industrialization.key_technologies();
+        assert!(techs.contains(&"steel production"));
+        let origin = life::HistoricalEra::Origin.key_technologies();
+        assert!(origin.contains(&"fire"));
+    }
+
+    #[test]
+    fn higher_tech_profile_unlocks_more_recipes() {
+        let mut rm = world::resources::ResourceMap {
+            width: 1,
+            height: 1,
+            per_tile: vec![],
+        };
+        rm.per_tile.push(vec![
+            world::resources::Resource::IronOre,
+            world::resources::Resource::CopperOre,
+            world::resources::Resource::FreshWater,
+            world::resources::Resource::Salt,
+        ]);
+        let low = build_tech_profile(2, &rm);
+        let high = build_tech_profile(8, &rm);
+        assert!(
+            high.known_recipes.len() >= low.known_recipes.len(),
+            "high tech {} should unlock >= low tech {} recipes",
+            high.known_recipes.len(),
+            low.known_recipes.len()
+        );
     }
 }

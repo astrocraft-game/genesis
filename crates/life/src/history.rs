@@ -89,6 +89,81 @@ impl HistoricalEra {
         let (t, p) = self.capability_thresholds();
         min_temp_c <= t && pressure_atm <= p
     }
+
+    /// Social structure label for the era.
+    pub fn social_structure(self) -> &'static str {
+        match self {
+            HistoricalEra::Origin | HistoricalEra::FirstTools => "hunter-gatherer",
+            HistoricalEra::Agriculture => "agricultural",
+            HistoricalEra::EarlyCivilization => "early-state",
+            HistoricalEra::Industrialization => "industrial",
+            HistoricalEra::InformationAge => "information",
+            HistoricalEra::SpaceExploration | HistoricalEra::Interplanetary => "spacefaring",
+            HistoricalEra::Interstellar => "interstellar",
+        }
+    }
+
+    /// Key technologies accessible at this era. Returns a list of
+    /// human-readable technology names. Callers can use this for flavour
+    /// text; actual recipe filtering uses temperature/pressure thresholds.
+    pub fn key_technologies(self) -> &'static [&'static str] {
+        match self {
+            HistoricalEra::Origin => &["fire", "stone tools"],
+            HistoricalEra::FirstTools => &["fire", "stone tools", "bone tools", "tanning"],
+            HistoricalEra::Agriculture => &[
+                "pottery",
+                "copper smelting",
+                "bronze casting",
+                "weaving",
+                "irrigation",
+                "animal husbandry",
+            ],
+            HistoricalEra::EarlyCivilization => &[
+                "iron smelting",
+                "glass blowing",
+                "masonry",
+                "writing",
+                "wheel",
+                "sailing",
+            ],
+            HistoricalEra::Industrialization => &[
+                "steel production",
+                "steam engine",
+                "gunpowder",
+                "printing press",
+                "textile machinery",
+                "coal mining",
+            ],
+            HistoricalEra::InformationAge => &[
+                "electronics",
+                "computers",
+                "petrochemistry",
+                "nuclear fission",
+                "telecommunications",
+            ],
+            HistoricalEra::SpaceExploration => &[
+                "rocketry",
+                "satellites",
+                "advanced materials",
+                "nuclear power",
+                "gene editing",
+            ],
+            HistoricalEra::Interplanetary => &[
+                "fusion power",
+                "space habitats",
+                "asteroid mining",
+                "terraforming",
+                "AI systems",
+            ],
+            HistoricalEra::Interstellar => &[
+                "FTL drive",
+                "antimatter reactors",
+                "megastructures",
+                "quantum computing",
+                "nanotechnology",
+            ],
+        }
+    }
 }
 
 #[derive(

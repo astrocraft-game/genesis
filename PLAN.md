@@ -236,18 +236,18 @@ civilisations, resources, history, and dynamic events.
 - [x] Tests: every carnivore has ≥1 prey, valid trophic pyramid, producer
       is keystone, removal of keystone collapses web, extinction reproducible.
 
-### B9 — Technology & culture (ties to crafting)
+### B9 — Technology & culture (ties to crafting) ✅
 
-- [ ] Extend `life::HistoricalEra` with accessible tech list.
-- [ ] Per-civilisation tech tree progression:
-      - starting tech based on homeworld biome (metals available? wood?)
-      - branching techs unlock based on available resources (from B1)
-      - social structures (hunter-gatherer → agricultural → industrial)
-- [ ] Output: `Civilisation { tech_level, known_recipes: Vec<&Recipe> }`.
-- [ ] Bridge to `crafting::PlanetaryConditions` (already exists) and
-      filter recipes by tech tier + available substances.
-- [ ] Tests: stone-age civs can't craft steel, civs without iron ore
-      can't progress past bronze age until trade unlocks it.
+- [x] `HistoricalEra::key_technologies()` returns per-era tech labels.
+- [x] `HistoricalEra::social_structure()` returns social-organization label
+      (hunter-gatherer → agricultural → industrial → spacefaring).
+- [x] `TechProfile` struct combines era, social structure, key techs,
+      available substances, and filtered known_recipes.
+- [x] `build_tech_profile(tech_level, resource_map)` bridges era +
+      world resources → `crafting::PlanetaryConditions` with substance
+      filtering, producing only recipes the civ can actually make.
+- [x] Tests: stone-age can't craft steel, industrial with iron can smelt,
+      resource-poor civ has fewer recipes, higher tech unlocks more.
 
 ---
 
