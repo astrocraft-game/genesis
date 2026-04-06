@@ -456,7 +456,7 @@ pub fn recipes_accessible_to_species(
 /// *and* the resources on its homeworld.
 pub struct TechProfile {
     pub era: life::HistoricalEra,
-    pub social_structure: &'static str,
+    pub factory_stage: &'static str,
     pub key_technologies: &'static [&'static str],
     pub available_substances: std::collections::HashSet<crafting::Substance>,
     pub known_recipes: Vec<&'static crafting::recipes::types::Recipe>,
@@ -484,7 +484,7 @@ pub fn build_tech_profile(
     let known_recipes = crafting::recipes::recipes_in_conditions(&conditions);
     TechProfile {
         era,
-        social_structure: era.social_structure(),
+        factory_stage: era.factory_stage(),
         key_technologies: era.key_technologies(),
         available_substances: substances,
         known_recipes,
@@ -1209,7 +1209,7 @@ mod tests {
         ]);
         let profile = build_tech_profile(7, &rm); // tech 7 = Industrialization
         assert_eq!(profile.era, life::HistoricalEra::Industrialization);
-        assert_eq!(profile.social_structure, "industrial");
+        assert_eq!(profile.factory_stage, "blast-furnace");
         // With iron ore, should have at least some metal recipes.
         assert!(
             !profile.known_recipes.is_empty(),

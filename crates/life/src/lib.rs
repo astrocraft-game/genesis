@@ -11,8 +11,8 @@
 //!   extinction cascades.
 //! - `habitat` — per-tile habitability, vegetation, species ranges.
 //! - `settlement` — suitability scoring + greedy placement.
-//! - `history` — species history (era milestones) + world-history
-//!   simulation (civilisations, settlements, figures, dynasties, artifacts).
+//! - `history` — planetary timeline (geological + biological eras),
+//!   species evolution history, technology era → recipe gating.
 //! - `naming` — order-2 Markov chain name generator (5 built-in styles).
 //! - `expansion` — interstellar expansion footprint by tech level.
 
@@ -35,7 +35,7 @@ pub use habitat::{
     compute_species_range, distribute_ecosystem, generate_vegetation, HabitatGrid,
     LifeDistribution, SpeciesRange,
 };
-pub use history::{simulate_history, HistoricalEra, History, HistoryParams};
+pub use history::{generate_planetary_timeline, HistoricalEra, PlanetaryTimeline};
 pub use input::SpeciesGenerationInput;
 pub use naming::{MarkovNameGen, NameStyle};
 pub use settlement::{compute_settlement_suitability, place_settlements, Settlement};

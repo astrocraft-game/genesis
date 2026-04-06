@@ -1,455 +1,345 @@
-# Genesis — Post-v0.2 Roadmap
+# Genesis — v0.3 Roadmap
 
 **Current state:** genesis 0.1.0, world 0.2.0, life 0.2.0 — surface-maps
-pipeline complete (10 phases delivered, ~417 tests passing).
+pipeline complete (all v0.2 phases delivered, ~240 tests passing).
 
-This plan lays out the next round of work, grouped into four tracks:
+**Context:** genesis generates alien worlds for a factory-management game
+(Factorio / Satisfactory / Riftbreaker style). The player lands on a
+procedurally-generated planet and must extract resources, build processing
+chains, and expand. There are no human civilisations — "life" means alien
+flora/fauna, environmental hazards, and the planet's deep geological
+history. Technology comes from the player's progression through crafting
+recipes, not from NPC societies.
 
-- **Track A: Fidelity & quality** — refine the physics we already have.
-- **Track B: New systems** — civilisation, resources, history, events.
-- **Track C: Engine integration** — make grids easier to consume.
-- **Track D: Developer experience** — examples, benchmarks, tooling.
+This plan is grouped into five tracks:
 
-Tracks are independent; phases within a track are roughly sequential.
-Each phase lists concrete deliverables and test criteria.
+- **Track E: Underground & geology** — depth, caves, ore distribution.
+- **Track F: Resources & extraction** — depletion, fluids, processing chains.
+- **Track G: Environment & hazards** — pollution, disasters, hazard zones.
+- **Track H: Alien biology** — evolution, adaptation, ecological depth.
+- **Track I: Crafting & factory** — recipe fidelity, energy, byproducts.
 
----
-
-## Track A — Fidelity & quality
-
-Goal: deepen the existing surface-maps pipeline without adding new subsystems.
-
-### A1 — Replace custom value noise with proper simplex ✅
-
-- [x] Added `noise = "0.9"` crate dependency to `world`.
-- [x] Replaced `hash_noise_2d` in `geology.rs` with `noise::SuperSimplex`.
-- [x] Added domain warping: two independent noise fields (warp_x, warp_y)
-      perturb input coordinates by ±0.25 × warp at frequency 2.0.
-- [x] Re-tuned amplitude from 800 m → 900 m for simplex gradient characteristics.
-- [x] Added test verifying sub-plate elevation variety (>500 m spread).
-
-### A2 — Hydraulic + thermal erosion ✅
-
-- [x] Feature-flag `erosion` on the `world` crate (opt-in, expensive).
-- [x] Particle-based hydraulic erosion (10k-50k particles): each droplet
-      slides downhill, picking up sediment proportional to slope and
-      velocity, depositing on lower-gradient cells.
-- [x] Thermal erosion: iteratively spread material where slope exceeds
-      the talus angle (~33° for rock, ~45° for sand).
-- [x] Run after base elevation, before sea-level binary search.
-- [x] Tests: erosion lowers peaks and fills basins, thermal erosion
-      reduces steep slopes, deterministic, mass-conserving within tolerance.
-
-### A3 — Seasonal monthly climate grids ✅
-
-- [x] Add `temperature_monthly_c` and `precipitation_monthly_mm`
-      (`Vec<[f32; 12]>`) to SurfaceLayers.
-- [x] Compute monthly insolation from axial tilt + orbital eccentricity
-      + current month (cosine-curve interpolation from summer/winter).
-- [x] Monthly precipitation: ITCZ latitude shifts seasonally with solar
-      declination, driving wet/dry seasonality per tile.
-- [x] Enable full Köppen seasonal subtypes (Csa, Csb, Cwa, Cwb, Dsa,
-      Dsb, Dwa, Dwb) using monthly precipitation data.
-- [x] Tests: monthly mean brackets annual, monthly sum equals annual,
-      tilt=0 flattens precipitation seasonality.
-
-### A4 — Biome palette expansion ✅
-
-- [x] Add new `BiomeType` variants: MediterraneanShrubland, XericShrubland,
-      Mangrove, Chaparral, Steppe, ColdDesert.
-- [x] Refine Whittaker lookup with secondary axes (Köppen class for
-      Mediterranean, humidity + coastal for Mangrove, precipitation bands
-      for Steppe vs Grassland).
-- [x] Mirror additions to life's `Biome` enum + adapter map.
-- [x] Update biome affinity + vegetation modifier tables in life/habitat.rs
-      and settlement moderation scores in life/settlement.rs.
-
-### A5 — Refined ocean dynamics ✅
-
-- [x] Per-basin gyre centres (BasinInfo centroid drives gyre placement).
-- [x] Basin-aware east/west position respects basin boundaries, not just
-      nearest land.
-- [x] El-Niño-like equatorial eastern-boundary SST anomaly (+1 °C).
-- [x] Thermohaline circulation: polar-connected basins get deep-water
-      cooling (−2 °C at >55°) and mid-latitude upwelling warmth (+0.5 °C).
-- [x] Tests: multi-basin worlds have distinct gyre centroids, basin E/W
-      position respects dividers, polar basins detected.
-
-### A6 — Grid serialisation ✅
-
-- [x] Added `serde = { version = "1.0", optional = true }` + `serde` feature
-      flag in `world/Cargo.toml`.
-- [x] `#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]` on
-      `SurfaceGrid`, `SurfaceLayers`, `Plate`, `GridResolution`, `BoundaryKind`,
-      `PlateKind`, `BiomeType`, `KoppenClass`.
-- [x] Feature-gated tests: `grid_round_trips_through_json` and
-      `resolution_round_trips` verify full round-trip equality.
-- [x] Default build unchanged — serde dep only pulled in with `--features serde`.
+Plus a **Cleanup** section for gaps found in the v0.2 audit.
 
 ---
 
-## Track B — New systems
+## Cleanup — Gaps from v0.2 audit
 
-Goal: build on the existing physical/life grids to model
-civilisations, resources, history, and dynamic events.
+### Z1 — Unify settlement types ✅
 
-### B1 — Resource layer ✅
+- [x] Removed `HistoricSettlement` (was part of civ sim). Only
+      `settlement::Settlement` (grid-based) remains.
 
-- [x] Added `world/src/resources.rs` with `Resource` enum (20 variants:
-      ores, minerals, fossil fuels, chemicals, biological, fresh water)
-      and `ResourceMap` struct.
-- [x] Per-tile resource derivation from plate kind + tectonic boundary +
-      biome + river discharge:
-      - Continental convergent → iron/copper/gold ore
-      - Divergent → iron/tin ore
-      - Volcanic biomes + convergent boundaries → sulfur/obsidian/gemstones
-      - Continental sedimentary basins → coal (forests) / oil+gas (arid)
-      - Forest biomes → timber, spices, herbs
-      - Savanna/grassland → livestock, grain
-      - Ocean tiles → fish + salt + limestone
-      - Arid land → evaporite salt
-      - High-discharge river tiles → fresh water
-- [x] Root adapters: `resource_to_substances()` maps each Resource to one or
-      more `crafting::Substance`s; `resource_map_to_substance_set()`
-      returns the union of craftable substances for a whole world.
-- [x] `ResourceMap` supports `count(resource)` and `distinct_resources()`.
-- [x] 9 world tests + 1 adapter test covering all major rules.
+### Z2 — History module rethink ✅
 
-### B2 — Settlement placement ✅
+- [x] Removed: `Civilization`, `Dynasty`, `DynastyChange`, `HistoricalFigure`,
+      `WorldEvent`, `History`, `HistoryParams`, `simulate_history`,
+      `rationalise_events`.
+- [x] Replaced `social_structure()` with `factory_stage()` on `HistoricalEra`
+      (manual → kiln → furnace → blast-furnace → electric-arc → plasma → exotic).
+- [x] Added `PlanetaryEventKind` (19 geological + biological event types),
+      `PlanetaryEvent`, `PrecursorRuin`, `PlanetaryTimeline`.
+- [x] `generate_planetary_timeline(star_age, has_oceans, has_life, tiles, seed)`
+      produces chronological geological + biological history with optional
+      precursor ruins (~20% on life-bearing worlds).
+- [x] Kept: `HistoricalEra` + all tech/capability methods, `generate_species_history`.
+- [x] 13 tests covering determinism, chronology, formation first, lifeless
+      worlds skip bio events, precursor ruin validity, species history.
 
-- [x] Added `life/src/settlement.rs` with `Settlement` struct and two
-      public functions.
-- [x] `compute_settlement_suitability()` combines per-tile habitability,
-      water access, resource density, biome moderation, and elevation
-      penalty into a multiplicative score (0–1). Ocean/unhabitable tiles
-      score 0; extreme elevation (>4500 m) scores 0.
-- [x] `place_settlements()` — greedy top-N selection with Chebyshev
-      minimum-separation radius (longitude-wrapped), ordered by
-      suitability, with population order derived from score (3-9).
-- [x] Biome moderation table: TemperateForest/Grassland 1.0 → IceCap 0.0.
-- [x] Root adapters: `water_access_from_grid()` (coastal + riverine) and
-      `resource_density_from_map()` (normalised unique-resource count).
-- [x] 10 life tests + 2 adapter tests, including end-to-end Earth-like
-      world settlement placement using real SurfaceGrid + ResourceMap.
+### Z3 — Name style variety
 
-### B3 — Trade routes ✅
+- [ ] History/features should pick `NameStyle` based on species body plan
+      or planet type, not always `FantasyHuman`.
+- [ ] Add 2-3 more styles: `Crystalline`, `Fungal`, `Insectoid`.
 
-- [x] Added `world/src/routing.rs` with an A* pathfinder on SurfaceGrid,
-      caller-supplied cost function, longitude-wrapped neighbours,
-      Chebyshev-distance heuristic.
-- [x] `trade_cost()` helper: ocean 0.5, flatland 1.0, forest 1.5,
-      wetland 2.5, desert 2.8, alpine/icecap 4-5, volcanic 6, plus
-      elevation penalty of 0.8 per km.
-- [x] Root adapters: `TradeRoute` struct and `compute_trade_routes()`
-      N-to-N pathfinding capped at `routes_per_settlement` outbound
-      routes, ordered by complementarity-based value.
-- [x] Route value = (resources-each-has-that-the-other-lacks) /
-      (1 + path_cost); routes below 0.01 are dropped.
-- [x] 7 world routing tests + 1 end-to-end adapter test covering trivial
-      path, 2-tile pathfinding, ocean preference, mountain penalties,
-      blocked paths, longitude wrap, determinism, and settlement network.
+### Z4 — Recipe placeholder cleanup
 
-### B4 — History generation (Dwarf-Fortress-lite) ✅
-
-- [x] Extended `history.rs` with world-history simulation.
-- [x] Core event types: `Founding`, `War`, `Migration`, `Discovery`,
-      `Catastrophe`, `GoldenAge`, `Contact`, `Schism`, `DynastyChange`.
-- [x] Entity types: `Civilization`, `HistoricSettlement`, `HistoricalFigure`,
-      `Dynasty`, `Artifact` — all with unique EntityId.
-- [x] `simulate_history(params, seed)` runs N-year timeline with per-civ
-      event rolls, civ collapse, figure aging, dynasty succession.
-- [x] Retroactive rationalisation: `rationalise_events` fills narrative
-      descriptions from participant context after timeline generation.
-- [x] Deterministic from seed; produces `History { events, civs, figures,
-      dynasties, artifacts }`.
-- [x] Tests: determinism, length scales with years, chronological order,
-      descriptions filled, unique IDs, no time-paradoxes.
-
-### B5 — Name generators (Markov chains) ✅
-
-- [x] Added `life/src/naming.rs` with an order-2 Markov chain.
-- [x] `NameStyle` enum with 5 bundled corpora: FantasyHuman (~50 words,
-      medieval/Latin), Dwarvish (~45, consonant-heavy), Elvish (~47,
-      vowel-rich), Norse (~47, saga names), Alien (~42, unusual clusters).
-- [x] `MarkovNameGen::for_style()` builds a generator from the bundled
-      corpus. `generate(&mut rng, min_len, max_len)` returns a capitalized
-      name, retrying up to 8× to hit length bounds.
-- [x] Deterministic from seed; empty corpus returns "Unnamed" gracefully.
-- [x] 8 tests: all styles produce names, length bounds respected, same
-      seed → same sequence, different seeds diverge, 100-sample diversity
-      check (≥60 unique), corpus alphanumeric check, empty-corpus
-      fallback, human vs alien phonology (vowel-ratio distinction).
-
-### B6 — Named features ✅
-
-- [x] Added `world/src/features.rs` with feature detection (no names,
-      pure geography): `MountainRange`, `River`, `OceanBasin`, `Island`,
-      `Desert`, all bundled in `Features`.
-- [x] Algorithms:
-      - Mountain ranges: flood-fill elevation > sea_level + 1500 m,
-        minimum 3 tiles.
-      - Rivers: trace from each ocean-adjacent high-discharge tile
-        upstream via strictly-decreasing discharge, source-first.
-      - Ocean basins: group ocean tiles by `drainage_basin_id`.
-      - Islands: flood-fill contiguous land tiles, sorted by size.
-      - Deserts: flood-fill tiles with biome=Desert, minimum 2 tiles.
-- [x] All flood-fills 4-connected with longitude wrap.
-- [x] Root adapter `name_features()` pairs each feature with a Markov-
-      generated name (+ category suffix: "Mountains", "River", "Ocean",
-      "Desert") using the chosen NameStyle. Deterministic from seed.
-- [x] 9 world tests + 1 adapter test covering detection, river monotonic
-      discharge, basin-id consistency, name suffixes, determinism.
-
-### B7 — Weather events & disasters ✅
-
-- [x] Added `world/src/events.rs` with `EventKind` (non_exhaustive) and
-      `NaturalEvent { kind, tile_idx, year, magnitude, duration_days }`.
-- [x] 7 event types with eligibility rules:
-      - **VolcanicEruption**: continental tiles on Convergent/Divergent
-        boundaries, 0.1% per tile-year.
-      - **Earthquake**: any tile with tectonic_boundary ≠ None, 0.4% per
-        tile-year, instantaneous.
-      - **Hurricane**: ocean tiles with SST > 27 °C, 1.0% per tile-year,
-        3–14 days.
-      - **Wildfire**: Desert/Savanna land with summer temp > 28 °C, 2.0%
-        per tile-year, 1–30 days.
-      - **Drought**: 0.5% per drainage basin per year, 90–365 days.
-      - **Flood**: land tiles with discharge > 500 m³/s, 1.0% per
-        tile-year, 1–30 days.
-      - **MeteoriteImpact**: 0.05% per planet per year, random tile.
-- [x] Fully deterministic from `(grid, years, seed)`; uses `BTreeSet`
-      over basin IDs so iteration order stays stable.
-- [x] 11 tests: event generation, determinism, volcano/quake/hurricane/
-      wildfire/flood eligibility, impact rarity, magnitude range,
-      year bounds, year-scaling.
-
-### B8 — Ecosystem dynamics ✅
-
-- [x] Extended `Ecosystem` with `predator_prey_links`, `trophic_pyramid_valid`,
-      and `keystone_species` fields, auto-computed by `build_food_web`.
-- [x] Predator-prey links: carnivores→herbivores/omnivores, herbivores→
-      producers, omnivores→producers+herbivores, filter-feeders→producers.
-- [x] Keystone species: removal-simulation identifies species whose loss
-      disconnects any consumer from all food sources.
-- [x] `apply_extinction(eco, habitability, threshold)`: removes species
-      below threshold, cascades (carnivores with no prey die), rebuilds web.
-- [x] Tests: every carnivore has ≥1 prey, valid trophic pyramid, producer
-      is keystone, removal of keystone collapses web, extinction reproducible.
-
-### B9 — Technology & culture (ties to crafting) ✅
-
-- [x] `HistoricalEra::key_technologies()` returns per-era tech labels.
-- [x] `HistoricalEra::social_structure()` returns social-organization label
-      (hunter-gatherer → agricultural → industrial → spacefaring).
-- [x] `TechProfile` struct combines era, social structure, key techs,
-      available substances, and filtered known_recipes.
-- [x] `build_tech_profile(tech_level, resource_map)` bridges era +
-      world resources → `crafting::PlanetaryConditions` with substance
-      filtering, producing only recipes the civ can actually make.
-- [x] Tests: stone-age can't craft steel, industrial with iron can smelt,
-      resource-poor civ has fewer recipes, higher tech unlocks more.
+- [ ] Audit 60+ placeholder recipes in crafting (fuel, construction,
+      chemistry) where distinct materials map to the same output.
+- [ ] Either add proper output substances or document as intentional
+      simplification.
 
 ---
 
-## Track C — Engine integration
+## Track E — Underground & geology
 
-Goal: make grids trivially consumable by game engines.
+Goal: give planets vertical depth — ore veins, cave networks, aquifers.
 
-### C1 — Alternative grid layouts ✅
+### E1 — Stratified geological layers
 
-- [x] `HexGrid` via recursive icosahedron subdivision (configurable level).
-- [x] `CubeSphereGrid` with 6 square faces × resolution².
-- [x] `SurfaceSampler` trait with `sample_at(x,y,z) -> TileData`.
-- [x] Implemented for `SurfaceGrid`, `HexGrid`, and `CubeSphereGrid`.
-- [x] Conversion helpers: `equirect_to_hex`, `equirect_to_cube`.
-- [x] Tests: tile counts match formulae, sampler returns valid data,
-      biome coverage preserved across layouts, unit-sphere positions,
-      equivalent elevation at same direction across all three.
+- [ ] Per-tile vertical column: `Vec<RockLayer>` with layer type
+      (sedimentary, metamorphic, igneous, ore vein), thickness, depth.
+- [ ] Layer distribution driven by plate type (continental → thick
+      sedimentary; oceanic → thin crust + basalt; convergent → folded).
+- [ ] Ore placement: deposit type + purity + quantity placed within
+      specific layers (iron in igneous, coal in sedimentary, gems in
+      metamorphic). Uses the existing `Resource` enum.
+- [ ] Deterministic from seed.
+- [ ] Tests: continental tiles have thicker crust, ore deposits match
+      geological context, layers sum to plausible total depth.
 
-### C2 — Texture export ✅
+### E2 — Cave system generation
 
-- [x] `grid.export_biome_rgb() -> Vec<u8>` with fixed 13-colour biome palette.
-- [x] `grid.export_elevation_grayscale() -> Vec<u8>` (split scaling at sea level).
-- [x] `grid.export_temperature_rgb() -> Vec<u8>` (blue-white-red colormap).
-- [x] `grid.export_precipitation_rgb() -> Vec<u8>` (tan-to-blue colormap).
-- [x] `grid.export_ocean_mask() -> Vec<u8>` (0 = land, 255 = ocean).
-- [x] `grid.dimensions() -> (u16, u16)` helper for buffer shape.
-- [x] No new dependencies — raw `Vec<u8>` outputs compatible with `image`
-      crate, Bevy textures, or raw GL uploads at the caller's discretion.
-- [x] 11 tests covering buffer sizes, colour invariants, and palette coverage
-      of all biome variants.
+- [ ] `CaveNetwork { rooms: Vec<CaveRoom>, tunnels: Vec<Tunnel> }` per
+      tile or per-region.
+- [ ] Generation: random-walk + flood-fill within igneous/metamorphic
+      layers. Influenced by hydrology (karst in limestone, lava tubes
+      near volcanoes).
+- [ ] Aquifers: water-filled caves near the water table. Affects
+      river discharge and settlement water access.
+- [ ] Tests: caves only in plausible geology, aquifers near rivers,
+      network connectivity.
 
-### C3 — Sphere sampling API ✅
+### E3 — Terrain mutability ledger
 
-- [x] `SurfaceGrid::sample_xyz(x, y, z) -> usize` — normalized 3D point
-      to tile index. Automatically normalizes the input vector.
-- [x] `CubeFace` enum (PosX/NegX/PosY/NegY/PosZ/NegZ) with `to_xyz(u, v)`
-      mapping and `ALL` constant.
-- [x] `SurfaceGrid::sample_cube_face(face, u, v) -> usize` — bridges
-      cube-sphere engines to the equirectangular grid.
-- [x] `SurfaceGrid::tile_area_km2(row, planet_radius_km) -> f32` and
-      `surface_area_km2(radius) -> f32` — physical area helpers using
-      cos-latitude scaling.
-- [x] 10 tests: +x equator, +y/-y poles, normalization, all-face
-      validity, face-centre axes, polar area shrinkage, **4πR² sum
-      agreement within 1%**, stability, cube-face XYZ magnitudes.
-
-### C4 — LOD system ✅
-
-- [x] `grid.zoom_region(lon_min, lat_min, lon_max, lat_max, factor, seed)`
-      returns a higher-resolution sub-grid for the specified region.
-- [x] Bilinear interpolation for continuous layers (elevation, temperature,
-      precipitation, wind, SST, discharge), nearest-neighbour for discrete
-      layers (biome, plate_id, ocean flag, Köppen).
-- [x] Extra fractal noise on elevation for fine detail, deterministic
-      from seed.
-- [x] Tests: higher resolution, climate continuity with parent, determinism,
-      different seeds differ, ocean flags preserved.
-
-### C5 — Query helpers ✅
-
-- [x] `grid.biome_distribution() -> HashMap<BiomeType, f32>` — land frac.
-- [x] `grid.nearest_ocean_tile(lat, lon) -> (u16, u16)`.
-- [x] `grid.longest_river() -> (Vec<(u16,u16)>, f32_discharge)`.
-- [x] `grid.largest_mountain_range() -> Vec<(u16,u16)>`.
-- [x] `grid.total_land_area_km2(planet_radius_km) -> f32`.
-- [x] Tests: Earth-like distribution roughly 29% land, match human
-      geography intuitions.
+- [ ] `TerrainLog` per-tile: records cumulative changes (mining,
+      dumping, deforestation, erosion events) as timestamped entries.
+- [ ] Used by the factory sim to track what the player has altered.
+- [ ] Enables "before/after" planet state comparison.
+- [ ] Tests: log is empty on fresh grid, entries accumulate correctly.
 
 ---
 
-## Track D — Developer experience
+## Track F — Resources & extraction
 
-Goal: make the library easier to learn, test, and contribute to.
+Goal: make resources behave like real deposits — finite, variable quality,
+requiring multi-step processing.
 
-### D1 — Example binaries ✅
+### F1 — Resource node model
 
-- [x] `examples/single_planet.rs` — generates an Earth-like world,
-      prints plate count, land/ocean split, elevation range, mean temp,
-      precipitation, biome distribution.
-- [x] `examples/export_maps.rs` — generates a Standard-resolution grid
-      and writes 5 PPM/PGM files (biome, elevation, temperature,
-      precipitation, ocean mask) using a built-in PPM writer (no image
-      crate dependency).
-- [x] `examples/species_ecosystem.rs` — generates ecosystem + prints
-      food web by trophic level (producer/herbivores/predators/filter).
-- [x] `examples/recipe_chain.rs` — looks up crafting recipes that produce
-      or consume a given substance.
-- [ ] `examples/universe_walk.rs` — deferred.
+- [ ] Extend `ResourceMap` tiles with `ResourceNode { resource, purity: f32,
+      quantity: f64, depth: f32 }` instead of flat `Vec<Resource>`.
+- [ ] Purity affects extraction yield (high purity = less waste).
+- [ ] Quantity depletes as extracted. When exhausted, node is spent.
+- [ ] Generation: quantity scales with geological layer thickness,
+      purity varies with noise.
+- [ ] Tests: total planetary ore within plausible bounds, purity in 0–1,
+      quantity > 0 for all nodes.
 
-### D2 — Benchmarks ✅
+### F2 — Fluid resources
 
-- [x] Added `criterion = "0.5"` as dev-dependency.
-- [x] `benches/pipeline.rs` with 8 benchmarks: geology, temperature,
-      wind, precipitation, ocean dynamics, hydrology, biome classification,
-      and full pipeline at Fast/Standard/Detailed resolutions.
-- [x] Run via `cargo bench -p world`.
+- [ ] Tag oil, natural gas, geothermal as fluid resources with
+      `pressure: f32` and `flow_rate: f32`.
+- [ ] Geothermal vents placed as point features near volcanic/convergent
+      tiles. Permanent energy source.
+- [ ] Oil/gas reservoirs: large deposits in sedimentary basins, finite.
+- [ ] Tests: geothermal only near volcanics, oil only in sedimentary.
 
-### D3 — Visualisation CLI ✅
+### F3 — Multi-stage processing chains
 
-- [x] `examples/visualise.rs` with 6 modes selectable via CLI arg:
-      `biome`, `elevation`, `temperature`, `plates`, `food_web`,
-      `trade_routes`, `all`.
-- [x] ASCII biome map with 19-character palette + legend.
-- [x] ASCII elevation map (depth/height bands).
-- [x] ASCII temperature map (6 thermal bands).
-- [x] Tectonic plate DOT graph (paste into Graphviz).
-- [x] Food web with predator-prey links and keystone species.
-- [x] Trade routes with settlement suitability + cost/value.
-- [x] No GUI, plain terminal output.
+- [ ] Enrich the `CraftingGraph` with explicit extraction→processing→output
+      paths. Add `ExtractionRecipe` linking `ResourceNode` to `Substance`.
+- [ ] Model processing tiers: raw ore → concentrate → metal → alloy → part.
+- [ ] Each tier requires higher temperature/pressure (maps to tech level).
+- [ ] Visualisation: `graph.shortest_chain(raw_iron, steel_plate)` returns
+      the recipe sequence.
+- [ ] Tests: every substance reachable from some raw resource, chain
+      length increases with product complexity.
 
-### D4 — Property-based testing ✅
+### F4 — Resource scanning & discovery
 
-- [x] Added `proptest = "1.5"` as dev-dependency.
-- [x] `tests/proptest_invariants.rs` with 8 property tests (20 cases each):
-      - temperature within plausible bounds (−200 to +200 °C)
-      - biome always assigned (ocean↔Ocean, land↔non-Ocean)
-      - discharge non-negative
-      - ocean tiles have zero discharge
-      - precipitation non-negative
-      - elevation finite
-      - monthly precipitation sums to annual total
-      - high flow-accumulation implies positive discharge
-- [x] Random `PlanetSimulationInput` strategy covers body radius 0.3–3.0,
-      blackbody 150–400 K, tilt 0–90°, greenhouse 0–50 K, hydro 0–100%.
+- [ ] `ScanState` per-tile: `Unknown | SurfaceScan | DeepScan | FullyMapped`.
+- [ ] Surface scan reveals biome, elevation, surface resources.
+      Deep scan reveals underground layers, ore nodes, caves.
+- [ ] Progression mechanic: player starts with surface-only data,
+      unlocks deep scanning via tech.
+- [ ] Tests: fresh planet is all Unknown, scan reveals correct data.
 
-### D5 — Grid diff tool ✅
+---
 
-- [x] `world::diff::diff_grids(a, b) -> GridDiff` compares all layers.
-- [x] Per-layer statistics: changed tile count, mean/max absolute diff
-      for 10 continuous layers, changed count for 6 discrete layers.
-- [x] `GridDiff::print_summary()` for human-readable output.
-- [x] `examples/grid_diff.rs`: generate two grids from CLI seeds and
-      print diff (`cargo run --example grid_diff -- seed_a seed_b`).
-- [x] Tests: same seed → identical, different seeds → differences,
-      mismatched dimensions → not comparable, correct layer counts.
+## Track G — Environment & hazards
 
-### D6 — Documentation ✅
+Goal: planets fight back — pollution, disasters, hostile zones.
 
-- [x] Crate-level `//!` docs with architecture overview on all 5 crates
-      (cosmos, world, life, crafting, genesis root).
-- [x] Docstring examples on key public functions (`generate_surface_grid`,
-      `diff_grids`) — run as doctests.
-- [x] ASCII architecture diagram in root genesis crate docs.
-- [x] Tutorial-style walkthrough ("generate your first planet") in root
-      crate `//!` doc with runnable code example.
+### G1 — Pollution layer
+
+- [ ] Per-tile `pollution: f32` that spreads via diffusion each tick.
+- [ ] Sources: industrial settlements/factories (keyed to extraction rate
+      and recipe byproducts).
+- [ ] Effects: biome degradation (forest → grassland → barren at high
+      pollution), species range contraction, ecosystem extinction cascade.
+- [ ] Sinks: vegetation absorbs pollution (incentivises preserving forests).
+- [ ] Tests: pollution spreads from source, decays with distance,
+      high pollution triggers biome change.
+
+### G2 — Environmental hazard zones
+
+- [ ] `HazardMap` parallel to `ResourceMap`: per-tile flags for
+      toxic atmosphere, radiation, acid rain, extreme cold/heat,
+      seismic instability.
+- [ ] Derived from existing layers: `photochemistry` → toxic/radiation,
+      `temperature_c` → extreme cold/heat, `tectonic_boundary` → seismic.
+- [ ] Affects: factory placement cost, equipment wear, species habitability.
+- [ ] Tests: hazard flags consistent with underlying physics layers.
+
+### G3 — Expanded natural disasters
+
+- [ ] Extend `world::events` with richer disaster model:
+      - Supervolcano: months-long eruption, global temperature drop.
+      - Tsunami: triggered by offshore earthquake, affects coastal tiles.
+      - Solar flare: radiation spike, electronics damage (high-tech hazard).
+      - Acid rain storm: chemical damage in polluted regions.
+- [ ] Each disaster has epicentre, radius, severity, duration.
+- [ ] Disasters can destroy factory buildings (game-engine hook).
+- [ ] Tests: disasters respect geographical constraints, severity bounded.
+
+### G4 — Climate change simulation
+
+- [ ] Given a pollution trajectory over N years, compute shifted
+      temperature and precipitation maps.
+- [ ] Greenhouse gas accumulation → global warming → ice cap retreat →
+      sea level rise → coastal tile flooding.
+- [ ] Deforestation → reduced precipitation in affected basin.
+- [ ] Tests: zero pollution = stable climate, high pollution shifts
+      temperature upward, sea level rises with warming.
+
+---
+
+## Track H — Alien biology
+
+Goal: make alien ecosystems feel alive, dangerous, and worth studying.
+
+### H1 — Species evolution timeline
+
+- [ ] Per-species `EvolutionHistory`: sequence of adaptation events
+      (body plan change, size shift, new locomotion, trophic shift).
+- [ ] Generated from the planet's geological timeline: mass extinctions
+      drive speciation bursts, climate shifts drive adaptation.
+- [ ] Output: narrative text explaining why species X has trait Y.
+- [ ] Tests: evolution events are chronological, traits match environment.
+
+### H2 — Mutation and adaptation
+
+- [ ] When environment changes (pollution, climate shift, disaster),
+      species in affected tiles may mutate.
+- [ ] `Mutation { trait: TraitChange, trigger: EventKind, generation: u32 }`.
+- [ ] Mutations can make species more dangerous (larger, toxic, aggressive)
+      or cause extinction (maladaptive).
+- [ ] Tests: mutation only triggered by environmental change, traits shift
+      in plausible direction.
+
+### H3 — Ecological competition and niches
+
+- [ ] Add competition links to ecosystem: two herbivores sharing the
+      same biome compete for vegetation density.
+- [ ] Niche differentiation: species with different `SizeClass` or
+      `LocomotionType` compete less.
+- [ ] Parasitism: parasite species reduce host population density.
+- [ ] Tests: competition reduces both populations, niche separation
+      allows coexistence.
+
+### H4 — Alien flora detail
+
+- [ ] Expand vegetation model: per-biome plant types (canopy trees,
+      ground cover, aquatic, fungal) with growth rates.
+- [ ] Player can harvest specific plant types for crafting inputs
+      (timber, fiber, resin, spores).
+- [ ] Deforestation: removing vegetation reduces precipitation downwind,
+      increases erosion, opens tile for factory building.
+- [ ] Tests: vegetation types match biome, harvesting depletes density.
+
+### H5 — Creature behaviour tags
+
+- [ ] Per-species `BehaviourProfile`: territorial, migratory, nocturnal,
+      burrowing, swarming, venomous.
+- [ ] Tags influence: factory defence requirements, resource access
+      (burrowing creatures block mining), seasonal threat patterns.
+- [ ] Generated from body plan + trophic level + biome.
+- [ ] Tests: carnivores tend toward territorial, small arthropods toward
+      swarming, tags consistent with biology.
+
+---
+
+## Track I — Crafting & factory
+
+Goal: make the crafting system factory-ready — energy, waste, throughput.
+
+### I1 — Energy model
+
+- [ ] Per-recipe `energy_kj: f32` field — energy cost to execute.
+- [ ] Energy sources: geothermal (permanent), fossil fuel (finite),
+      solar (biome-dependent), nuclear (tech-gated).
+- [ ] `EnergyBudget` struct: available power vs. factory demand.
+- [ ] Deficit → recipes slow down or halt.
+- [ ] Tests: total energy demand scales with factory size, deficit
+      reduces throughput.
+
+### I2 — Byproduct and waste tracking
+
+- [ ] Every recipe already has `byproducts` field — ensure it's populated
+      for all 750+ recipes (many are currently empty).
+- [ ] Waste substances: slag, tailings, CO2, wastewater, toxic sludge.
+- [ ] Unmanaged waste accumulates → feeds pollution layer (G1).
+- [ ] Waste processing recipes: turn slag into aggregate, CO2 into
+      carbon capture, wastewater into clean water.
+- [ ] Tests: industrial recipes produce waste, waste processing reduces
+      pollution.
+
+### I3 — Recipe tech tiers
+
+- [ ] Explicit `tech_tier: u8` on every recipe (currently implicit via
+      temperature/pressure thresholds).
+- [ ] Tiers: 0=manual, 1=kiln, 2=furnace, 3=blast furnace, 4=electric
+      arc, 5=chemical reactor, 6=plasma, 7=nuclear, 8=exotic.
+- [ ] Player's factory has a current max tier; filters available recipes.
+- [ ] Tests: tier monotonically increases with temperature requirement,
+      all recipes have a tier assigned.
+
+### I4 — Throughput and logistics model
+
+- [ ] Per-recipe `throughput_kg_per_hour: f32` — base production rate.
+- [ ] Logistics: transport cost between factory nodes uses the existing
+      `routing::trade_cost` pathfinding.
+- [ ] Bottleneck detection: `graph.find_bottleneck(output_substance)`
+      returns the rate-limiting recipe in the chain.
+- [ ] Tests: bottleneck is the slowest recipe in the chain, throughput
+      scales with parallel instances.
+
+### I5 — Rare and exotic materials
+
+- [ ] Add 15-20 new substances: rare earths (neodymium, cerium, lanthanum),
+      semiconductors (silicon wafer, gallium arsenide), pharmaceuticals
+      (antibiotic, stimulant), exotic (dark matter, zero-point crystal).
+- [ ] Rare earths found only on specific geological configurations.
+- [ ] Exotic materials found at precursor ruin sites or anomaly tiles.
+- [ ] Tests: new substances reachable via recipe chains, exotic substances
+      gated behind high tech tier.
 
 ---
 
 ## Execution order (suggested)
 
-Immediate (weeks 1-2):
-1. **A1** (real simplex noise) — low-risk upgrade, visible quality bump.
-2. **A6** (serde) — unlocks saving/loading grids for experimentation.
-3. **C2** (texture export) — enables visual feedback.
-4. **D1** (example binaries) — documents the API surface.
+**Phase 1 — Foundation fixes (cleanup):**
+1. Z1 (unify settlements), Z2 (rethink history), Z3 (name styles)
 
-Short-term (weeks 3-6):
-5. **A2** (erosion) — classic PCG upgrade, behind feature flag.
-6. **A3** (seasonal climate) — unlocks full Köppen, monsoons.
-7. **B1** (resources) — bridges crafting ↔ surface.
-8. **B5** (name generators) — prerequisite for B6, B4.
+**Phase 2 — Underground & resources:**
+2. E1 (geological layers) — prerequisite for everything underground
+3. F1 (resource nodes) — depletion model
+4. E2 (caves) — needs E1
+5. F2 (fluid resources) — needs F1
 
-Medium-term (weeks 7-12):
-9. **B6** (named features) — makes worlds tangible.
-10. **B2** (settlements) — foundation of civilisation layer.
-11. **B7** (events & disasters) — adds dynamism.
-12. **B9** (tech & culture) — ties crafting to civilisations.
+**Phase 3 — Factory core:**
+6. I1 (energy model)
+7. I2 (byproducts/waste)
+8. I3 (recipe tech tiers)
+9. F3 (processing chains)
 
-Long-term (weeks 13+):
-13. **B3** (trade routes) — needs settlements.
-14. **B4** (history sim) — needs civilisations, events.
-15. **B8** (ecosystem dynamics) — needs more species variety.
-16. **C1** (alt grid layouts) — major refactor.
-17. **C4** (LOD) — major refactor.
+**Phase 4 — Environment:**
+10. G1 (pollution) — needs I2
+11. G2 (hazard zones)
+12. G3 (expanded disasters)
 
----
+**Phase 5 — Alien biology:**
+13. H1 (evolution timeline)
+14. H5 (creature behaviour)
+15. H4 (flora detail)
+16. H2 (mutation)
 
-## Open questions
-
-- **Crate for civilisation** — does the civilisation/history layer
-  belong in a new `civilisation` crate, or extend `life`? Leaning
-  toward new crate to keep life's scope tight.
-- **Optional dependencies everywhere** — should every new subsystem
-  be behind a feature flag? Probably yes for large additions (erosion,
-  noise, texture export) but no for API surface additions (resources,
-  named features).
-- **Art direction for names** — do we bundle only real-world-language-
-  based corpora or add fully invented phonologies?
-- **How deep should history go?** Dwarf Fortress generates 100s of
-  years. Is 50 events enough? 500?
-- **GPU acceleration** — any phase worth porting to GPU (noise,
-  erosion)? Deferred until performance is a bottleneck.
-
----
-
-## What we are NOT planning to do
-
-These are explicitly out of scope (feel free to reopen later):
-- **Per-meter walkable surface detail** — that's the game engine's job.
-- **GPU-accelerated generation** — CPU determinism is more important.
-- **Real-time weather simulation** — events are discrete, episodic.
-- **AI-generated text or names** — all generators remain deterministic.
-- **Network sync / multiplayer** — single-client library only.
-- **Save file format for game state** — grids are regeneratable from
-  seed; users persist seeds, not grids.
+**Phase 6 — Polish:**
+17. G4 (climate change)
+18. F4 (resource scanning)
+19. H3 (ecological competition)
+20. I4 (throughput/logistics)
+21. I5 (rare/exotic materials)
+22. E3 (terrain ledger)
+23. Z4 (recipe placeholders)
