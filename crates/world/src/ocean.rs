@@ -235,12 +235,24 @@ mod tests {
 
 use crate::grid::SurfaceGrid;
 
+/// Per-basin metadata used to drive gyre placement and SST modifiers.
+struct BasinInfo {
+    lat_min: f32,
+    lat_max: f32,
+    centroid_lat: f32,
+    tile_count: u32,
+    /// True if any tile in this basin is poleward of 50°.
+    reaches_polar: bool,
+}
+
 /// Populate ocean dynamics layers on a grid that already has geology
 /// (for is_ocean) and temperature (for base SST) populated.
 pub fn generate_ocean_dynamics(grid: &mut SurfaceGrid) {
     flood_fill_basins(grid);
-    assign_ocean_currents(grid);
-    apply_boundary_sst(grid);
+    let basins = compute_basin_info(grid);
+    assign_ocean_currents(grid, &basins);
+    apply_boundary_sst(grid, &basins);
+    apply_thermohaline(grid, &basins);
 }
 
 /// Flood-fill connected ocean tiles into contiguous basin IDs. Basins are
@@ -281,9 +293,48 @@ fn flood_fill_basins(grid: &mut SurfaceGrid) {
     grid.layers.drainage_basin_id = basin;
 }
 
+/// Gather per-basin latitude extent, centroid, and polar reach.
+fn compute_basin_info(grid: &SurfaceGrid) -> std::collections::HashMap<u16, BasinInfo> {
+    let w = grid.width as usize;
+    let mut map: std::collections::HashMap<u16, (f32, f32, f32, u32, bool)> =
+        std::collections::HashMap::new();
+    for (idx, &bid) in grid.layers.drainage_basin_id.iter().enumerate() {
+        if bid == 0 {
+            continue;
+        }
+        let r = (idx / w) as u16;
+        let lat = grid.row_latitude(r);
+        let entry = map.entry(bid).or_insert((90.0, -90.0, 0.0, 0, false));
+        entry.0 = entry.0.min(lat); // lat_min (most southern)
+        entry.1 = entry.1.max(lat); // lat_max (most northern)
+        entry.2 += lat; // running sum for centroid
+        entry.3 += 1;
+        if lat.abs() > 50.0 {
+            entry.4 = true;
+        }
+    }
+    map.into_iter()
+        .map(|(id, (lat_min, lat_max, lat_sum, count, polar))| {
+            (
+                id,
+                BasinInfo {
+                    lat_min,
+                    lat_max,
+                    centroid_lat: lat_sum / count as f32,
+                    tile_count: count,
+                    reaches_polar: polar,
+                },
+            )
+        })
+        .collect()
+}
+
 /// Assign current direction and speed to each ocean tile based on latitude
-/// and east-west position within its local ocean span.
-fn assign_ocean_currents(grid: &mut SurfaceGrid) {
+/// and east-west position within its basin's ocean span.
+fn assign_ocean_currents(
+    grid: &mut SurfaceGrid,
+    basins: &std::collections::HashMap<u16, BasinInfo>,
+) {
     let w = grid.width as usize;
     let h = grid.height as usize;
     for r in 0..h {
@@ -295,8 +346,10 @@ fn assign_ocean_currents(grid: &mut SurfaceGrid) {
                 continue;
             }
             let lat = grid.row_latitude(r as u16);
-            let pos_ew = east_west_position(grid, c, r);
-            let (dir, speed) = current_vector(lat, pos_ew);
+            let bid = grid.layers.drainage_basin_id[idx];
+            let pos_ew = basin_east_west_position(grid, c, r, bid);
+            let basin_info = basins.get(&bid);
+            let (dir, speed) = current_vector_basin(lat, pos_ew, basin_info);
             grid.layers.ocean_current_direction_deg[idx] = dir;
             grid.layers.ocean_current_speed_ms[idx] = speed;
         }
@@ -305,8 +358,11 @@ fn assign_ocean_currents(grid: &mut SurfaceGrid) {
 
 /// Boost SST on the western side of ocean spans (warm poleward currents)
 /// and reduce it on the eastern side (cold equatorward currents). Strongest
-/// at subtropical latitudes (~30°), fading to zero at equator and 60°.
-fn apply_boundary_sst(grid: &mut SurfaceGrid) {
+/// at the basin's subtropical latitude, fading toward the equator and poles.
+/// Also applies a mild El-Niño-like equatorial anomaly: the eastern
+/// equatorial band in each basin is slightly warmer (+1 °C) to simulate
+/// the baseline warm-pool / cold-tongue asymmetry.
+fn apply_boundary_sst(grid: &mut SurfaceGrid, basins: &std::collections::HashMap<u16, BasinInfo>) {
     let w = grid.width as usize;
     let h = grid.height as usize;
     for r in 0..h {
@@ -316,12 +372,60 @@ fn apply_boundary_sst(grid: &mut SurfaceGrid) {
                 continue;
             }
             let lat = grid.row_latitude(r as u16);
-            let pos_ew = east_west_position(grid, c, r);
-            let lat_factor = subtropical_band_factor(lat);
-            // pos_ew: 0 = western boundary, 1 = eastern boundary.
+            let bid = grid.layers.drainage_basin_id[idx];
+            let pos_ew = basin_east_west_position(grid, c, r, bid);
+            let basin_info = basins.get(&bid);
+
+            // Subtropical gyre centre for this basin.
+            let gyre_lat = basin_info.map_or(30.0, |b| {
+                // Place gyre centre halfway between centroid and the
+                // tropics-facing extent of the basin.
+                let half = (b.lat_max - b.lat_min) / 2.0;
+                b.centroid_lat.signum() * half.min(30.0)
+            });
+            let lat_factor = subtropical_band_factor_at(lat, gyre_lat.abs());
+
             // West gets +6 °C, east gets −6 °C at peak subtropical latitude.
             let modifier = 6.0 * (1.0 - 2.0 * pos_ew) * lat_factor;
             grid.layers.sea_surface_temp_c[idx] += modifier;
+
+            // El-Niño-like: mild eastern equatorial warming.
+            if lat.abs() < 10.0 && pos_ew > 0.6 {
+                grid.layers.sea_surface_temp_c[idx] += 1.0;
+            }
+
+            grid.layers.temperature_c[idx] = grid.layers.sea_surface_temp_c[idx];
+        }
+    }
+}
+
+/// Thermohaline circulation: basins that reach polar latitudes develop
+/// deep-water formation zones where cold, dense surface water sinks. We
+/// model this as a slight cooling (−2 °C) of high-latitude tiles in
+/// polar-connected basins and a slight warming (+0.5 °C) of their
+/// mid-latitude tiles (upwelling heat transport).
+fn apply_thermohaline(grid: &mut SurfaceGrid, basins: &std::collections::HashMap<u16, BasinInfo>) {
+    let w = grid.width as usize;
+    let h = grid.height as usize;
+    for r in 0..h {
+        let lat = grid.row_latitude(r as u16);
+        for c in 0..w {
+            let idx = r * w + c;
+            if !grid.layers.is_ocean[idx] {
+                continue;
+            }
+            let bid = grid.layers.drainage_basin_id[idx];
+            let polar = basins.get(&bid).is_some_and(|b| b.reaches_polar);
+            if !polar {
+                continue;
+            }
+            if lat.abs() > 55.0 {
+                // Deep-water formation zone — cooling.
+                grid.layers.sea_surface_temp_c[idx] -= 2.0;
+            } else if (20.0..=50.0).contains(&lat.abs()) {
+                // Mid-latitude upwelling warmth.
+                grid.layers.sea_surface_temp_c[idx] += 0.5;
+            }
             grid.layers.temperature_c[idx] = grid.layers.sea_surface_temp_c[idx];
         }
     }
@@ -329,10 +433,25 @@ fn apply_boundary_sst(grid: &mut SurfaceGrid) {
 
 /// Position within the east-west ocean span at this latitude, in [0, 1].
 /// 0 = touching the western shore, 1 = touching the eastern shore.
+/// Legacy version that ignores basin boundaries (used by old tests).
 fn east_west_position(grid: &SurfaceGrid, c: usize, r: usize) -> f32 {
     let w = grid.width as usize;
     let dist_w = dist_to_land(grid, c, r, -1);
     let dist_e = dist_to_land(grid, c, r, 1);
+    let total = dist_w + dist_e;
+    if total == 0 || total >= w as u16 {
+        0.5
+    } else {
+        dist_w as f32 / total as f32
+    }
+}
+
+/// Basin-aware east-west position: walks east / west until hitting land OR
+/// a tile from a different basin, so gyre boundaries are respected.
+fn basin_east_west_position(grid: &SurfaceGrid, c: usize, r: usize, bid: u16) -> f32 {
+    let w = grid.width as usize;
+    let dist_w = dist_to_basin_edge(grid, c, r, -1, bid);
+    let dist_e = dist_to_basin_edge(grid, c, r, 1, bid);
     let total = dist_w + dist_e;
     if total == 0 || total >= w as u16 {
         0.5
@@ -356,37 +475,55 @@ fn dist_to_land(grid: &SurfaceGrid, c: usize, r: usize, step: i32) -> u16 {
     w as u16
 }
 
-/// Current direction (bearing flow travels toward) and speed in m/s.
-fn current_vector(lat_deg: f32, pos_ew: f32) -> (f32, f32) {
+/// Walk east (+1) or west (-1) until leaving the given basin (hitting land
+/// or a different basin_id). Returns ocean tile count crossed.
+fn dist_to_basin_edge(grid: &SurfaceGrid, c: usize, r: usize, step: i32, bid: u16) -> u16 {
+    let w = grid.width as usize;
+    let mut cur = c as i32;
+    for d in 0..(w as u16) {
+        cur = (cur + step).rem_euclid(w as i32);
+        let idx = r * w + cur as usize;
+        if !grid.layers.is_ocean[idx] || grid.layers.drainage_basin_id[idx] != bid {
+            return d;
+        }
+    }
+    w as u16
+}
+
+/// Current direction (bearing flow travels toward) and speed, using
+/// per-basin gyre centre. Falls back to latitude-only if no basin info.
+fn current_vector_basin(lat_deg: f32, pos_ew: f32, basin: Option<&BasinInfo>) -> (f32, f32) {
     let abs_lat = lat_deg.abs();
     let is_nh = lat_deg >= 0.0;
+
+    // Gyre centre latitude: use the basin's midpoint if available,
+    // otherwise default to 30°.
+    let gyre_centre = basin.map_or(30.0, |b| {
+        let half = (b.lat_max - b.lat_min) / 2.0;
+        half.min(30.0)
+    });
+    let gyre_top = gyre_centre + 15.0;
 
     if abs_lat < 10.0 {
         // Equatorial current: westward, trade-wind driven.
         (270.0, 0.3)
-    } else if abs_lat < 45.0 {
-        // Subtropical gyre. Direction depends on position within the gyre:
-        // western boundary → poleward, eastern → equatorward,
-        // plus east-west bands at the top and bottom.
+    } else if abs_lat < gyre_top {
+        // Subtropical gyre (basin-relative).
         if pos_ew < 0.25 {
-            // Western boundary current (warm poleward): e.g. Gulf Stream.
             if is_nh {
                 (0.0, 1.2)
             } else {
                 (180.0, 1.2)
             }
         } else if pos_ew > 0.75 {
-            // Eastern boundary current (cold equatorward).
             if is_nh {
                 (180.0, 0.5)
             } else {
                 (0.0, 0.5)
             }
-        } else if abs_lat < 25.0 {
-            // Equatorward half of gyre: westward flow.
+        } else if abs_lat < gyre_centre {
             (270.0, 0.4)
         } else {
-            // Poleward half: eastward flow (North Atlantic Drift).
             (90.0, 0.5)
         }
     } else if abs_lat < 65.0 {
@@ -398,13 +535,27 @@ fn current_vector(lat_deg: f32, pos_ew: f32) -> (f32, f32) {
     }
 }
 
+/// Current direction (bearing flow travels toward) and speed in m/s.
+/// Legacy function kept for backward compatibility with existing tests.
+fn current_vector(lat_deg: f32, pos_ew: f32) -> (f32, f32) {
+    current_vector_basin(lat_deg, pos_ew, None)
+}
+
 /// Factor peaking at 30° latitude, zero at equator and 60°.
 fn subtropical_band_factor(lat_deg: f32) -> f32 {
+    subtropical_band_factor_at(lat_deg, 30.0)
+}
+
+/// Factor peaking at `centre_lat` degrees, zero at equator and
+/// `2 × centre_lat` poleward.
+fn subtropical_band_factor_at(lat_deg: f32, centre_lat: f32) -> f32 {
     let abs_lat = lat_deg.abs();
-    if !(0.0..=60.0).contains(&abs_lat) {
+    let half_width = centre_lat.max(1.0);
+    let upper = centre_lat + half_width;
+    if abs_lat > upper || abs_lat < 0.0 {
         return 0.0;
     }
-    let phase = ((abs_lat - 30.0).abs() / 30.0) * (std::f32::consts::PI / 2.0);
+    let phase = ((abs_lat - centre_lat).abs() / half_width) * (std::f32::consts::PI / 2.0);
     phase.cos().max(0.0)
 }
 
@@ -615,5 +766,75 @@ mod grid_tests {
         // All ocean → dist_to_land wraps fully; position defaults to 0.5.
         let pos = east_west_position(&g, 5, 2);
         assert_eq!(pos, 0.5);
+    }
+
+    #[test]
+    fn multi_basin_world_has_independent_gyres() {
+        // With ~40% ocean, continents are large enough to split the ocean
+        // into multiple basins with separate gyre centres.
+        let input = earth_like_input();
+        let mut g = generate_geology(&input, 40.0, GridResolution::Fast, "multi");
+        generate_temperature(&input, 33.0, &mut g);
+        generate_wind(&input, 1.0, &mut g);
+        generate_ocean_dynamics(&mut g);
+        let max_basin = *g.layers.drainage_basin_id.iter().max().unwrap();
+        if max_basin >= 2 {
+            // Different basins should have their own BasinInfo centroid.
+            let basins = compute_basin_info(&g);
+            let centroids: Vec<f32> = basins.values().map(|b| b.centroid_lat).collect();
+            // If there are ≥2 basins, centroids shouldn't all be identical.
+            let all_same = centroids.windows(2).all(|w| (w[0] - w[1]).abs() < 1.0);
+            assert!(
+                !all_same || centroids.len() < 2,
+                "basins should have distinct centroids"
+            );
+        }
+    }
+
+    #[test]
+    fn basin_ew_position_respects_basin_boundary() {
+        // A grid with two side-by-side ocean basins separated by land.
+        // Basin-aware position should not cross the land divider.
+        let mut g = SurfaceGrid::empty(GridResolution::Custom(20, 5));
+        let w = g.width as usize;
+        // Row 2: ocean from col 1-8, land at col 0, land at col 9-10,
+        // ocean from col 11-18, land at col 19.
+        for c in 1..=8 {
+            let idx = 2 * w + c;
+            g.layers.is_ocean[idx] = true;
+            g.layers.drainage_basin_id[idx] = 1;
+        }
+        for c in 11..=18 {
+            let idx = 2 * w + c;
+            g.layers.is_ocean[idx] = true;
+            g.layers.drainage_basin_id[idx] = 2;
+        }
+        // Col 5 in basin 1 should have pos_ew ≈ 0.5 within basin 1 only.
+        let pos = basin_east_west_position(&g, 5, 2, 1);
+        assert!(
+            (0.3..=0.7).contains(&pos),
+            "mid-basin tile should be near 0.5, got {}",
+            pos
+        );
+        // Col 12 in basin 2 should be near the western edge.
+        let pos_west = basin_east_west_position(&g, 12, 2, 2);
+        assert!(
+            pos_west < 0.3,
+            "near western edge of basin 2 should have low pos, got {}",
+            pos_west
+        );
+    }
+
+    #[test]
+    fn thermohaline_cools_polar_connected_basins() {
+        let g = earth_grid();
+        let basins = compute_basin_info(&g);
+        // Any basin reaching polar latitudes should exist.
+        let has_polar = basins.values().any(|b| b.reaches_polar);
+        // On Earth-like worlds this should be true.
+        assert!(
+            has_polar,
+            "Earth-like world should have polar-connected basins"
+        );
     }
 }

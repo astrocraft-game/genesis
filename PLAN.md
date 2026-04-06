@@ -64,15 +64,16 @@ Goal: deepen the existing surface-maps pipeline without adding new subsystems.
 - [x] Update biome affinity + vegetation modifier tables in life/habitat.rs
       and settlement moderation scores in life/settlement.rs.
 
-### A5 — Refined ocean dynamics
+### A5 — Refined ocean dynamics ✅
 
-- [ ] Per-basin gyre centres (currently global 30° latitude assumption).
-- [ ] Properly compute western/eastern boundary relative to each basin's
-      longitudinal extent rather than immediate east/west land.
-- [ ] El-Niño-equivalent periodic modulation (optional, monthly climate).
-- [ ] Thermohaline circulation hint (dense cold polar water sinks).
-- [ ] Tests: isolated basins get their own gyres, multi-basin worlds
-      show plausible current asymmetry.
+- [x] Per-basin gyre centres (BasinInfo centroid drives gyre placement).
+- [x] Basin-aware east/west position respects basin boundaries, not just
+      nearest land.
+- [x] El-Niño-like equatorial eastern-boundary SST anomaly (+1 °C).
+- [x] Thermohaline circulation: polar-connected basins get deep-water
+      cooling (−2 °C at >55°) and mid-latitude upwelling warmth (+0.5 °C).
+- [x] Tests: multi-basin worlds have distinct gyre centroids, basin E/W
+      position respects dividers, polar basins detected.
 
 ### A6 — Grid serialisation ✅
 
