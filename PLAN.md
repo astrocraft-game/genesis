@@ -93,17 +93,20 @@ Goal: give planets vertical depth — ore veins, cave networks, aquifers.
       than oceanic, ore in correct layers, deterministic, depth-ordered,
       purity 0–1, grid has >10 ore deposits.
 
-### E2 — Cave system generation
+### E2 — Cave system generation ✅
 
-- [ ] `CaveNetwork { rooms: Vec<CaveRoom>, tunnels: Vec<Tunnel> }` per
-      tile or per-region.
-- [ ] Generation: random-walk + flood-fill within igneous/metamorphic
-      layers. Influenced by hydrology (karst in limestone, lava tubes
-      near volcanoes).
-- [ ] Aquifers: water-filled caves near the water table. Affects
-      river discharge and settlement water access.
-- [ ] Tests: caves only in plausible geology, aquifers near rivers,
-      network connectivity.
+- [x] `caves.rs` module with `CaveRoom` (depth, volume, aquifer flag),
+      `Tunnel` (from/to/length), `CaveOrigin` (Karst, LavaTube, Tectonic,
+      Erosional), `CaveNetwork`, `CaveMap`.
+- [x] `generate_caves(grid, strata, seed)` builds per-tile networks.
+- [x] Generation driven by geology: karst in thick sedimentary, lava tubes
+      near volcanic boundaries, tectonic fractures at transform boundaries.
+- [x] Aquifers: water-filled rooms near tiles with significant river
+      discharge (60% vs 5% base chance).
+- [x] Spanning-tree connectivity with optional loop tunnels.
+- [x] Tests (8): correct size, no ocean caves, some land caves, connected
+      networks, aquifers near rivers, deterministic, depths within column,
+      cave origin matches geology.
 
 ### E3 — Terrain mutability ledger
 

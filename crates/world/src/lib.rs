@@ -55,6 +55,7 @@
 // They can be re-enabled locally with `cargo clippy -- -W clippy::pedantic`.
 
 pub mod atmosphere;
+pub mod caves;
 pub mod climate;
 pub mod detail;
 pub mod diff;
