@@ -80,16 +80,17 @@ creating natural bottlenecks and trade routes.
 - [x] Tests (3): microchip reachable from SilicaSand (3+ steps), GaAs
       uses Gallium not Tin, GaN uses Gallium.
 
-### M5 — Nuclear fuels
+### M5 — Nuclear fuels ✅
 
-- [ ] Add Deuterium, Tritium, Helium3 substances (Uranium, Thorium,
-      Plutonium exist).
-- [ ] Deuterium extracted from water (electrolysis, high volume, low yield).
-- [ ] Tritium bred from lithium-6 + neutron (reactor byproduct).
-- [ ] Helium-3: available only on airless moons (special zone flag).
-- [ ] Fusion fuel recipe: Deuterium + Tritium → energy (ties to Fusion
-      power source in energy.rs).
-- [ ] Tests: tritium needs lithium, He-3 restricted to airless bodies.
+- [x] Added 4 substances: Deuterium, Tritium, Helium3, FusionFuelPellet.
+- [x] Deuterium extraction: 6400 L water → 1 unit deuterium (48h, bulk).
+- [x] Tritium breeding: lithium + neutron (catalyst: NuclearFuelRod) →
+      tritium + trace He-3 (720h, reactor-only).
+- [x] Fusion fuel pellet: D + T → cryogenic pellet (−250°C, 100 atm).
+- [x] Fixed D-T fusion reaction: uses FusionFuelPellet instead of
+      HydrogenGas placeholder. Outputs He-3 + 500 steam (energy).
+- [x] Tests (4): deuterium from water, tritium needs lithium, fuel pellet
+      reachable from deuterium, fusion reaction uses pellet.
 
 ### M6 — Superalloy and refractory metals
 

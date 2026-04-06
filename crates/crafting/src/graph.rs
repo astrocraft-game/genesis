@@ -888,6 +888,43 @@ mod tests {
         );
     }
 
+    // --- Nuclear fuel chain tests ---
+
+    #[test]
+    fn deuterium_reachable_from_water() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::Water, Substance::Deuterium);
+        assert!(chain.is_some(), "Deuterium should be reachable from Water");
+    }
+
+    #[test]
+    fn tritium_needs_lithium() {
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::Tritium);
+        let has_lithium = inputs.iter().any(|(s, _)| *s == Substance::Lithium);
+        assert!(has_lithium, "Tritium breeding should require Lithium");
+    }
+
+    #[test]
+    fn fusion_fuel_pellet_reachable() {
+        let g = CraftingGraph::build_all();
+        let chain = g.production_chain(Substance::Deuterium, Substance::FusionFuelPellet);
+        assert!(
+            chain.is_some(),
+            "FusionFuelPellet should be reachable from Deuterium"
+        );
+    }
+
+    #[test]
+    fn fusion_reaction_uses_fuel_pellet() {
+        let g = CraftingGraph::build_all();
+        let products = g.what_can_i_make(Substance::FusionFuelPellet);
+        assert!(
+            !products.is_empty(),
+            "FusionFuelPellet should produce something (fusion reaction)"
+        );
+    }
+
     // --- Semiconductor chain tests ---
 
     #[test]

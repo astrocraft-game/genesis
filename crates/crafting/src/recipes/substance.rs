@@ -661,6 +661,11 @@ pub enum Substance {
     PGMConcentrate,
     CatalyticConverter,
     FuelCellMembrane,
+    // Nuclear / fusion fuels
+    Deuterium,
+    Tritium,
+    Helium3,
+    FusionFuelPellet,
     // Semiconductor materials
     Arsenic,
     Polysilicon,
