@@ -225,15 +225,19 @@ Goal: planets fight back — pollution, disasters, hostile zones.
 - [x] Tests (4 new): supervolcanoes on volcanic tiles with long duration,
       tsunamis originate in ocean, solar flares bounded, radius bounded.
 
-### G4 — Climate change simulation
+### G4 — Climate change simulation ✅
 
-- [ ] Given a pollution trajectory over N years, compute shifted
-      temperature and precipitation maps.
-- [ ] Greenhouse gas accumulation → global warming → ice cap retreat →
-      sea level rise → coastal tile flooding.
-- [ ] Deforestation → reduced precipitation in affected basin.
-- [ ] Tests: zero pollution = stable climate, high pollution shifts
-      temperature upward, sea level rises with warming.
+- [x] `climate_change.rs` with `ClimateShift` (temp delta, precip factor,
+      sea level rise, tiles flooded) and `compute_climate_shift(pollution,
+      deforestation)`.
+- [x] `apply_climate_shift(grid, shift)` mutates temperature (annual +
+      monthly), precipitation (annual + monthly), floods coastal tiles
+      below new sea level, updates biome to Ocean.
+- [x] Model: +6 °C per unit pollution, −20% precip per unit deforestation,
+      +1 m sea level per °C warming.
+- [x] Tests (8): zero pollution stable, high pollution warms, deforestation
+      dries, temp shifts applied, precip scaled, coastal flooding, flooded
+      tiles become ocean, sea level updates in grid.
 
 ---
 

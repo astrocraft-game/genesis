@@ -57,6 +57,7 @@
 pub mod atmosphere;
 pub mod caves;
 pub mod climate;
+pub mod climate_change;
 pub mod detail;
 pub mod diff;
 #[cfg(feature = "erosion")]
