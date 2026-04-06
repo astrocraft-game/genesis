@@ -750,6 +750,22 @@ mod tests {
 /// - `seed`: deterministic seed string.
 ///
 /// Returns a fully-populated `SurfaceGrid`.
+///
+/// ```
+/// use world::grid::{generate_surface_grid, GridResolution};
+/// use world::types::{PlanetSimulationInput, StarContext, OrbitContext};
+///
+/// let input = PlanetSimulationInput {
+///     body_id: 1,
+///     body_radius_earth: 1.0,
+///     blackbody_temp_k: 255,
+///     star: StarContext { age_gyr: 4.6, ..Default::default() },
+///     orbit: OrbitContext { axial_tilt_deg: 23.4, ..Default::default() },
+///     ..Default::default()
+/// };
+/// let grid = generate_surface_grid(&input, 33.0, 1.0, 71.0, GridResolution::Fast, "earth");
+/// assert!(grid.tile_count() > 0);
+/// ```
 pub fn generate_surface_grid(
     context: &crate::types::PlanetSimulationInput,
     greenhouse_delta_k: f32,

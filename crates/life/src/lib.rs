@@ -1,3 +1,21 @@
+//! # Life
+//!
+//! Biological simulation: species generation, ecosystems, settlements,
+//! history, and expansion. Independent of the `world` crate — all
+//! physical facts arrive via a lightweight `HabitatGrid` adapter.
+//!
+//! ## Key modules
+//!
+//! - `species` — body plan, trophic level, biochemistry, reproduction.
+//! - `ecosystem` — food web with predator-prey links, keystone detection,
+//!   extinction cascades.
+//! - `habitat` — per-tile habitability, vegetation, species ranges.
+//! - `settlement` — suitability scoring + greedy placement.
+//! - `history` — species history (era milestones) + world-history
+//!   simulation (civilisations, settlements, figures, dynasties, artifacts).
+//! - `naming` — order-2 Markov chain name generator (5 built-in styles).
+//! - `expansion` — interstellar expansion footprint by tech level.
+
 #![allow(dead_code, unused_imports)]
 
 pub mod ecosystem;

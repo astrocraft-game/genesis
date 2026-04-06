@@ -1,3 +1,23 @@
+//! # Cosmos
+//!
+//! Procedural generation of universes, galaxies, star systems, and
+//! celestial bodies. Handles everything from the Big Bang down to
+//! individual planet orbits, mass, radius, and basic atmospheric
+//! composition.
+//!
+//! This crate is the top of the generation hierarchy. A typical flow:
+//!
+//! 1. Generate a `Universe` (age, era).
+//! 2. Generate `Galaxy` instances within a `Neighborhood`.
+//! 3. Subdivide galaxies into sectors/hexes.
+//! 4. Generate `StarSystem`s per hex (star count, spectral type, zones).
+//! 5. Fill orbits with `CelestialBody` instances (telluric, gas giant, etc.).
+//!
+//! The `prelude` module re-exports the most commonly used types.
+//!
+//! Downstream crates (`world`, `life`, `crafting`) consume
+//! `CelestialBody` to produce surface maps, species, and recipes.
+
 #![warn(clippy::all)]
 #![allow(dead_code, unused_imports, unused)]
 // Architectural and stylistic lints we don't gate on: generator functions

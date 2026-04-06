@@ -99,6 +99,17 @@ impl GridDiff {
 /// Compare two `SurfaceGrid`s and return a detailed diff report.
 ///
 /// Continuous layers use `epsilon = 1e-6` for the changed-count threshold.
+///
+/// ```
+/// use world::grid::{generate_surface_grid, GridResolution};
+/// use world::diff::diff_grids;
+/// use world::types::PlanetSimulationInput;
+///
+/// let input = PlanetSimulationInput { blackbody_temp_k: 255, ..Default::default() };
+/// let a = generate_surface_grid(&input, 33.0, 1.0, 71.0, GridResolution::Fast, "a");
+/// let b = generate_surface_grid(&input, 33.0, 1.0, 71.0, GridResolution::Fast, "a");
+/// assert!(diff_grids(&a, &b).is_identical());
+/// ```
 pub fn diff_grids(a: &SurfaceGrid, b: &SurfaceGrid) -> GridDiff {
     let n_a = a.tile_count();
     let n_b = b.tile_count();

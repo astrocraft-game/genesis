@@ -384,12 +384,15 @@ Goal: make the library easier to learn, test, and contribute to.
 - [x] Tests: same seed → identical, different seeds → differences,
       mismatched dimensions → not comparable, correct layer counts.
 
-### D6 — Documentation
+### D6 — Documentation ✅
 
-- [ ] Crate-level `//!` docs with architecture overview per crate.
-- [ ] Example in every public function's docstring.
-- [ ] Architectural diagrams in README.
-- [ ] Tutorial-style walkthrough: "generate your first planet".
+- [x] Crate-level `//!` docs with architecture overview on all 5 crates
+      (cosmos, world, life, crafting, genesis root).
+- [x] Docstring examples on key public functions (`generate_surface_grid`,
+      `diff_grids`) — run as doctests.
+- [x] ASCII architecture diagram in root genesis crate docs.
+- [x] Tutorial-style walkthrough ("generate your first planet") in root
+      crate `//!` doc with runnable code example.
 
 ---
 
