@@ -330,16 +330,20 @@ Goal: make the crafting system factory-ready — energy, waste, throughput.
       throughput, throughput capped, availability reduces power, energy
       scales with temp/pressure, demand accumulates, reset, surplus.
 
-### I2 — Byproduct and waste tracking
+### I2 — Byproduct and waste tracking ✅
 
-- [ ] Every recipe already has `byproducts` field — ensure it's populated
-      for all 750+ recipes (many are currently empty).
-- [ ] Waste substances: slag, tailings, CO2, wastewater, toxic sludge.
-- [ ] Unmanaged waste accumulates → feeds pollution layer (G1).
-- [ ] Waste processing recipes: turn slag into aggregate, CO2 into
-      carbon capture, wastewater into clean water.
-- [ ] Tests: industrial recipes produce waste, waste processing reduces
-      pollution.
+- [x] Added `Wastewater` and `ToxicSludge` to Substance enum.
+- [x] `waste.rs` with `is_waste(substance)` classifier, `WasteTracker`
+      (HashMap stockpile), `record_recipe`, `add`, `remove`.
+- [x] `pollution_pressure()` converts waste mass to 0.0–1.0+ value
+      (toxic sludge weighted 3×), feeds into pollution layer.
+- [x] 5 built-in `WasteProcessingRecipe`s: slag→concrete, CO₂→carbon
+      capture, wastewater→clean water, tailings neutralisation, toxic
+      sludge incineration.
+- [x] Tests (10): empty tracker, accumulation, non-waste rejected, remove
+      depletes, clamps to available, pressure scales, toxic weight higher,
+      record captures byproducts, processing recipes exist, processing
+      reduces pollution.
 
 ### I3 — Recipe tech tiers
 

@@ -245,6 +245,8 @@ pub enum Substance {
     Tailings,
     RedMud,
     FlyAsh,
+    Wastewater,
+    ToxicSludge,
     Yellowcake,
     TitaniumTetrachloride,
 
