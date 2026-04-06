@@ -170,14 +170,17 @@ requiring multi-step processing.
       tier 0, processed substances have positive tier, bottleneck returns
       highest-temp step, every non-raw substance reachable from an input.
 
-### F4 — Resource scanning & discovery
+### F4 — Resource scanning & discovery ✅
 
-- [ ] `ScanState` per-tile: `Unknown | SurfaceScan | DeepScan | FullyMapped`.
-- [ ] Surface scan reveals biome, elevation, surface resources.
-      Deep scan reveals underground layers, ore nodes, caves.
-- [ ] Progression mechanic: player starts with surface-only data,
-      unlocks deep scanning via tech.
-- [ ] Tests: fresh planet is all Unknown, scan reveals correct data.
+- [x] `scanning.rs` with `ScanState` (Unknown, SurfaceScan, DeepScan,
+      FullyMapped) and `ScanMap`.
+- [x] `scan_tile` / `scan_region` advance state (never downgrade).
+- [x] Visibility queries: `surface_visible()`, `underground_visible()`,
+      `fully_mapped()` — game engine checks before showing data.
+- [x] `explored_fraction()`, `unexplored_tiles()`, `counts()`.
+- [x] Tests (9): fresh all unknown, scan advances, never downgrades,
+      region scan, explored fraction, unexplored shrinks, fully mapped
+      reveals all, surface hides underground, OOB safe.
 
 ---
 

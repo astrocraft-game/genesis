@@ -75,6 +75,7 @@ pub mod photochemistry;
 pub mod resource_nodes;
 pub mod resources;
 pub mod routing;
+pub mod scanning;
 pub mod strata;
 pub mod subsurface;
 pub mod surface;
