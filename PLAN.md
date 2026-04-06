@@ -128,16 +128,19 @@ Goal: give planets vertical depth — ore veins, cave networks, aquifers.
 Goal: make resources behave like real deposits — finite, variable quality,
 requiring multi-step processing.
 
-### F1 — Resource node model
+### F1 — Resource node model ✅
 
-- [ ] Extend `ResourceMap` tiles with `ResourceNode { resource, purity: f32,
-      quantity: f64, depth: f32 }` instead of flat `Vec<Resource>`.
-- [ ] Purity affects extraction yield (high purity = less waste).
-- [ ] Quantity depletes as extracted. When exhausted, node is spent.
-- [ ] Generation: quantity scales with geological layer thickness,
-      purity varies with noise.
-- [ ] Tests: total planetary ore within plausible bounds, purity in 0–1,
-      quantity > 0 for all nodes.
+- [x] `resource_nodes.rs` with `ResourceNode` (resource, purity, quantity_kt,
+      initial_quantity_kt, depth_m), `TileNodes`, `ResourceNodeMap`.
+- [x] `extract(amount_kt) -> (usable_yield, waste)` depletes quantity,
+      splits by purity. `is_spent()` / `remaining_fraction()` queries.
+- [x] `generate_resource_nodes(strata)` lifts ore deposits from geological
+      columns into a flat queryable map.
+- [x] Query helpers: `global_remaining_kt`, `tiles_with_resource`,
+      `active_node_count`, `total_node_count`.
+- [x] Tests (8): node count matches strata, purity 0–1, quantity > 0,
+      extract reduces quantity, extract clamps at zero, global sum correct,
+      tile indices correct, planetary ore within plausible bounds.
 
 ### F2 — Fluid resources
 
