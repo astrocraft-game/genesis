@@ -357,15 +357,19 @@ Goal: make the crafting system factory-ready — energy, waste, throughput.
       is lowest, higher tier unlocks more, distribution covers all, manual
       has some, exotic includes all, pressure influences tier.
 
-### I4 — Throughput and logistics model
+### I4 — Throughput and logistics model ✅
 
-- [ ] Per-recipe `throughput_kg_per_hour: f32` — base production rate.
-- [ ] Logistics: transport cost between factory nodes uses the existing
-      `routing::trade_cost` pathfinding.
-- [ ] Bottleneck detection: `graph.find_bottleneck(output_substance)`
-      returns the rate-limiting recipe in the chain.
-- [ ] Tests: bottleneck is the slowest recipe in the chain, throughput
-      scales with parallel instances.
+- [x] `throughput.rs` with `estimate_throughput_kg_per_hour(recipe)`,
+      `ProductionLine` (recipe + instances + energy factor),
+      `ProductionChain` (multi-step sequence).
+- [x] `bottleneck()` returns the slowest step (index, name, throughput).
+- [x] `chain_throughput_kg_h()` = bottleneck's throughput.
+- [x] `instances_needed_for_target(target_kg_h)` suggests how many
+      parallel machines to add at the bottleneck.
+- [x] Energy factor integration: deficit reduces per-line throughput.
+- [x] Tests (8): throughput inversely proportional to duration, parallel
+      scales, energy factor reduces, bottleneck is slowest, chain = bottleneck,
+      instances needed, empty chain zero, parallel removes constraint.
 
 ### I5 — Rare and exotic materials
 
