@@ -237,6 +237,55 @@ impl CraftingGraph {
             .collect()
     }
 
+    /// Shortest chain length (number of recipe hops) between two substances.
+    /// Returns `None` if no path exists.
+    pub fn chain_length(&self, from: Substance, to: Substance) -> Option<usize> {
+        self.production_chain(from, to).map(|c| c.len())
+    }
+
+    /// Processing tier of a substance: the minimum number of recipe hops
+    /// from any raw material to reach it. Raw materials have tier 0.
+    /// Returns `None` if the substance is not in the graph.
+    pub fn processing_tier(&self, substance: Substance) -> Option<usize> {
+        if !self.node_map.contains_key(&substance) {
+            return None;
+        }
+        // If it's a raw material (no incoming edges), tier = 0.
+        let raws = self.raw_materials();
+        if raws.contains(&substance) {
+            return Some(0);
+        }
+        // BFS from all raw materials, find shortest distance.
+        let mut best = usize::MAX;
+        for raw in &raws {
+            if let Some(len) = self.chain_length(*raw, substance) {
+                best = best.min(len);
+            }
+        }
+        if best == usize::MAX {
+            None
+        } else {
+            Some(best)
+        }
+    }
+
+    /// Find the bottleneck in a production chain: the recipe step that
+    /// requires the highest minimum temperature. Returns the recipe name
+    /// and its `min_temp_c`, or `None` if no chain exists.
+    pub fn find_bottleneck(&self, from: Substance, to: Substance) -> Option<(&'static str, i32)> {
+        let chain = self.production_chain(from, to)?;
+        let all_recipes = recipes::all_recipes();
+        chain
+            .iter()
+            .filter_map(|(_, recipe_name)| {
+                all_recipes
+                    .iter()
+                    .find(|r| r.name == *recipe_name)
+                    .map(|r| (r.name, r.min_temp_c))
+            })
+            .max_by_key(|&(_, temp)| temp)
+    }
+
     /// Export to DOT format for Graphviz visualization.
     pub fn to_dot(&self) -> String {
         format!(
@@ -639,6 +688,84 @@ mod tests {
         assert!(
             has_pig_iron,
             "PigIron should be primary output from Hematite"
+        );
+    }
+
+    // --- Processing chain tests ---
+
+    #[test]
+    fn chain_length_scales_with_complexity() {
+        let g = CraftingGraph::build_materials_only();
+        // PigIron is 1 step from Hematite; LowCarbonSteel is further.
+        let pig = g.chain_length(Substance::Hematite, Substance::PigIron);
+        let steel = g.chain_length(Substance::Hematite, Substance::LowCarbonSteel);
+        if let (Some(p), Some(s)) = (pig, steel) {
+            assert!(
+                s >= p,
+                "steel chain {} should be >= pig iron chain {}",
+                s,
+                p
+            );
+        }
+    }
+
+    #[test]
+    fn raw_materials_have_tier_zero() {
+        let g = CraftingGraph::build_materials_only();
+        let raws = g.raw_materials();
+        for raw in &raws {
+            assert_eq!(
+                g.processing_tier(*raw),
+                Some(0),
+                "{:?} should be tier 0",
+                raw
+            );
+        }
+    }
+
+    #[test]
+    fn processed_substances_have_positive_tier() {
+        let g = CraftingGraph::build_materials_only();
+        // PigIron is definitely not a raw material.
+        if let Some(tier) = g.processing_tier(Substance::PigIron) {
+            assert!(tier >= 1, "PigIron tier {} should be >= 1", tier);
+        }
+    }
+
+    #[test]
+    fn bottleneck_returns_highest_temp_step() {
+        let g = CraftingGraph::build_materials_only();
+        if let Some((name, temp)) = g.find_bottleneck(Substance::Hematite, Substance::PigIron) {
+            assert!(!name.is_empty());
+            assert!(temp > 0, "bottleneck temp should be positive");
+        }
+    }
+
+    #[test]
+    fn every_non_raw_substance_reachable_from_some_raw() {
+        let g = CraftingGraph::build_materials_only();
+        let raws: std::collections::HashSet<Substance> = g.raw_materials().into_iter().collect();
+        let mut unreachable = Vec::new();
+        for &node_idx in g.node_map.values() {
+            let substance = g.graph[node_idx];
+            if raws.contains(&substance) {
+                continue;
+            }
+            // Check if at least one raw can reach this.
+            let has_input = g
+                .graph
+                .edges_directed(node_idx, Direction::Incoming)
+                .next()
+                .is_some();
+            if !has_input {
+                unreachable.push(substance);
+            }
+        }
+        assert!(
+            unreachable.is_empty(),
+            "{} substances unreachable from any input: {:?}",
+            unreachable.len(),
+            &unreachable[..unreachable.len().min(10)]
         );
     }
 

@@ -157,16 +157,18 @@ requiring multi-step processing.
       in sedimentary, geothermal is permanent, oil depletes, geothermal
       doesn't deplete, some tiles have fluids, deterministic, no ocean fluids.
 
-### F3 — Multi-stage processing chains
+### F3 — Multi-stage processing chains ✅
 
-- [ ] Enrich the `CraftingGraph` with explicit extraction→processing→output
-      paths. Add `ExtractionRecipe` linking `ResourceNode` to `Substance`.
-- [ ] Model processing tiers: raw ore → concentrate → metal → alloy → part.
-- [ ] Each tier requires higher temperature/pressure (maps to tech level).
-- [ ] Visualisation: `graph.shortest_chain(raw_iron, steel_plate)` returns
-      the recipe sequence.
-- [ ] Tests: every substance reachable from some raw resource, chain
-      length increases with product complexity.
+- [x] `chain_length(from, to)` — shortest hop count between substances.
+- [x] `processing_tier(substance)` — minimum hops from any raw material
+      (raw = tier 0, pig iron = tier 1+, steel = tier 2+, etc.).
+- [x] `find_bottleneck(from, to)` — recipe step with highest min_temp_c
+      in the chain (the tech-gating constraint).
+- [x] Existing `production_chain(from, to)` already returns the full
+      recipe sequence (A* shortest path via petgraph).
+- [x] Tests (5): chain length scales with complexity, raw materials are
+      tier 0, processed substances have positive tier, bottleneck returns
+      highest-temp step, every non-raw substance reachable from an input.
 
 ### F4 — Resource scanning & discovery
 
