@@ -108,13 +108,18 @@ Goal: give planets vertical depth — ore veins, cave networks, aquifers.
       networks, aquifers near rivers, deterministic, depths within column,
       cave origin matches geology.
 
-### E3 — Terrain mutability ledger
+### E3 — Terrain mutability ledger ✅
 
-- [ ] `TerrainLog` per-tile: records cumulative changes (mining,
-      dumping, deforestation, erosion events) as timestamped entries.
-- [ ] Used by the factory sim to track what the player has altered.
-- [ ] Enables "before/after" planet state comparison.
-- [ ] Tests: log is empty on fresh grid, entries accumulate correctly.
+- [x] `terrain_log.rs` with `ChangeKind` (8 variants: Mining, Dumping,
+      Deforestation, Erosion, Construction, Pollution, Flooding, Terraforming),
+      `ChangeEntry` (kind, tick, magnitude, note), `TileLog`, `TerrainLog`.
+- [x] `TerrainLog::new(tile_count)` creates empty ledger.
+      `record(tile, kind, tick, magnitude, note)` appends entries.
+- [x] Query helpers: `total_magnitude(kind)`, `entries_of(kind)`,
+      `last_tick()`, `modified_tiles()`, `global_total(kind)`.
+- [x] Out-of-bounds records are silently ignored (safe for game engine).
+- [x] Tests (8): fresh is empty, accumulation, magnitude per kind,
+      global total, filter by kind, last tick, modified indices, OOB safety.
 
 ---
 

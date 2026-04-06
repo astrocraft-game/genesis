@@ -76,6 +76,7 @@ pub mod routing;
 pub mod strata;
 pub mod subsurface;
 pub mod surface;
+pub mod terrain_log;
 pub mod types;
 
 pub mod prelude {
