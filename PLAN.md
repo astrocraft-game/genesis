@@ -245,14 +245,17 @@ Goal: planets fight back — pollution, disasters, hostile zones.
 
 Goal: make alien ecosystems feel alive, dangerous, and worth studying.
 
-### H1 — Species evolution timeline
+### H1 — Species evolution timeline ✅
 
-- [ ] Per-species `EvolutionHistory`: sequence of adaptation events
-      (body plan change, size shift, new locomotion, trophic shift).
-- [ ] Generated from the planet's geological timeline: mass extinctions
-      drive speciation bursts, climate shifts drive adaptation.
-- [ ] Output: narrative text explaining why species X has trait Y.
-- [ ] Tests: evolution events are chronological, traits match environment.
+- [x] `evolution.rs` with `AdaptationEvent` (mya, kind, description),
+      `AdaptationKind` (7 variants), `EvolutionHistory`.
+- [x] `generate_evolution_history(species, timeline)` rationalises each
+      species trait as a response to planetary events: body plan from
+      Cambrian explosion, size from ice ages (Bergmann's rule), locomotion
+      from land colonisation, trophic shift, special traits.
+- [x] Post-extinction speciation bursts, near-extinction bottlenecks.
+- [x] Tests (8): chronological, body plan event, trophic event, locomotion
+      events, trait events, descriptions filled, name recorded, autotroph.
 
 ### H2 — Mutation and adaptation
 

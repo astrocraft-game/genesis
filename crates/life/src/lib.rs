@@ -19,6 +19,7 @@
 #![allow(dead_code, unused_imports)]
 
 pub mod ecosystem;
+pub mod evolution;
 pub mod expansion;
 pub mod generator;
 pub mod habitat;
