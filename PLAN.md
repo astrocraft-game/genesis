@@ -345,14 +345,18 @@ Goal: make the library easier to learn, test, and contribute to.
       and full pipeline at Fast/Standard/Detailed resolutions.
 - [x] Run via `cargo bench -p world`.
 
-### D3 — Visualisation CLI
+### D3 — Visualisation CLI ✅
 
-- [ ] New binary crate `genesis-cli` (or `examples/cli.rs`):
-      - Print ASCII map of any layer (biome, temperature, etc.)
-      - Print plate diagram with DOT export
-      - Print species food web
-      - Print trade routes between settlements
-- [ ] No GUI, plain terminal output.
+- [x] `examples/visualise.rs` with 6 modes selectable via CLI arg:
+      `biome`, `elevation`, `temperature`, `plates`, `food_web`,
+      `trade_routes`, `all`.
+- [x] ASCII biome map with 19-character palette + legend.
+- [x] ASCII elevation map (depth/height bands).
+- [x] ASCII temperature map (6 thermal bands).
+- [x] Tectonic plate DOT graph (paste into Graphviz).
+- [x] Food web with predator-prey links and keystone species.
+- [x] Trade routes with settlement suitability + cost/value.
+- [x] No GUI, plain terminal output.
 
 ### D4 — Property-based testing
 
