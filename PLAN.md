@@ -318,15 +318,17 @@ Goal: make alien ecosystems feel alive, dangerous, and worth studying.
 
 Goal: make the crafting system factory-ready — energy, waste, throughput.
 
-### I1 — Energy model
+### I1 — Energy model ✅
 
-- [ ] Per-recipe `energy_kj: f32` field — energy cost to execute.
-- [ ] Energy sources: geothermal (permanent), fossil fuel (finite),
-      solar (biome-dependent), nuclear (tech-gated).
-- [ ] `EnergyBudget` struct: available power vs. factory demand.
-- [ ] Deficit → recipes slow down or halt.
-- [ ] Tests: total energy demand scales with factory size, deficit
-      reduces throughput.
+- [x] `energy.rs` with `PowerSourceKind` (5: Geothermal, FossilFuel, Solar,
+      Nuclear, Manual), `PowerSource` (capacity_kw + availability), `EnergyBudget`.
+- [x] `estimate_recipe_energy_kj(recipe)` — heuristic from temperature,
+      pressure, and duration (no schema change to 750+ recipes needed).
+- [x] `EnergyBudget`: `add_source`, `add_recipe_demand`, `supply_kj`,
+      `throughput_factor` (1.0 if balanced, <1.0 in deficit), `surplus_kj`.
+- [x] Tests (10): empty no deficit, supply scales, deficit reduces
+      throughput, throughput capped, availability reduces power, energy
+      scales with temp/pressure, demand accumulates, reset, surplus.
 
 ### I2 — Byproduct and waste tracking
 

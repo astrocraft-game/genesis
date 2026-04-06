@@ -19,6 +19,7 @@
 
 #![allow(dead_code, unused_imports)]
 
+pub mod energy;
 pub mod food;
 pub mod graph;
 pub mod recipes;
