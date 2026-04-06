@@ -188,16 +188,18 @@ requiring multi-step processing.
 
 Goal: planets fight back — pollution, disasters, hostile zones.
 
-### G1 — Pollution layer
+### G1 — Pollution layer ✅
 
-- [ ] Per-tile `pollution: f32` that spreads via diffusion each tick.
-- [ ] Sources: industrial settlements/factories (keyed to extraction rate
-      and recipe byproducts).
-- [ ] Effects: biome degradation (forest → grassland → barren at high
-      pollution), species range contraction, ecosystem extinction cascade.
-- [ ] Sinks: vegetation absorbs pollution (incentivises preserving forests).
-- [ ] Tests: pollution spreads from source, decays with distance,
-      high pollution triggers biome change.
+- [x] `pollution.rs` with `PollutionMap` (per-tile levels, width/height).
+- [x] `emit(tile, amount)` adds pollution. `tick(diffusion, decay, vegetation)`
+      spreads to 4-neighbours, decays naturally, and lets vegetation absorb.
+- [x] `apply_pollution_degradation(grid, pollution)` degrades biomes:
+      >0.7 → forest→grassland, savanna→xeric; >0.9 → barren.
+      Ocean tiles unaffected.
+- [x] Queries: `max_pollution`, `mean_pollution`, `polluted_tiles(threshold)`.
+- [x] Tests (10): pristine fresh, emit increases, spreads to neighbours,
+      decays over time, vegetation absorbs, forest→grassland, severe→barren,
+      ocean unaffected, correct tile indices, OOB safe.
 
 ### G2 — Environmental hazard zones
 

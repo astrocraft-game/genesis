@@ -72,6 +72,7 @@ pub mod impacts;
 pub mod interior;
 pub mod ocean;
 pub mod photochemistry;
+pub mod pollution;
 pub mod resource_nodes;
 pub mod resources;
 pub mod routing;
