@@ -661,6 +661,12 @@ pub enum Substance {
     PGMConcentrate,
     CatalyticConverter,
     FuelCellMembrane,
+    // Superalloy / refractory
+    Hafnium,
+    Bismuth,
+    TurbineBlade,
+    SuperconductingWire,
+    CementedCarbideTool,
     // Nuclear / fusion fuels
     Deuterium,
     Tritium,

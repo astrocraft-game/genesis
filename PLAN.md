@@ -92,15 +92,19 @@ creating natural bottlenecks and trade routes.
 - [x] Tests (4): deuterium from water, tritium needs lithium, fuel pellet
       reachable from deuterium, fusion reaction uses pellet.
 
-### M6 — Superalloy and refractory metals
+### M6 — Superalloy and refractory metals ✅
 
-- [ ] Add Hafnium, Bismuth substances (Rhenium, Niobium, Tantalum,
-      Tungsten, Vanadium, Beryllium exist but lack placement).
-- [ ] Place in correct zones: rhenium in porphyry Cu-Mo, niobium in
-      carbonatites, tungsten in skarn/quartz veins.
-- [ ] Superalloy recipes: Ni + Re + Hf → single-crystal turbine blade,
-      Nb + Ti → superconducting wire, W + C → cemented carbide.
-- [ ] Tests: refractory metals in correct geological zones.
+- [x] Added 5 substances: Hafnium, Bismuth, TurbineBlade,
+      SuperconductingWire, CementedCarbideTool.
+- [x] Single-crystal turbine blade: Ni + Re + Hf + Cr + Al → blade
+      (1500°C, vacuum, 48h) — requires porphyry zone (Re) + heavy mineral
+      sands (Hf).
+- [x] NbTi superconducting wire: Nb + Ti + Cu (2000°C, 24h) — requires
+      carbonatite zone (Nb).
+- [x] Cemented carbide cutting tool: WC + Co (1400°C, 6h) — requires
+      skarn zone (W) + laterite zone (Co).
+- [x] Tests (3): turbine blade needs rhenium + hafnium, superconducting
+      wire needs niobium, cemented carbide needs tungsten carbide.
 
 ### M7 — Advanced engineered materials
 

@@ -888,6 +888,34 @@ mod tests {
         );
     }
 
+    // --- Superalloy chain tests ---
+
+    #[test]
+    fn turbine_blade_needs_rhenium_and_hafnium() {
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::TurbineBlade);
+        let has_re = inputs.iter().any(|(s, _)| *s == Substance::Rhenium);
+        let has_hf = inputs.iter().any(|(s, _)| *s == Substance::Hafnium);
+        assert!(has_re, "TurbineBlade should need Rhenium");
+        assert!(has_hf, "TurbineBlade should need Hafnium");
+    }
+
+    #[test]
+    fn superconducting_wire_needs_niobium() {
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::SuperconductingWire);
+        let has_nb = inputs.iter().any(|(s, _)| *s == Substance::Niobium);
+        assert!(has_nb, "SuperconductingWire should need Niobium");
+    }
+
+    #[test]
+    fn cemented_carbide_needs_tungsten() {
+        let g = CraftingGraph::build_all();
+        let inputs = g.what_do_i_need(Substance::CementedCarbideTool);
+        let has_wc = inputs.iter().any(|(s, _)| *s == Substance::TungstenCarbide);
+        assert!(has_wc, "CementedCarbideTool should need TungstenCarbide");
+    }
+
     // --- Nuclear fuel chain tests ---
 
     #[test]
