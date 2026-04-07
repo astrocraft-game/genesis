@@ -1,126 +1,51 @@
-# Planet Generator
+# Genesis
 
-A Rust library that aims to generate galaxies, sectors, solar systems, planets with maps, and their inhabitants, along with tons of narrative elements and ideas.
+Procedural universe and planet generation library in Rust. Produces galaxies, star systems, and terrestrial worlds with tile-level surface maps — all deterministic from a seed.
 
-The library is intended for use in game development to generate believable worlds for Roguelikes, 4X games, or any other project that sparks your imagination.
+## Crates
 
-I've tried my best to use realistic formulas and up-to-date data when possible for generation. However, as I am not an astrophysicist myself, and my limited knowledge on the subject isn't sufficient to build something entirely accurate, I've compensated for my shortfalls by borrowing ideas from various other generators I have previously used and loved, mostly from RPGs. These include, but are not limited to: [the RTT Complicated Star System Generator](https://wiki.rpg.net/index.php/RTT_Worldgen), [Instant Universe](https://www.drivethrurpg.com/product/153512/Instant-Universe), and generators from various editions of [GURPS Traveller](https://en.wikipedia.org/wiki/GURPS_Traveller), [Stars Without Number](https://www.drivethrurpg.com/product/226996/Stars-Without-Number-Revised-Edition), [Rogue Trader](<https://en.wikipedia.org/wiki/Rogue_Trader_(role-playing_game)>) and [Alternity](https://en.wikipedia.org/wiki/Alternity).
+| Crate | Description |
+|-------|-------------|
+| `cosmos` | Universe, galaxies, star systems, celestial bodies, orbits |
+| `world` | Planetary interior, atmosphere, climate, geology, hydrology, biomes, resources, geological zones |
+| `genesis` (root) | Bridges cosmos → world via adapters |
 
-## Example
+Related standalone repos:
 
-An example of how to use this library can be found in [this project, a simple Actix server that serves generated results](https://github.com/lmagitem/galactic-scanner). A web app that displays the generation results using the previous project [is available here](https://galactic-explorer.n42c.dev/) - please note that it is also a work in progress, and not all library features are available in the web app yet.
+| Repo | Description |
+|------|-------------|
+| `vitaeis` | Species, ecosystems, evolution, settlements, planetary timelines |
+| `poiesis` | 750+ real-world material science recipes as a directed graph |
 
-## Surface maps (v0.2)
-
-Genesis produces tile-level climate, biome, and life distribution maps
-for terrestrial bodies. Grids use an equirectangular projection in one of
-three resolutions (72×36, 144×72, 360×180) and carry 20+ physical layers:
-elevation, tectonic plates, temperature, wind, precipitation, humidity,
-ocean currents, SST, rivers, drainage basins, biome, and Köppen class.
+## Usage
 
 ```rust
-use genesis::{generate_world_with_surface, generate_life_on_surface};
+use genesis::generate_world_with_surface;
 use world::grid::GridResolution;
-use life::{generate_ecosystem_from_world, LifeLevel, SpeciesGenerationInput};
 
-// 1. Generate a full world from a cosmos body (interior + detail + surface grid)
 let world = generate_world_with_surface(
-    &cosmos_body,
-    4.6,                          // star age (Gyr)
-    1,                            // moon count
-    false,                        // has rings
+    &cosmos_body, 4.6, 1, false,
     world::prelude::LifeLevel::Sentient,
-    GridResolution::Fast,         // 72×36 tiles
+    GridResolution::Fast,
     "my_seed",
 ).expect("terrestrial body");
 
-// world.surface has elevation_m, temperature_c, biome, river_discharge_m3s,
-// ocean_current_direction_deg, precipitation_mm, koppen_class, …
-
-// 2. Distribute an ecosystem onto the surface
-let ecosystem = generate_ecosystem_from_world(&species_input);
-let distribution = generate_life_on_surface(
-    &world.surface,
-    &ecosystem,
-    1.0,                          // gravity in Earth g
-    LifeLevel::AnimalLike,
-);
-
-// distribution.ranges[i] has per-tile habitability, territory, population
-// distribution.vegetation_density and .primary_productivity are per-tile
+// world.surface has 20+ layers: elevation, temperature, biome,
+// rivers, ocean currents, precipitation, koppen class, ...
 ```
 
-**Scale**: each tile is a large region, not a location — a Fast-resolution
-tile on an Earth-sized body covers ~200,000 km². Grids answer climate and
-biome queries at planetary scale; per-meter surface detail belongs in the
-game engine.
+## World surface layers
 
-**Architecture**: `world` crate owns all physical maps (climate, geology,
-hydrology). `life` crate owns biological overlays (vegetation, species
-ranges). They never depend on each other; the root `genesis` crate bridges
-them through an adapter layer.
+Each tile carries: elevation, plate ID, tectonic boundary, temperature (annual + summer + winter + 12-month), precipitation (annual + 12-month), humidity, wind, ocean currents, SST, flow accumulation, river discharge, drainage basin, biome (19 types), Koppen class (22 subtypes).
 
-## Roadmap
+## Underground
 
-This is the current roadmap of the library:
+Stratified geological columns per tile (regolith → sedimentary → metamorphic → igneous), ore deposits with purity and quantity, cave networks with aquifers, fluid resources (oil, gas, geothermal).
 
-- [x] Universe generation
-  - [x] Age
-  - [x] Era
-- [x] Galaxy generation
-  - [x] Neighborhood
-  - [x] Age
-  - [x] Shape
-  - [x] Peculiarities
-  - [ ] Names
-  - [ ] Our local group galaxies
-- [x] Sector and subsector generation
-  - [x] Configurable divisions
-  - [x] Hex and division calculations
-  - [ ] Temporary region mapping
-  - [ ] Proper region mapping
-  - [ ] Names
-- [ ] Star system generation
-  - [x] Spawn chance according to density
-  - [x] Stars generation
-    - [x] Age
-    - [x] Spectral type
-    - [x] Luminosity
-    - [ ] Subdwarfs
-    - [x] Star differences according to population
-    - [x] Name generation
-    - [ ] Configurable stars
-    - [ ] Peculiarities
-    - [ ] Multiple star system orbit eccentricity and inclination
-  - [ ] Peculiarities
-  - [x] Orbital zones
-  - [x] Filling orbits
-  - [ ] Orbit eccentricity and inclination
-- [x] Planet generation
-  - [x] Orbit parameters
-  - [x] Moons
-  - [x] World parameters and climate (atmosphere, ocean, photochemistry)
-  - [ ] Resources
-    - [ ] Accessibility
-    - [ ] Rarity
-    - [ ] Quantity
-  - [x] Life presence
-  - [ ] Points of interest
-  - [x] Map generation (tile-level surface grid, v0.2)
-  - [x] Proto planets
-  - [ ] Exotic planets
-- [x] Species generation
-  - [x] Add species using the given settings
-  - [x] Spawn species using conditions found in specific systems
-  - [x] Writing the species' history
-  - [x] Filling the various systems with appropriate life
-- [x] Populated sectors/systems/planets
-  - [x] Add methods to generate populated objects "directly"
+## Geological zones
 
-## Contribute
+10 zones (carbonatite, mafic intrusion, pegmatite, porphyry, laterite, sedimentary basin, heavy mineral sands, brine flat, volcanic vent, impact crater) drive rare resource placement. No single location accesses all zones.
 
-I'd be happy to receive issues requesting new features or reporting bug fixes. Feel free to point out areas where the code could be improved, whether in terms of performance, readability, documentation, or adherence to best practices, and/or submit pull requests yourselves.
+## License
 
-##### License:
-
-Licensed under [MIT license](https://github.com/lmagitem/seeded-dice-roller/blob/master/LICENSE.md).
+MIT
