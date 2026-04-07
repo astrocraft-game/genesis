@@ -222,19 +222,13 @@ creating natural bottlenecks and trade routes.
 - [x] Tests (3): no zone exceeds 30%, scarcity maintained at radius 3,
       larger radius finds >= zones.
 
-### P2 — Inter-base logistics ✅
+### P2 — Inter-base logistics
 
-- [x] `logistics.rs` with `TransportMode` (5: Hauler, Motorised, CargoDrone,
-      Pipeline, OrbitalShuttle) — each with speed, cost/tile, capacity.
-- [x] `calculate_logistics(from, to, width, height, amount, mode)` returns
-      `LogisticsResult` (distance, trip cost, travel time, trips needed).
-- [x] `compare_modes(from, to, ..., is_fluid)` returns all modes sorted by
-      cost. Pipeline excluded for solids.
-- [x] Chebyshev distance with longitude wrap.
-- [x] Tests (10): hauler cheapest, drone faster, pipeline fluids-only,
-      cost scales with distance, more cargo = more trips, pipeline zero
-      cost, longitude wrap, sorted comparison, pipeline for fluids,
-      pipeline excluded for solids.
+- [ ] Extend `routing` module: `logistics_cost(zone_a, zone_b)` returns
+      transport cost for moving materials between bases.
+- [ ] Transport recipes: bulk hauler (low cost, slow), cargo drone
+      (high cost, fast), pipeline (fluids only, permanent).
+- [ ] Tests: logistics cost scales with distance, drone faster than hauler.
 
 ### P3 — Tech tree gating by materials
 
