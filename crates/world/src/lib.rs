@@ -72,6 +72,7 @@ pub mod hazards;
 pub mod hydrology;
 pub mod impacts;
 pub mod interior;
+pub mod logistics;
 pub mod ocean;
 pub mod photochemistry;
 pub mod pollution;
