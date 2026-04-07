@@ -57,7 +57,6 @@
 pub mod atmosphere;
 pub mod caves;
 pub mod climate;
-pub mod climate_change;
 pub mod detail;
 pub mod diff;
 #[cfg(feature = "erosion")]
@@ -74,16 +73,12 @@ pub mod impacts;
 pub mod interior;
 pub mod ocean;
 pub mod photochemistry;
-pub mod pollution;
 pub mod resource_nodes;
 pub mod resources;
 pub mod routing;
-pub mod scan_query;
-pub mod scanning;
 pub mod strata;
 pub mod subsurface;
 pub mod surface;
-pub mod terrain_log;
 pub mod types;
 pub mod zone_ores;
 pub mod zones;

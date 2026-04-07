@@ -1,11 +1,9 @@
 //! Environmental hazard zones — per-tile flags derived from physics layers.
 //!
-//! Hazards affect factory placement cost, equipment wear rate, and species
-//! habitability. They are computed once from the surface grid and optionally
-//! updated when pollution changes.
+//! Hazards affect species habitability and are computed once from the
+//! surface grid at generation time.
 
 use crate::grid::{BoundaryKind, SurfaceGrid};
-use crate::pollution::PollutionMap;
 use crate::types::BiomeType;
 
 /// Individual hazard flags for a tile (bitfield-style).
@@ -16,7 +14,7 @@ pub struct HazardFlags {
     pub toxic_atmosphere: bool,
     /// Elevated radiation (thin atmosphere + high UV, or volcanic).
     pub radiation: bool,
-    /// Corrosive precipitation from pollution or volcanic activity.
+    /// Corrosive precipitation from volcanic activity.
     pub acid_rain: bool,
     /// Mean temperature below −30 °C.
     pub extreme_cold: bool,
@@ -81,9 +79,8 @@ impl HazardMap {
 }
 
 /// Derive hazard zones from a surface grid's physics layers.
-///
-/// Optionally incorporates pollution data for acid rain detection.
-pub fn generate_hazards(grid: &SurfaceGrid, pollution: Option<&PollutionMap>) -> HazardMap {
+/// Derive hazard zones from a surface grid's physics layers.
+pub fn generate_hazards(grid: &SurfaceGrid) -> HazardMap {
     let n = grid.tile_count();
     let mut flags = Vec::with_capacity(n);
 
@@ -109,10 +106,8 @@ pub fn generate_hazards(grid: &SurfaceGrid, pollution: Option<&PollutionMap>) ->
         // regions (radon emissions).
         let radiation = (!is_ocean && elev > sea_level + 4000.0) || biome == BiomeType::Volcanic;
 
-        // Acid rain: from pollution (> 0.5) or near active volcanics.
-        let poll_level = pollution.map_or(0.0, |p| p.levels.get(idx).copied().unwrap_or(0.0));
-        let acid_rain = poll_level > 0.5
-            || (boundary == BoundaryKind::Convergent && biome == BiomeType::Volcanic);
+        // Acid rain: near active volcanics (SO₂ outgassing).
+        let acid_rain = boundary == BoundaryKind::Convergent && biome == BiomeType::Volcanic;
 
         let extreme_cold = !is_ocean && temp < -30.0;
         let extreme_heat = !is_ocean && temp > 50.0;
@@ -159,14 +154,14 @@ mod tests {
     #[test]
     fn hazard_map_has_correct_size() {
         let g = earth_grid();
-        let hm = generate_hazards(&g, None);
+        let hm = generate_hazards(&g);
         assert_eq!(hm.flags.len(), g.tile_count());
     }
 
     #[test]
     fn seismic_only_at_boundaries() {
         let g = earth_grid();
-        let hm = generate_hazards(&g, None);
+        let hm = generate_hazards(&g);
         for (idx, flags) in hm.flags.iter().enumerate() {
             if flags.seismic {
                 assert_ne!(
@@ -182,7 +177,7 @@ mod tests {
     #[test]
     fn extreme_cold_matches_temperature() {
         let g = earth_grid();
-        let hm = generate_hazards(&g, None);
+        let hm = generate_hazards(&g);
         for (idx, flags) in hm.flags.iter().enumerate() {
             if flags.extreme_cold {
                 assert!(
@@ -198,7 +193,7 @@ mod tests {
     #[test]
     fn high_altitude_matches_elevation() {
         let g = earth_grid();
-        let hm = generate_hazards(&g, None);
+        let hm = generate_hazards(&g);
         for (idx, flags) in hm.flags.iter().enumerate() {
             if flags.high_altitude {
                 assert!(
@@ -214,7 +209,7 @@ mod tests {
     #[test]
     fn some_tiles_are_safe() {
         let g = earth_grid();
-        let hm = generate_hazards(&g, None);
+        let hm = generate_hazards(&g);
         assert!(
             hm.safe_tile_count() > 0,
             "Earth-like world should have some safe tiles"
@@ -224,7 +219,7 @@ mod tests {
     #[test]
     fn some_tiles_are_hazardous() {
         let g = earth_grid();
-        let hm = generate_hazards(&g, None);
+        let hm = generate_hazards(&g);
         assert!(
             hm.hazardous_tile_count() > 0,
             "Earth-like world should have some hazardous tiles"
@@ -234,7 +229,7 @@ mod tests {
     #[test]
     fn danger_score_bounded() {
         let g = earth_grid();
-        let hm = generate_hazards(&g, None);
+        let hm = generate_hazards(&g);
         for flags in &hm.flags {
             let score = flags.danger_score();
             assert!((0.0..=1.0).contains(&score), "score {} out of range", score);
@@ -242,25 +237,9 @@ mod tests {
     }
 
     #[test]
-    fn pollution_triggers_acid_rain() {
-        let g = earth_grid();
-        let mut pm = PollutionMap::from_grid(&g);
-        // Find a land tile and pollute it heavily.
-        let land_tile = (0..g.tile_count())
-            .find(|&i| !g.layers.is_ocean[i])
-            .unwrap();
-        pm.emit(land_tile, 0.8);
-        let hm = generate_hazards(&g, Some(&pm));
-        assert!(
-            hm.flags[land_tile].acid_rain,
-            "high pollution should trigger acid rain"
-        );
-    }
-
-    #[test]
     fn tiles_with_filter_works() {
         let g = earth_grid();
-        let hm = generate_hazards(&g, None);
+        let hm = generate_hazards(&g);
         let seismic = hm.tiles_with(|f| f.seismic);
         for &idx in &seismic {
             assert!(hm.flags[idx].seismic);

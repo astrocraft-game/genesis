@@ -19,13 +19,10 @@
 
 #![allow(dead_code, unused_imports)]
 
-pub mod energy;
 pub mod food;
 pub mod graph;
 pub mod recipes;
 pub mod tech_tiers;
-pub mod throughput;
-pub mod waste;
 
 pub use graph::CraftingGraph;
 pub use recipes::substance::Substance;
