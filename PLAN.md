@@ -151,12 +151,18 @@ creating natural bottlenecks and trade routes.
       match, purity bounded, deterministic, filter works, sedimentary
       has fossil fuels.
 
-### N3 — Resource scanning integration
+### N3 — Resource scanning integration ✅
 
-- [ ] Surface scan reveals zone classification.
-- [ ] Deep scan reveals specific ore types + quantities.
-- [ ] Full scan reveals purity and exact deposit depth.
-- [ ] Tests: scan level gates data visibility correctly.
+- [x] `scan_query.rs` with `TileScanResult`, `OreDetail`, `query_tile`,
+      `query_all`, `discovered_zones`, `discovered_ore_types`.
+- [x] Unknown → nothing. SurfaceScan → zone. DeepScan → ore types.
+      FullyMapped → purity + quantity.
+- [x] Progressive discovery: `discovered_zones()` and `discovered_ore_types()`
+      return only what the player has actually scanned.
+- [x] Tests (8): unknown reveals nothing, surface reveals zone, deep
+      reveals ore types (not details), full reveals purity+quantity,
+      unscanned zones empty, progressive scanning, query_all count,
+      unscanned ores empty.
 
 ---
 

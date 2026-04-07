@@ -78,6 +78,7 @@ pub mod pollution;
 pub mod resource_nodes;
 pub mod resources;
 pub mod routing;
+pub mod scan_query;
 pub mod scanning;
 pub mod strata;
 pub mod subsurface;
