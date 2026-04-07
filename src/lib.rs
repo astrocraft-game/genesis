@@ -2,31 +2,29 @@
 //!
 //! Procedural universe generation library for games. Produces galaxies,
 //! star systems, planets with tile-level surface maps, species with
-//! ecosystems, civilisation histories, and material-science crafting
-//! recipes — all deterministic from a seed.
+//! ecosystems, and planetary timelines — all deterministic from a seed.
 //!
 //! ## Architecture
 //!
 //! ```text
-//! cosmos          world              life            crafting
-//! ┌──────────┐   ┌──────────────┐   ┌────────────┐  ┌───────────┐
-//! │ Universe │   │ SurfaceGrid  │   │ Species    │  │ Recipe    │
-//! │ Galaxy   │   │  elevation   │   │ Ecosystem  │  │ Substance │
-//! │ StarSys  │──>│  temperature │──>│ Settlement │  │ Graph     │
-//! │ Body     │   │  biome       │   │ History    │  │           │
-//! └──────────┘   │  rivers ...  │   └────────────┘  └───────────┘
-//!                └──────────────┘         │                │
-//!                       └────────────────>│<───────────────┘
-//!                            adapters (this crate)
+//! cosmos              world                life
+//! ┌──────────┐   ┌──────────────┐   ┌────────────┐
+//! │ Universe │   │ SurfaceGrid  │   │ Species    │
+//! │ Galaxy   │   │  elevation   │   │ Ecosystem  │
+//! │ StarSys  │──>│  temperature │──>│ Settlement │
+//! │ Body     │   │  biome       │   │ History    │
+//! └──────────┘   │  rivers ...  │   └────────────┘
+//!                └──────────────┘
+//!                       │
+//!                  adapters (this crate)
 //! ```
 //!
 //! - **cosmos** — universe, galaxies, star systems, celestial bodies.
 //! - **world** — planetary interior, atmosphere, climate, geology, 20+
 //!   tile-level layers (equirectangular, hex, cube-sphere).
 //! - **life** — species, ecosystems, settlements, Markov naming,
-//!   DF-lite world history, expansion footprints.
-//! - **crafting** — 750+ real-world material recipes as a DAG.
-//! - **genesis** (this crate) — bridges the four crates via `adapters`.
+//!   planetary timeline, expansion footprints.
+//! - **genesis** (this crate) — bridges cosmos→world→life via `adapters`.
 //!
 //! ## Quick start: generate your first planet
 //!
@@ -34,7 +32,6 @@
 //! use cosmos::prelude::*;
 //! use world::grid::GridResolution;
 //!
-//! // 1. Create a celestial body (or pull one from a generated star system).
 //! let body = CelestialBody::new(
 //!     Some(Orbit {
 //!         average_distance: 1.0,
@@ -56,44 +53,18 @@
 //!     )),
 //! );
 //!
-//! // 2. Generate the full world (interior + detail + surface grid).
 //! let result = genesis::generate_world_with_surface(
 //!     &body, 4.6, 1, false,
 //!     world::prelude::LifeLevel::Sentient,
-//!     GridResolution::Fast,  // 72x36 tiles
+//!     GridResolution::Fast,
 //!     "my_seed",
 //! ).expect("telluric body");
 //!
-//! // 3. Query the surface grid.
 //! let grid = &result.surface;
 //! println!("Tiles: {}", grid.tile_count());
-//! println!("Sea level: {:.0} m", grid.sea_level_m);
-//! let dist = grid.biome_distribution();
-//! for (biome, frac) in &dist {
-//!     println!("  {:?}: {:.1}%", biome, frac * 100.0);
-//! }
-//!
-//! // 4. Generate an ecosystem and distribute it on the surface.
-//! let eco_input = life::SpeciesGenerationInput {
-//!     habitat: life::types::Habitat::Terrestrial,
-//!     climate: life::types::Climate::Terrestrial,
-//!     temperature: life::types::Temperature::Temperate,
-//!     gravity: 1.0, atmospheric_pressure: 1.0, hydrosphere: 71.0,
-//!     life_level: life::types::LifeLevel::Sentient,
-//!     seed: "my_seed".into(), scope_key: "eco".into(),
-//! };
-//! let eco = life::generate_ecosystem_from_world(&eco_input);
-//! let life_dist = genesis::generate_life_on_surface(
-//!     grid, &eco, 1.0, life::LifeLevel::Sentient,
-//! );
-//! println!("Species: {}, Ranges: {}", eco.species_count(), life_dist.ranges.len());
 //! ```
-//!
-//! See `examples/` for more: `single_planet`, `export_maps`,
-//! `species_ecosystem`, `recipe_chain`, `visualise`, `grid_diff`.
 
 pub use cosmos;
-pub use crafting;
 pub use life;
 pub use world;
 
@@ -150,12 +121,6 @@ pub fn generate_species_for_world(
 }
 
 /// Generate a fully-populated surface grid for a telluric body.
-///
-/// Composes the full world pipeline (interior + detail + surface grid)
-/// in one call. Returns `None` if the body is not telluric.
-///
-/// `resolution` controls grid size; `surface_seed` is the string seed used
-/// for deterministic plate/noise generation (independent of the universe seed).
 pub fn generate_world_with_surface(
     body: &cosmos::prelude::CelestialBody,
     star_age_gyr: f32,
@@ -195,8 +160,6 @@ pub fn generate_world_with_surface(
     })
 }
 
-/// Composite output of `generate_world_with_surface`: the world's interior,
-/// detail, input context, generation profile, and full surface grid.
 #[derive(Clone, Debug)]
 pub struct WorldWithSurface {
     pub input: world::prelude::PlanetSimulationInput,
@@ -206,8 +169,7 @@ pub struct WorldWithSurface {
     pub surface: world::grid::SurfaceGrid,
 }
 
-/// Compute life distribution (vegetation + species ranges) over a surface
-/// grid for a given ecosystem.
+/// Compute life distribution over a surface grid.
 pub fn generate_life_on_surface(
     surface: &world::grid::SurfaceGrid,
     ecosystem: &life::Ecosystem,
