@@ -14,5 +14,4 @@ members = [
 [dependencies]
 cosmos = { path = "crates/cosmos" }
 world = { path = "crates/world" }
-life = { path = "../vitaeis" }
 seeded_dice_roller = "1.0"

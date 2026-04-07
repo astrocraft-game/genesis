@@ -1,71 +1,27 @@
 //! # Genesis
 //!
-//! Procedural universe generation library for games. Produces galaxies,
-//! star systems, planets with tile-level surface maps, species with
-//! ecosystems, and planetary timelines — all deterministic from a seed.
+//! Procedural universe generation library. Produces galaxies, star systems,
+//! and planets with tile-level surface maps — all deterministic from a seed.
 //!
 //! ## Architecture
 //!
 //! ```text
-//! cosmos              world                life
-//! ┌──────────┐   ┌──────────────┐   ┌────────────┐
-//! │ Universe │   │ SurfaceGrid  │   │ Species    │
-//! │ Galaxy   │   │  elevation   │   │ Ecosystem  │
-//! │ StarSys  │──>│  temperature │──>│ Settlement │
-//! │ Body     │   │  biome       │   │ History    │
-//! └──────────┘   │  rivers ...  │   └────────────┘
+//! cosmos              world
+//! ┌──────────┐   ┌──────────────┐
+//! │ Universe │   │ SurfaceGrid  │
+//! │ Galaxy   │   │  elevation   │
+//! │ StarSys  │──>│  temperature │
+//! │ Body     │   │  biome       │
+//! └──────────┘   │  rivers ...  │
 //!                └──────────────┘
-//!                       │
-//!                  adapters (this crate)
 //! ```
 //!
 //! - **cosmos** — universe, galaxies, star systems, celestial bodies.
 //! - **world** — planetary interior, atmosphere, climate, geology, 20+
 //!   tile-level layers (equirectangular, hex, cube-sphere).
-//! - **life** — species, ecosystems, settlements, Markov naming,
-//!   planetary timeline, expansion footprints.
-//! - **genesis** (this crate) — bridges cosmos→world→life via `adapters`.
-//!
-//! ## Quick start: generate your first planet
-//!
-//! ```rust,no_run
-//! use cosmos::prelude::*;
-//! use world::grid::GridResolution;
-//!
-//! let body = CelestialBody::new(
-//!     Some(Orbit {
-//!         average_distance: 1.0,
-//!         average_distance_from_system_center: 1.0,
-//!         eccentricity: 0.017,
-//!         axial_tilt: 23.4,
-//!         rotation: 1.0,
-//!         ..Default::default()
-//!     }),
-//!     7, "Gaia".into(), 1.0, 1.0, 5.5, 1.0, 288, 0,
-//!     CelestialBodySize::Standard,
-//!     CelestialBodyDetails::Telluric(TelluricBodyDetails::new(
-//!         TelluricBodyComposition::Rocky,
-//!         CelestialBodyWorldType::Terrestrial,
-//!         Vec::new(),
-//!         CelestialBodyCoreHeat::ActiveCore,
-//!         MagneticFieldStrength::Strong,
-//!         Vec::new(), Vec::new(), 10.0, true, 65.0,
-//!     )),
-//! );
-//!
-//! let result = genesis::generate_world_with_surface(
-//!     &body, 4.6, 1, false,
-//!     world::prelude::LifeLevel::Sentient,
-//!     GridResolution::Fast,
-//!     "my_seed",
-//! ).expect("telluric body");
-//!
-//! let grid = &result.surface;
-//! println!("Tiles: {}", grid.tile_count());
-//! ```
+//! - **genesis** (this crate) — bridges cosmos→world via `adapters`.
 
 pub use cosmos;
-pub use life;
 pub use world;
 
 pub mod adapters;
@@ -76,7 +32,7 @@ use cosmos::generator::Generator;
 use cosmos::prelude::*;
 use cosmos::system_generator::generate_star_system;
 
-/// Generate a complete universe from settings (universe → neighborhood → galaxies).
+/// Generate a complete universe from settings.
 pub fn generate_universe(settings: GenerationSettings) -> GeneratedUniverse {
     Generator::generate(settings)
 }
@@ -90,34 +46,6 @@ pub fn generate_system(
     galaxy: &mut Galaxy,
 ) -> StarSystem {
     generate_star_system(system_index, coord, hex, sub_sector, galaxy)
-}
-
-/// Generate a species for a cosmos body by routing it through world
-/// simulation and then into the life crate. Returns `None` if the body
-/// is not telluric or if life has not reached the animal-like threshold.
-pub fn generate_species_for_world(
-    body: &CelestialBody,
-    star_age_gyr: f32,
-    moon_count: u32,
-    has_rings: bool,
-    world_life_level: world::prelude::LifeLevel,
-    seed: &str,
-    scope_key: &str,
-) -> Option<life::Species> {
-    let generated = adapters::generate_world_from_cosmos_body(
-        body,
-        star_age_gyr,
-        moon_count,
-        has_rings,
-        world_life_level,
-    )?;
-    let species_input = adapters::planetary_detail_to_species_input(
-        &generated.input,
-        &generated.interior,
-        seed,
-        scope_key,
-    );
-    life::generator::generate_species_from_world(&species_input)
 }
 
 /// Generate a fully-populated surface grid for a telluric body.
@@ -167,27 +95,4 @@ pub struct WorldWithSurface {
     pub interior: world::prelude::PlanetInterior,
     pub detail: world::prelude::PlanetaryDetail,
     pub surface: world::grid::SurfaceGrid,
-}
-
-/// Compute life distribution over a surface grid.
-pub fn generate_life_on_surface(
-    surface: &world::grid::SurfaceGrid,
-    ecosystem: &life::Ecosystem,
-    gravity_g: f32,
-    life_level: life::LifeLevel,
-) -> life::LifeDistribution {
-    let habitat = adapters::surface_grid_to_habitat_grid(surface);
-    life::distribute_ecosystem(ecosystem, gravity_g, &habitat, life_level)
-}
-
-/// Compute a single species' range over a surface grid.
-pub fn generate_species_on_surface(
-    surface: &world::grid::SurfaceGrid,
-    species: &life::Species,
-    gravity_g: f32,
-    life_level: life::LifeLevel,
-) -> life::SpeciesRange {
-    let habitat = adapters::surface_grid_to_habitat_grid(surface);
-    let (_, vegetation) = life::generate_vegetation(&habitat, life_level);
-    life::compute_species_range(species, gravity_g, &habitat, &vegetation)
 }
