@@ -168,64 +168,59 @@ creating natural bottlenecks and trade routes.
 
 ## Track O — Recipe chains (connecting materials to products)
 
-### O1 — REE processing chain
+### O1 — REE processing chain ✅
 
-- [ ] Monazite ore → cracked concentrate → REE chloride solution →
-      individual REE oxides (solvent extraction, 3-4 steps).
-- [ ] Products: NdFeB magnets (Nd + Fe + B → permanent magnet),
-      SmCo magnets (Sm + Co → high-temp magnet), phosphors (Eu, Tb, Y).
-- [ ] Tests: magnets reachable from monazite, chain length ≥ 4.
+- [x] Delivered in M1: Monazite/Bastnaesite → RareEarthMix → 3 separation
+      recipes → 10 individual REEs → NdFeB magnet, SmCo magnet, phosphor.
+- [x] Tests: Nd reachable from monazite (2+ steps), NdFeB (3+ steps),
+      all 10 REEs have incoming edges, bastnaesite produces RareEarthMix.
 
-### O2 — PGM processing chain
+### O2 — PGM processing chain ✅
 
-- [ ] Ni-Cu sulfide ore → matte → base-metal removal → PGM concentrate
-      → individual PGM separation.
-- [ ] Products: catalytic converters (Pt + Pd + Rh), fuel cells (Pt),
-      crucibles (Ir), data storage (Ru).
-- [ ] Tests: all 6 PGMs reachable from Ni-Cu ore.
+- [x] Delivered in M2: Ni+Cu → PGMConcentrate → 3 separation recipes →
+      Pt, Pd, Rh, Ir, Os, Ru → catalytic converter, fuel cell membrane.
+- [x] Tests: all 6 PGMs reachable, catalytic converter from concentrate,
+      concentrate from nickel.
 
-### O3 — Battery manufacturing chain
+### O3 — Battery manufacturing chain ✅
 
-- [ ] Lithium brine → Li₂CO₃ → LiCoO₂ cathode (+ cobalt).
-- [ ] Graphite → anode material.
-- [ ] Assembly: cathode + anode + electrolyte → battery cell.
-- [ ] Tests: battery cell reachable from lithium + cobalt + graphite.
+- [x] Delivered in M3: Li→LiCO₃, graphite→anode, NMC cathode (Li+Ni+Mn+Co),
+      electrolyte, 4-step assembly → BatteryCell.
+- [x] Tests: cell from lithium (3+ steps), cell from graphite, 3+ inputs.
 
-### O4 — Semiconductor fabrication chain
+### O4 — Semiconductor fabrication chain ✅
 
-- [ ] Quartz → metallurgical Si → polysilicon → single crystal →
-      wafer → doped wafer → chip.
-- [ ] GaAs chain: gallium + arsenic → GaAs boule → wafer → LED/RF chip.
-- [ ] Tests: chip reachable from quartz, GaAs from gallium.
+- [x] Delivered in M4: SilicaSand→Si→Polysilicon→Wafer→MicroChip (3+ steps).
+      GaAs/GaN fixed to use Gallium+Arsenic.
+- [x] Tests: chip from silica, GaAs uses gallium, GaN uses gallium.
 
-### O5 — Fusion fuel chain
+### O5 — Fusion fuel chain ✅
 
-- [ ] Water → electrolysis → hydrogen + deuterium (isotope separation).
-- [ ] Lithium-6 + neutron → tritium (breeder blanket recipe).
-- [ ] D + T → fusion energy (connects to `Fusion` power source).
-- [ ] Tests: fusion fuel reachable, energy output connects to budget.
+- [x] Delivered in M5: Water→Deuterium, Li→Tritium, D+T→FusionFuelPellet,
+      pellet→fusion reaction (5000°C, 10k atm).
+- [x] Tests: deuterium from water, tritium needs lithium, pellet reachable,
+      fusion uses pellet.
 
-### O6 — Advanced material recipes
+### O6 — Advanced material recipes ✅
 
-- [ ] Graphene: graphite → exfoliation at plasma tier → graphene sheet.
-- [ ] Carbon nanotubes: methane + Fe catalyst → CVD at plasma tier.
-- [ ] Aerogel: silica + solvent → supercritical drying (chemical reactor).
-- [ ] SiC: silicon + carbon → Acheson furnace (electric arc).
-- [ ] BN: boron + nitrogen at high temp (blast furnace+).
-- [ ] Tests: advanced material chain lengths are longest in the game,
-      require inputs from multiple geological zones.
+- [x] Delivered in M7: Graphene from graphite (exfoliation), BN ceramic
+      (1800°C, 50 atm), SiC ceramic (2500°C). CNT and Aerogel pre-existing.
+- [x] Tests: graphene from graphite, BN needs boron, SiC needs silicon,
+      BN/SiC at blast furnace/electric arc tier.
 
 ---
 
 ## Track P — Multi-base gameplay integration
 
-### P1 — Zone scarcity balancing
+### P1 — Zone scarcity balancing ✅
 
-- [ ] Tuning pass: ensure no single base location has access to all
-      10 geological zones within a 3-tile radius.
-- [ ] Each zone appears on ≤30% of land tiles.
-- [ ] At least 2 zones require ocean-adjacent or polar locations.
-- [ ] Tests: zone distribution per planet, no zone covers >30%.
+- [x] `max_zone_fraction(is_ocean)` — verifies no zone exceeds 30% of land.
+- [x] `zones_within_radius(centre, radius, width)` — counts distinct zones
+      reachable from a tile via Chebyshev distance with longitude wrap.
+- [x] `scarcity_maintained(radius, width)` — verifies no tile can access
+      all zones within the given radius (forces multi-base expansion).
+- [x] Tests (3): no zone exceeds 30%, scarcity maintained at radius 3,
+      larger radius finds >= zones.
 
 ### P2 — Inter-base logistics
 

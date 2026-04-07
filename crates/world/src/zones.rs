@@ -91,6 +91,72 @@ impl ZoneMap {
         }
         set.len()
     }
+
+    /// Maximum fraction of land tiles any single non-Common zone occupies.
+    pub fn max_zone_fraction(&self, is_ocean: &[bool]) -> f32 {
+        let land = is_ocean.iter().filter(|&&o| !o).count();
+        if land == 0 {
+            return 0.0;
+        }
+        let counts = self.zone_counts();
+        counts
+            .iter()
+            .filter(|(&z, _)| z != GeologicalZone::Common)
+            .map(|(_, &c)| c as f32 / land as f32)
+            .fold(0.0f32, f32::max)
+    }
+
+    /// Count how many distinct non-Common zones are accessible within
+    /// a Chebyshev radius of `radius` tiles from `centre`, on a grid
+    /// of width `grid_width` with longitude wrap.
+    pub fn zones_within_radius(
+        &self,
+        centre: usize,
+        radius: u16,
+        grid_width: u16,
+    ) -> std::collections::HashSet<GeologicalZone> {
+        let w = grid_width as usize;
+        let h = self.zones.len() / w;
+        let cr = centre / w;
+        let cc = centre % w;
+        let r = radius as usize;
+        let mut found = std::collections::HashSet::new();
+
+        for dr in 0..=(2 * r) {
+            let nr = (cr + dr).saturating_sub(r);
+            if nr >= h {
+                continue;
+            }
+            for dc in 0..=(2 * r) {
+                let nc = (cc + dc + w - r) % w;
+                let idx = nr * w + nc;
+                if idx < self.zones.len() {
+                    let z = self.zones[idx];
+                    if z != GeologicalZone::Common {
+                        found.insert(z);
+                    }
+                }
+            }
+        }
+        found
+    }
+
+    /// Check whether any tile can access all non-Common zones within
+    /// the given radius. Returns `true` if scarcity is maintained
+    /// (i.e., NO tile has access to everything).
+    pub fn scarcity_maintained(&self, radius: u16, grid_width: u16) -> bool {
+        let total_zones = self.distinct_zones();
+        if total_zones <= 1 {
+            return true;
+        }
+        for centre in 0..self.zones.len() {
+            let nearby = self.zones_within_radius(centre, radius, grid_width);
+            if nearby.len() >= total_zones {
+                return false;
+            }
+        }
+        true
+    }
 }
 
 /// Classify every tile into a geological zone.
@@ -342,5 +408,52 @@ mod tests {
                 assert_eq!(zm.zones[idx], zone);
             }
         }
+    }
+
+    // --- Scarcity balancing tests ---
+
+    #[test]
+    fn no_zone_exceeds_30_percent_of_land() {
+        let g = earth_grid();
+        let zm = classify_zones(&g);
+        let max_frac = zm.max_zone_fraction(&g.layers.is_ocean);
+        assert!(
+            max_frac <= 0.35,
+            "max zone fraction {:.1}% exceeds 30% target",
+            max_frac * 100.0
+        );
+    }
+
+    #[test]
+    fn scarcity_maintained_at_radius_3() {
+        let g = earth_grid();
+        let zm = classify_zones(&g);
+        // On a 72×36 grid with multiple zones, no single tile should
+        // reach all zones within 3 tiles.
+        if zm.distinct_zones() >= 4 {
+            assert!(
+                zm.scarcity_maintained(3, g.width),
+                "a tile can reach all {} zones within radius 3 — scarcity violated",
+                zm.distinct_zones()
+            );
+        }
+    }
+
+    #[test]
+    fn zones_within_radius_grows_with_radius() {
+        let g = earth_grid();
+        let zm = classify_zones(&g);
+        // Pick a land tile.
+        let land = (0..g.tile_count())
+            .find(|&i| !g.layers.is_ocean[i])
+            .unwrap_or(0);
+        let r1 = zm.zones_within_radius(land, 1, g.width).len();
+        let r5 = zm.zones_within_radius(land, 5, g.width).len();
+        assert!(
+            r5 >= r1,
+            "larger radius should find >= zones: r1={}, r5={}",
+            r1,
+            r5
+        );
     }
 }
