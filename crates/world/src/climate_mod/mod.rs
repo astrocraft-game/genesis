@@ -1,3 +1,5 @@
+pub mod events;
+
 pub use crate::types::{
     CelestialBodyWorldType, ChemicalComponent, ClimateRegime, ClimateRegulation, GlaciationState,
     GreenhouseEffect, IceCapLocation, LifeLevel, MagneticFieldStrength, SkyAppearance, SkyColor,

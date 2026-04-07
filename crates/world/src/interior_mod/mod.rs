@@ -1,3 +1,9 @@
+pub mod atmosphere;
+pub mod detail;
+pub mod impacts;
+pub mod photochemistry;
+pub mod subsurface;
+
 use crate::types::{
     AtmosphericCirculation, BiomeType, CelestialBodyWorldType, ChemicalComponent, CraterDensity,
     MagneticFieldStrength, PlanetGenerationProfile, PlanetInterior, PlanetSimulationInput,

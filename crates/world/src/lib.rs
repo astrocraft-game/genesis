@@ -6,28 +6,16 @@
 //! wind, precipitation, humidity, ocean currents, SST, rivers, drainage
 //! basins, biome (19 types), and Koppen climate class (22 subtypes).
 //!
-//! ## Pipeline
+//! ## Module structure
 //!
-//! The full surface-generation pipeline runs in dependency order:
-//!
-//! 1. **Geology** — plate tectonics, elevation, fractal noise, sea-level.
-//! 2. **Erosion** (opt-in `erosion` feature) — particle hydraulic + thermal.
-//! 3. **Temperature** — latitude insolation, elevation lapse, continentality.
-//! 4. **Wind** — Hadley-cell bands, pressure scaling.
-//! 5. **Precipitation** — orographic + latitude bands.
-//! 6. **Ocean dynamics** — basin flood-fill, gyre currents, SST modifiers.
-//! 7. **Hydrology** — D8 flow, accumulation, river discharge, basins.
-//! 8. **Monthly climate** — 12-month temperature/precipitation arrays.
-//! 9. **Biome classification** — Whittaker + Koppen with seasonal subtypes.
-//!
-//! Call `grid::generate_surface_grid()` for the one-shot pipeline, or
-//! invoke each stage individually for finer control.
-//!
-//! ## Alternative layouts
-//!
-//! The `grids` module provides `HexGrid` (icosahedron subdivision) and
-//! `CubeSphereGrid` (6-face), both implementing the `SurfaceSampler`
-//! trait alongside `SurfaceGrid`.
+//! - `grid` — SurfaceGrid, alternative layouts (hex, cube-sphere), diff tool.
+//! - `geology` — plate tectonics, elevation, erosion, strata, caves.
+//! - `climate` — temperature, wind, precipitation, monthly, biomes, events.
+//! - `hydrology` — rivers, drainage, ocean dynamics.
+//! - `resources` — surface resources, resource nodes, fluids, zones, zone ores.
+//! - `surface` — named features, hazards, routing.
+//! - `interior` — atmosphere, photochemistry, impacts, subsurface, detail.
+//! - `types` — shared type definitions.
 //!
 //! ## Features
 //!
@@ -36,9 +24,6 @@
 
 #![warn(clippy::all)]
 #![allow(dead_code, unused_imports, unused)]
-// Architectural and stylistic lints we don't gate on: simulation pipelines
-// take many parameters; cleaning remaining stylistic warnings is not in
-// scope for the current work.
 #![allow(
     clippy::too_many_arguments,
     clippy::type_complexity,
@@ -51,49 +36,55 @@
     clippy::unnecessary_unwrap,
     clippy::absurd_extreme_comparisons
 )]
-// Pedantic lints are useful but produce high noise in numerical/game code.
-// They can be re-enabled locally with `cargo clippy -- -W clippy::pedantic`.
 
-pub mod atmosphere;
-pub mod caves;
+// Top-level modules (each is a directory with submodules)
+#[path = "climate_mod/mod.rs"]
 pub mod climate;
-pub mod detail;
-pub mod diff;
-#[cfg(feature = "erosion")]
-pub mod erosion;
-pub mod events;
-pub mod features;
-pub mod fluids;
 pub mod geology;
 pub mod grid;
-pub mod grids;
-pub mod hazards;
+#[path = "hydrology_mod/mod.rs"]
 pub mod hydrology;
-pub mod impacts;
+#[path = "interior_mod/mod.rs"]
 pub mod interior;
-pub mod ocean;
-pub mod photochemistry;
-pub mod resource_nodes;
+#[path = "resources_mod/mod.rs"]
 pub mod resources;
-pub mod routing;
-pub mod strata;
-pub mod subsurface;
+#[path = "surface_mod/mod.rs"]
 pub mod surface;
 pub mod types;
-pub mod zone_ores;
-pub mod zones;
+
+// Re-exports for backward compatibility
+pub use climate::events;
+pub use geology::caves;
+#[cfg(feature = "erosion")]
+pub use geology::erosion;
+pub use geology::strata;
+pub use grid::alt as grids;
+pub use grid::diff;
+pub use hydrology::ocean;
+pub use interior::atmosphere;
+pub use interior::detail;
+pub use interior::impacts;
+pub use interior::photochemistry;
+pub use interior::subsurface;
+pub use resources::fluids;
+pub use resources::nodes as resource_nodes;
+pub use resources::zone_ores;
+pub use resources::zones;
+pub use surface::features;
+pub use surface::hazards;
+pub use surface::routing;
 
 pub mod prelude {
-    pub use crate::atmosphere::*;
     pub use crate::climate::*;
-    pub use crate::detail::*;
     pub use crate::geology::*;
+    pub use crate::hydrology::ocean::*;
     pub use crate::hydrology::*;
-    pub use crate::impacts::*;
+    pub use crate::interior::atmosphere::*;
+    pub use crate::interior::detail::*;
+    pub use crate::interior::impacts::*;
+    pub use crate::interior::photochemistry::*;
+    pub use crate::interior::subsurface::*;
     pub use crate::interior::*;
-    pub use crate::ocean::*;
-    pub use crate::photochemistry::*;
-    pub use crate::subsurface::*;
     pub use crate::surface::*;
     pub use crate::types::*;
 }

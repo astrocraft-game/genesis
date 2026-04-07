@@ -6,6 +6,9 @@
 //! geology layer (plates + elevation); subsequent phases add climate,
 //! hydrology, and biome classification.
 
+pub mod alt;
+pub mod diff;
+
 /// Resolution presets for `SurfaceGrid` generation.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

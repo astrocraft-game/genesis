@@ -1,6 +1,11 @@
 //! Geology: re-exports for summary mineral/volcanic types, and tile-level
 //! plate tectonics / elevation grid generation.
 
+pub mod caves;
+#[cfg(feature = "erosion")]
+pub mod erosion;
+pub mod strata;
+
 use crate::grid::{BoundaryKind, GridResolution, Plate, PlateKind, SurfaceGrid};
 use crate::types::PlanetSimulationInput;
 use noise::{NoiseFn, SuperSimplex};

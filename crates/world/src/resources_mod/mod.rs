@@ -6,6 +6,11 @@
 //! timber, salt, fish…) rather than specific substances; the root
 //! adapter layer maps them to concrete `crafting::Substance` values.
 
+pub mod fluids;
+pub mod nodes;
+pub mod zone_ores;
+pub mod zones;
+
 use crate::grid::{BoundaryKind, PlateKind, SurfaceGrid};
 use crate::types::BiomeType;
 

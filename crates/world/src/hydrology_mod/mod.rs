@@ -1,3 +1,5 @@
+pub mod ocean;
+
 pub use crate::types::{DeltaType, Hydrography, LakeDistribution, LakeFormationType, LiquidType};
 use crate::types::{OrbitContext, PlanetSimulationInput};
 
