@@ -10,13 +10,6 @@ Procedural universe and planet generation library in Rust. Produces galaxies, st
 | `world` | Planetary interior, atmosphere, climate, geology, hydrology, biomes, resources, geological zones |
 | `genesis` (root) | Bridges cosmos → world via adapters |
 
-Related standalone repos:
-
-| Repo | Description |
-|------|-------------|
-| `vitaeis` | Species, ecosystems, evolution, settlements, planetary timelines |
-| `poiesis` | 750+ real-world material science recipes as a directed graph |
-
 ## Usage
 
 ```rust
