@@ -7,11 +7,11 @@
 //!
 //! Output files: biome.ppm, elevation.pgm, temperature.ppm, precipitation.ppm
 
-use cosmos::prelude::*;
+use genesis::prelude::*;
 use genesis::generate_world_with_surface;
 use std::fs::File;
 use std::io::Write;
-use world::grid::{GridResolution, SurfaceGrid};
+use atlasis::world::grid::{GridResolution, SurfaceGrid};
 
 fn earth_like_body() -> CelestialBody {
     CelestialBody::new(
@@ -81,7 +81,7 @@ fn main() -> std::io::Result<()> {
         4.6,
         1,
         false,
-        world::prelude::LifeLevel::Sentient,
+        atlasis::world::types::LifeLevel::Sentient,
         GridResolution::Standard,
         &seed,
     )

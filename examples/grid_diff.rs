@@ -9,9 +9,9 @@
 //!     cargo run --example grid_diff -- seed_a seed_b   # custom seeds
 //!     cargo run --example grid_diff -- same same       # verify determinism
 
-use cosmos::prelude::*;
-use world::diff::diff_grids;
-use world::grid::GridResolution;
+use genesis::prelude::*;
+use atlasis::world::diff::diff_grids;
+use atlasis::world::grid::GridResolution;
 
 fn earth_like_body() -> CelestialBody {
     CelestialBody::new(
@@ -59,7 +59,7 @@ fn main() {
         4.6,
         1,
         false,
-        world::prelude::LifeLevel::Sentient,
+        atlasis::world::types::LifeLevel::Sentient,
         GridResolution::Fast,
         seed_a,
     )
@@ -71,7 +71,7 @@ fn main() {
         4.6,
         1,
         false,
-        world::prelude::LifeLevel::Sentient,
+        atlasis::world::types::LifeLevel::Sentient,
         GridResolution::Fast,
         seed_b,
     )

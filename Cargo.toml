@@ -2,16 +2,16 @@
 name = "genesis"
 version = "0.1.0"
 edition = "2021"
-description = "[WIP] Generates data for galaxies, sectors, solar systems, planets and their inhabitants."
+description = "Procedural universe and planet generation library"
 license = "MIT"
 
-[workspace]
-members = [
-    "crates/cosmos",
-    "crates/world",
-]
-
 [dependencies]
-cosmos = { path = "crates/cosmos" }
-world = { path = "crates/world" }
+atlasis = { path = "../atlasis" }
 seeded_dice_roller = "1.0"
+log = "0.4"
+serde = { version = "1.0", features = ["derive", "rc"] }
+smart-default = "0.7"
+ordered-float = "5.0"
+lazy_static = "1.5"
+strum = "0.27"
+strum_macros = "0.27"

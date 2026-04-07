@@ -7,8 +7,8 @@
 //! When generator behaviour changes *intentionally*, update the expected
 //! values below after manually verifying the new output is correct.
 
-use cosmos::galaxy::map::division_level::GalacticMapDivisionLevel;
-use cosmos::prelude::*;
+use genesis::galaxy::map::division_level::GalacticMapDivisionLevel;
+use genesis::prelude::*;
 use genesis::generate_system;
 
 const SEED: &str = "determinism_snapshot_v1";

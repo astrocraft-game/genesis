@@ -841,7 +841,7 @@ impl ChemicalComponent {
     ///
     /// # Example
     /// ```
-    /// use cosmos::prelude::*;
+    /// use genesis::prelude::*;
     ///
     /// let water = ChemicalComponent::Water;
     /// let can_exist = water.can_exist_as_liquid(280, 1.0);
@@ -871,7 +871,7 @@ impl ChemicalComponent {
     ///
     /// # Example
     /// ```
-    /// use cosmos::prelude::*;
+    /// use genesis::prelude::*;
     ///
     /// let water = ChemicalComponent::Water;
     /// let can_exist = water.can_exist_as_gas(400, 1.0);

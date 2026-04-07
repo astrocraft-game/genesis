@@ -1,6 +1,6 @@
-use cosmos::prelude::ExternalBodyFacts;
-use world::grid::SurfaceGrid;
-use world::prelude::{
+use crate::prelude::ExternalBodyFacts;
+use atlasis::world::grid::SurfaceGrid;
+use atlasis::world::types::{
     CelestialBodyWorldType, LifeLevel, MagneticFieldStrength, OrbitContext,
     PlanetGenerationProfile, PlanetInterior, PlanetSimulationInput, PlanetaryDetail, StarContext,
     TelluricBodyComposition,
@@ -34,7 +34,7 @@ pub fn external_facts_to_world_input(facts: &ExternalBodyFacts) -> PlanetSimulat
 }
 
 pub fn telluric_details_to_world_profile(
-    details: &cosmos::prelude::TelluricBodyDetails,
+    details: &crate::prelude::TelluricBodyDetails,
     life_level: LifeLevel,
 ) -> PlanetGenerationProfile {
     PlanetGenerationProfile {
@@ -54,20 +54,20 @@ pub struct GeneratedTelluricWorld {
 }
 
 pub fn generate_world_from_cosmos_body(
-    body: &cosmos::prelude::CelestialBody,
+    body: &crate::prelude::CelestialBody,
     star_age_gyr: f32,
     moon_count: u32,
     has_rings: bool,
     life_level: LifeLevel,
 ) -> Option<GeneratedTelluricWorld> {
-    let cosmos::prelude::CelestialBodyDetails::Telluric(details) = &body.details else {
+    let crate::prelude::CelestialBodyDetails::Telluric(details) = &body.details else {
         return None;
     };
 
     let input =
         external_facts_to_world_input(&body.external_facts(star_age_gyr, moon_count, has_rings));
     let profile = telluric_details_to_world_profile(details, life_level);
-    let (interior, detail) = world::prelude::generate_complete_planet(&input, &profile);
+    let (interior, detail) = atlasis::world::interior::detail::generate_complete_planet(&input, &profile);
 
     Some(GeneratedTelluricWorld {
         input,
@@ -107,7 +107,7 @@ pub fn water_access_from_grid(grid: &SurfaceGrid) -> Vec<f32> {
 }
 
 /// Derive a per-tile resource density score from a ResourceMap.
-pub fn resource_density_from_map(map: &world::resources::ResourceMap) -> Vec<f32> {
+pub fn resource_density_from_map(map: &atlasis::world::resources::ResourceMap) -> Vec<f32> {
     let max_count = map.per_tile.iter().map(|t| t.len()).max().unwrap_or(1) as f32;
     let max_count = max_count.max(1.0);
     map.per_tile
@@ -116,51 +116,51 @@ pub fn resource_density_from_map(map: &world::resources::ResourceMap) -> Vec<f32
         .collect()
 }
 
-fn map_body_type(value: cosmos::prelude::TelluricBodyComposition) -> TelluricBodyComposition {
+fn map_body_type(value: crate::prelude::TelluricBodyComposition) -> TelluricBodyComposition {
     match value {
-        cosmos::prelude::TelluricBodyComposition::Metallic => TelluricBodyComposition::Metallic,
-        cosmos::prelude::TelluricBodyComposition::Rocky => TelluricBodyComposition::Rocky,
-        cosmos::prelude::TelluricBodyComposition::Icy => TelluricBodyComposition::Icy,
+        crate::prelude::TelluricBodyComposition::Metallic => TelluricBodyComposition::Metallic,
+        crate::prelude::TelluricBodyComposition::Rocky => TelluricBodyComposition::Rocky,
+        crate::prelude::TelluricBodyComposition::Icy => TelluricBodyComposition::Icy,
     }
 }
 
-fn map_world_type(value: cosmos::prelude::CelestialBodyWorldType) -> CelestialBodyWorldType {
+fn map_world_type(value: crate::prelude::CelestialBodyWorldType) -> CelestialBodyWorldType {
     match value {
-        cosmos::prelude::CelestialBodyWorldType::ProtoWorld => CelestialBodyWorldType::ProtoWorld,
-        cosmos::prelude::CelestialBodyWorldType::Ice => CelestialBodyWorldType::Ice,
-        cosmos::prelude::CelestialBodyWorldType::DirtySnowball => {
+        crate::prelude::CelestialBodyWorldType::ProtoWorld => CelestialBodyWorldType::ProtoWorld,
+        crate::prelude::CelestialBodyWorldType::Ice => CelestialBodyWorldType::Ice,
+        crate::prelude::CelestialBodyWorldType::DirtySnowball => {
             CelestialBodyWorldType::DirtySnowball
         }
-        cosmos::prelude::CelestialBodyWorldType::GeoActive => CelestialBodyWorldType::GeoActive,
-        cosmos::prelude::CelestialBodyWorldType::Rock => CelestialBodyWorldType::Rock,
-        cosmos::prelude::CelestialBodyWorldType::Hadean => CelestialBodyWorldType::Hadean,
-        cosmos::prelude::CelestialBodyWorldType::Ammonia => CelestialBodyWorldType::Ammonia,
-        cosmos::prelude::CelestialBodyWorldType::Ocean => CelestialBodyWorldType::Ocean,
-        cosmos::prelude::CelestialBodyWorldType::Terrestrial => CelestialBodyWorldType::Terrestrial,
-        cosmos::prelude::CelestialBodyWorldType::Greenhouse => CelestialBodyWorldType::Greenhouse,
-        cosmos::prelude::CelestialBodyWorldType::Chthonian => CelestialBodyWorldType::Chthonian,
-        cosmos::prelude::CelestialBodyWorldType::VolatilesGiant => {
+        crate::prelude::CelestialBodyWorldType::GeoActive => CelestialBodyWorldType::GeoActive,
+        crate::prelude::CelestialBodyWorldType::Rock => CelestialBodyWorldType::Rock,
+        crate::prelude::CelestialBodyWorldType::Hadean => CelestialBodyWorldType::Hadean,
+        crate::prelude::CelestialBodyWorldType::Ammonia => CelestialBodyWorldType::Ammonia,
+        crate::prelude::CelestialBodyWorldType::Ocean => CelestialBodyWorldType::Ocean,
+        crate::prelude::CelestialBodyWorldType::Terrestrial => CelestialBodyWorldType::Terrestrial,
+        crate::prelude::CelestialBodyWorldType::Greenhouse => CelestialBodyWorldType::Greenhouse,
+        crate::prelude::CelestialBodyWorldType::Chthonian => CelestialBodyWorldType::Chthonian,
+        crate::prelude::CelestialBodyWorldType::VolatilesGiant => {
             CelestialBodyWorldType::VolatilesGiant
         }
-        cosmos::prelude::CelestialBodyWorldType::CarbonWorld => CelestialBodyWorldType::CarbonWorld,
-        cosmos::prelude::CelestialBodyWorldType::LavaWorld => CelestialBodyWorldType::LavaWorld,
-        cosmos::prelude::CelestialBodyWorldType::EyeballWorld => {
+        crate::prelude::CelestialBodyWorldType::CarbonWorld => CelestialBodyWorldType::CarbonWorld,
+        crate::prelude::CelestialBodyWorldType::LavaWorld => CelestialBodyWorldType::LavaWorld,
+        crate::prelude::CelestialBodyWorldType::EyeballWorld => {
             CelestialBodyWorldType::EyeballWorld
         }
-        cosmos::prelude::CelestialBodyWorldType::RoguePlanet => CelestialBodyWorldType::RoguePlanet,
-        cosmos::prelude::CelestialBodyWorldType::IronWorld => CelestialBodyWorldType::IronWorld,
-        cosmos::prelude::CelestialBodyWorldType::MiniNeptune => CelestialBodyWorldType::MiniNeptune,
+        crate::prelude::CelestialBodyWorldType::RoguePlanet => CelestialBodyWorldType::RoguePlanet,
+        crate::prelude::CelestialBodyWorldType::IronWorld => CelestialBodyWorldType::IronWorld,
+        crate::prelude::CelestialBodyWorldType::MiniNeptune => CelestialBodyWorldType::MiniNeptune,
     }
 }
 
-fn map_magnetic_field(value: cosmos::prelude::MagneticFieldStrength) -> MagneticFieldStrength {
+fn map_magnetic_field(value: crate::prelude::MagneticFieldStrength) -> MagneticFieldStrength {
     match value {
-        cosmos::prelude::MagneticFieldStrength::None => MagneticFieldStrength::None,
-        cosmos::prelude::MagneticFieldStrength::Weak => MagneticFieldStrength::Weak,
-        cosmos::prelude::MagneticFieldStrength::Moderate => MagneticFieldStrength::Moderate,
-        cosmos::prelude::MagneticFieldStrength::Strong => MagneticFieldStrength::Strong,
-        cosmos::prelude::MagneticFieldStrength::VeryStrong => MagneticFieldStrength::VeryStrong,
-        cosmos::prelude::MagneticFieldStrength::Extreme => MagneticFieldStrength::Extreme,
+        crate::prelude::MagneticFieldStrength::None => MagneticFieldStrength::None,
+        crate::prelude::MagneticFieldStrength::Weak => MagneticFieldStrength::Weak,
+        crate::prelude::MagneticFieldStrength::Moderate => MagneticFieldStrength::Moderate,
+        crate::prelude::MagneticFieldStrength::Strong => MagneticFieldStrength::Strong,
+        crate::prelude::MagneticFieldStrength::VeryStrong => MagneticFieldStrength::VeryStrong,
+        crate::prelude::MagneticFieldStrength::Extreme => MagneticFieldStrength::Extreme,
     }
 }
 
@@ -198,12 +198,12 @@ mod tests {
 
     #[test]
     fn maps_cosmos_telluric_details_into_world_interior() {
-        let details = cosmos::prelude::TelluricBodyDetails::new(
-            cosmos::prelude::TelluricBodyComposition::Rocky,
-            cosmos::prelude::CelestialBodyWorldType::Terrestrial,
+        let details = crate::prelude::TelluricBodyDetails::new(
+            crate::prelude::TelluricBodyComposition::Rocky,
+            crate::prelude::CelestialBodyWorldType::Terrestrial,
             Vec::new(),
-            cosmos::prelude::CelestialBodyCoreHeat::ActiveCore,
-            cosmos::prelude::MagneticFieldStrength::Strong,
+            crate::prelude::CelestialBodyCoreHeat::ActiveCore,
+            crate::prelude::MagneticFieldStrength::Strong,
             Vec::new(),
             Vec::new(),
             10.0,
@@ -219,8 +219,8 @@ mod tests {
 
     #[test]
     fn generates_complete_world_from_cosmos_body() {
-        let body = cosmos::prelude::CelestialBody::new(
-            Some(cosmos::prelude::Orbit {
+        let body = crate::prelude::CelestialBody::new(
+            Some(crate::prelude::Orbit {
                 average_distance: 1.0,
                 average_distance_from_system_center: 1.0,
                 eccentricity: 0.0167,
@@ -236,14 +236,14 @@ mod tests {
             1.0,
             288,
             0,
-            cosmos::prelude::CelestialBodySize::Standard,
-            cosmos::prelude::CelestialBodyDetails::Telluric(
-                cosmos::prelude::TelluricBodyDetails::new(
-                    cosmos::prelude::TelluricBodyComposition::Rocky,
-                    cosmos::prelude::CelestialBodyWorldType::Terrestrial,
+            crate::prelude::CelestialBodySize::Standard,
+            crate::prelude::CelestialBodyDetails::Telluric(
+                crate::prelude::TelluricBodyDetails::new(
+                    crate::prelude::TelluricBodyComposition::Rocky,
+                    crate::prelude::CelestialBodyWorldType::Terrestrial,
                     Vec::new(),
-                    cosmos::prelude::CelestialBodyCoreHeat::ActiveCore,
-                    cosmos::prelude::MagneticFieldStrength::Strong,
+                    crate::prelude::CelestialBodyCoreHeat::ActiveCore,
+                    crate::prelude::MagneticFieldStrength::Strong,
                     Vec::new(),
                     Vec::new(),
                     10.0,

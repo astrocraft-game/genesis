@@ -4,11 +4,11 @@
 //! Run with:
 //!     cargo run --example single_planet
 
-use cosmos::prelude::*;
+use genesis::prelude::*;
 use genesis::generate_world_with_surface;
 use std::collections::HashMap;
-use world::grid::GridResolution;
-use world::types::BiomeType;
+use atlasis::world::grid::GridResolution;
+use atlasis::world::types::BiomeType;
 
 fn earth_like_body() -> CelestialBody {
     CelestialBody::new(
@@ -52,7 +52,7 @@ fn main() {
         4.6,
         1,
         false,
-        world::prelude::LifeLevel::Sentient,
+        atlasis::world::types::LifeLevel::Sentient,
         GridResolution::Standard,
         &seed,
     )
