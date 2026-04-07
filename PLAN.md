@@ -222,26 +222,15 @@ creating natural bottlenecks and trade routes.
 - [x] Tests (3): no zone exceeds 30%, scarcity maintained at radius 3,
       larger radius finds >= zones.
 
-### P2 — Inter-base logistics
+### P2 — Inter-base logistics (DEFERRED — game engine concern)
 
-- [ ] Extend `routing` module: `logistics_cost(zone_a, zone_b)` returns
-      transport cost for moving materials between bases.
-- [ ] Transport recipes: bulk hauler (low cost, slow), cargo drone
-      (high cost, fast), pipeline (fluids only, permanent).
-- [ ] Tests: logistics cost scales with distance, drone faster than hauler.
+Not part of genesis. Transport modes, convoys, and route costs belong in
+the game engine, not the planet generation library.
 
-### P3 — Tech tree gating by materials
+### P3 — Tech tree gating by materials (DEFERRED — game engine concern)
 
-- [ ] Map each `TechTier` to the materials it requires:
-      - Manual/Kiln: iron, copper, tin (common)
-      - Furnace/Blast: steel alloys, tungsten (rare)
-      - Electric Arc: silicon, nickel superalloys (very-rare)
-      - Chemical Reactor: REEs, PGMs, lithium (very-rare, multi-zone)
-      - Plasma: graphene, carbon nanotubes (ultra-rare, multi-zone)
-      - Nuclear: deuterium, tritium, hafnium (requires fusion chain)
-- [ ] Player cannot reach higher tiers without establishing bases in
-      the correct geological zones.
-- [ ] Tests: tier N+1 requires at least one material from a new zone.
+Not part of genesis. Tech progression, unlocking, and gating belong in
+the game engine, not the planet generation library.
 
 ---
 
