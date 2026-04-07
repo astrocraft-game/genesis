@@ -37,18 +37,12 @@
     clippy::absurd_extreme_comparisons
 )]
 
-// Top-level modules (each is a directory with submodules)
-#[path = "climate_mod/mod.rs"]
 pub mod climate;
 pub mod geology;
 pub mod grid;
-#[path = "hydrology_mod/mod.rs"]
 pub mod hydrology;
-#[path = "interior_mod/mod.rs"]
 pub mod interior;
-#[path = "resources_mod/mod.rs"]
 pub mod resources;
-#[path = "surface_mod/mod.rs"]
 pub mod surface;
 pub mod types;
 
