@@ -9,11 +9,10 @@ license = "MIT"
 members = [
     "crates/cosmos",
     "crates/world",
-    "crates/life",
 ]
 
 [dependencies]
 cosmos = { path = "crates/cosmos" }
 world = { path = "crates/world" }
-life = { path = "crates/life" }
+life = { path = "../vitaeis" }
 seeded_dice_roller = "1.0"
