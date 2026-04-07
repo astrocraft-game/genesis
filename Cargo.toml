@@ -10,12 +10,11 @@ members = [
     "crates/cosmos",
     "crates/world",
     "crates/life",
-    "crates/crafting",
 ]
 
 [dependencies]
 cosmos = { path = "crates/cosmos" }
 world = { path = "crates/world" }
 life = { path = "crates/life" }
-crafting = { path = "crates/crafting" }
+crafting = { path = "../crafting" }
 seeded_dice_roller = "1.0"
